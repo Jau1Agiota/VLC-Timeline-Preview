@@ -17,6 +17,8 @@
 #define MAX_W 320u
 #define MAX_H 180u
 #define SLOTS 3u
+#define NEAR_END_WINDOW_MS 100u
+#define NEAR_END_TAIL_MS 250u
 
 typedef struct Capture Capture;
 typedef struct Format Format;
@@ -30,6 +32,8 @@ struct Capture {
     DWORD timeout;
     ULONGLONG started, capture_latency;
     volatile LONG captured, decoder_error, ended;
+    int retain_until_end;
+    CRITICAL_SECTION image_mutex;
     unsigned width, height;
     unsigned char image[MAX_W * MAX_H * 4];
 };
@@ -122,9 +126,11 @@ static void display(void *opaque, void *picture)
     Slot *slot = picture;
     Format *f = slot->format;
     Capture *c = f->capture;
-    /* First displayed candidate after startup positioning, NOT a verified PTS.
-     * Unique per-picture slots avoid reading a buffer reused after unlock. */
-    if (InterlockedCompareExchange(&c->captured, 1, 0) == 0) {
+    /* Normal path: first displayed candidate. Tail retry: last delivered
+     * candidate before stop, which need not be the stream's final frame.
+     * Neither mode verifies PTS. Unique slots prevent buffer reuse races. */
+    EnterCriticalSection(&c->image_mutex);
+    if (c->retain_until_end || InterlockedCompareExchange(&c->captured, 1, 0) == 0) {
         c->width = f->width; c->height = f->height;
         for (unsigned y = 0; y < f->height; ++y)
             memcpy(c->image + (size_t)y * f->width * 4u,
@@ -132,8 +138,10 @@ static void display(void *opaque, void *picture)
         for (size_t pixel = 0; pixel < (size_t)c->width * c->height; ++pixel)
             c->image[pixel * 4u + 3u] = 255; /* RV32 unused byte: opaque BMP. */
         c->capture_latency = GetTickCount64() - c->started;
-        SetEvent(c->ready);
+        InterlockedExchange(&c->captured, 1);
+        if (!c->retain_until_end) SetEvent(c->ready);
     }
+    LeaveCriticalSection(&c->image_mutex);
     EnterCriticalSection(&f->mutex);
     slot->busy = 0;
     LeaveCriticalSection(&f->mutex);
@@ -209,6 +217,21 @@ static const char *u64_decimal(char buffer[21], uint64_t value)
     return end;
 }
 
+/* One retry only for a video input that reached EOF without a picture.
+ * Decode the final 250 ms and retain its last delivered candidate until EOF.
+ * This bounds the requested retry, NOT the unobservable delivered frame PTS. */
+static int near_end_retry_start(const Capture *c, int retried, int timed_out,
+                               int has_video, uint64_t target, uint64_t length,
+                               uint64_t *retry_start)
+{
+    if (retried || timed_out || !has_video || !c->ended || c->captured ||
+        c->decoder_error || length < NEAR_END_TAIL_MS ||
+        target > length || length - target > NEAR_END_WINDOW_MS)
+        return 0;
+    *retry_start = length - NEAR_END_TAIL_MS;
+    return 1;
+}
+
 static int number(const wchar_t *text, uint64_t max, uint64_t *value)
 {
     if (!*text) return 0;
@@ -258,11 +281,15 @@ int wmain(int argc, wchar_t **argv)
         free(source); return 2;
     }
     Capture c = {0};
+    InitializeCriticalSection(&c.image_mutex);
     c.started = GetTickCount64(); c.timeout = (DWORD)deadline;
     c.ready = CreateEventW(NULL, TRUE, FALSE, NULL);
     c.finished = CreateEventW(NULL, TRUE, FALSE, NULL);
     HANDLE guard = NULL;
     int rc = 3, attached_error = 0, attached_end = 0;
+    int retried = 0, has_video = 0;
+    uint64_t effective_start = target, attempt_length = 0, initial_length = 0;
+    const char *initial_status = "not_started";
     const char *status = "decoder_error";
     libvlc_instance_t *vlc = NULL;
     libvlc_media_t *media = NULL;
@@ -275,11 +302,14 @@ int wmain(int argc, wchar_t **argv)
         "--no-osd", "--no-video-title-show", "--no-input-fast-seek"};
     vlc = libvlc_new((int)(sizeof(options) / sizeof(options[0])), options);
     if (!vlc) goto done;
+open_media:
+    attempt_length = 0;
+    has_video = 0;
     media = libvlc_media_new_path(vlc, source);
     if (!media) goto done;
     char start[64], seconds[21];
     snprintf(start, sizeof(start), ":start-time=%s.%03u",
-             u64_decimal(seconds, target / 1000), (unsigned)(target % 1000));
+             u64_decimal(seconds, effective_start / 1000), (unsigned)(effective_start % 1000));
     libvlc_media_add_option(media, start);
     player = libvlc_media_player_new_from_media(media);
     if (!player) goto done;
@@ -297,29 +327,69 @@ int wmain(int argc, wchar_t **argv)
      * copy, so stop joins all callbacks BEFORE reading the captured image. */
 done:
     if (player) {
+        libvlc_time_t duration = libvlc_media_player_get_length(player);
+        if (duration > 0) attempt_length = (uint64_t)duration;
+        if (!retried && c.ended && !c.captured && !c.decoder_error && rc != 124) {
+            libvlc_media_track_t **tracks = NULL;
+            unsigned count = libvlc_media_tracks_get(media, &tracks);
+            for (unsigned i = 0; i < count; ++i)
+                if (tracks[i]->i_type == libvlc_track_video) has_video = 1;
+            libvlc_media_tracks_release(tracks, count);
+        }
         libvlc_media_player_stop(player);
         if (attached_error) libvlc_event_detach(events, libvlc_MediaPlayerEncounteredError, player_event, &c);
         if (attached_end) libvlc_event_detach(events, libvlc_MediaPlayerEndReached, player_event, &c);
         libvlc_media_player_release(player);
+        player = NULL;
+        events = NULL;
     }
-    if (media) libvlc_media_release(media);
+    if (media) { libvlc_media_release(media); media = NULL; }
+    if (!retried) {
+        initial_length = attempt_length;
+        initial_status = rc == 124 ? "timeout" :
+                         c.decoder_error ? "decoder_error" :
+                         c.captured ? "candidate_captured" :
+                         c.ended ? "ended_without_video" : "decoder_error";
+    }
+    uint64_t retry_start;
+    if (near_end_retry_start(&c, retried, rc == 124, has_video,
+                             target, attempt_length, &retry_start)) {
+        /* stop/release above drains all callbacks before resetting their state.
+         * Keep the SAME instance, watchdog and overall deadline; no new budget. */
+        retried = 1;
+        c.retain_until_end = 1;
+        effective_start = retry_start;
+        c.captured = c.decoder_error = c.ended = 0;
+        attached_error = attached_end = 0;
+        ResetEvent(c.ready);
+        goto open_media;
+    }
     if (vlc) libvlc_release(vlc);
     if (rc != 124 && c.captured && !c.decoder_error) {
-        if (save_bmp(argv[3], &c)) { rc = 0; status = "candidate_captured"; }
+        if (save_bmp(argv[3], &c)) {
+            rc = 0;
+            status = retried ? "fallback_candidate_captured" : "candidate_captured";
+        }
         else { rc = 4; status = "output_error"; }
     } else if (rc != 124 && c.ended && !c.decoder_error) status = "ended_without_video";
     free(source);
     if (c.finished) SetEvent(c.finished);
     if (guard) { WaitForSingleObject(guard, INFINITE); CloseHandle(guard); }
+    DeleteCriticalSection(&c.image_mutex);
     if (c.ready) CloseHandle(c.ready);
     if (c.finished) CloseHandle(c.finished);
     char target_text[21], capture_text[21], total_text[21];
+    char start_text[21], length_text[21];
     printf("{\"status\":\"%s\",\"requested_ms\":%s,\"capture_latency_ms\":%s,"
            "\"total_latency_ms\":%s,\"width\":%u,\"height\":%u,"
-           "\"frame_timestamp_verified\":false,\"exit_code\":%d}\n",
+           "\"frame_timestamp_verified\":false,\"exit_code\":%d,"
+           "\"fallback_used\":%s,\"attempts\":%u,\"effective_start_ms\":%s,"
+           "\"initial_length_ms\":%s,\"initial_extraction_status\":\"%s\"}\n",
            status, u64_decimal(target_text, target),
            u64_decimal(capture_text, (uint64_t)c.capture_latency),
            u64_decimal(total_text, (uint64_t)(GetTickCount64() - c.started)),
-           c.width, c.height, rc);
+           c.width, c.height, rc, retried ? "true" : "false",
+           (unsigned)(1 + retried), u64_decimal(start_text, effective_start),
+           u64_decimal(length_text, initial_length), initial_status);
     return rc;
 }

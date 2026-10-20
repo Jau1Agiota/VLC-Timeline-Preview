@@ -1,0 +1,16 @@
+fixture,requested_ms,repeat,deadline_ms,exit_code,external_timeout,wall_latency_ms,image,observed_ms,observation_method,status,capture_latency_ms,total_latency_ms,fallback_used,attempts,effective_start_ms,initial_length_ms,initial_extraction_status
+vfr.mp4,29500,1,10000,0,False,1821,001-vfr.mp4-29500-1-10000.bmp,,,candidate_captured,1530,1672,False,1,29500,30000,candidate_captured
+vfr.mp4,29500,2,10000,0,False,1719,002-vfr.mp4-29500-2-10000.bmp,,,candidate_captured,1433,1574,False,1,29500,30000,candidate_captured
+vfr.mp4,29500,3,10000,0,False,1819,003-vfr.mp4-29500-3-10000.bmp,,,candidate_captured,1551,1690,False,1,29500,30000,candidate_captured
+vfr.mp4,28800,1,10000,0,False,1768,004-vfr.mp4-28800-1-10000.bmp,,,candidate_captured,1556,1628,False,1,28800,30000,candidate_captured
+vfr.mp4,28800,2,10000,0,False,1668,005-vfr.mp4-28800-2-10000.bmp,,,candidate_captured,1491,1564,False,1,28800,30000,candidate_captured
+vfr.mp4,28800,3,10000,0,False,1868,006-vfr.mp4-28800-3-10000.bmp,,,candidate_captured,1672,1750,False,1,28800,30000,candidate_captured
+vfr.mkv,29500,1,10000,0,False,1570,007-vfr.mkv-29500-1-10000.bmp,,,candidate_captured,1387,1419,False,1,29500,30021,candidate_captured
+vfr.mkv,29500,2,10000,0,False,1969,008-vfr.mkv-29500-2-10000.bmp,,,candidate_captured,1693,1852,False,1,29500,30021,candidate_captured
+vfr.mkv,29500,3,10000,0,False,1618,009-vfr.mkv-29500-3-10000.bmp,,,candidate_captured,1470,1500,False,1,29500,30021,candidate_captured
+vfr.mkv,28800,1,10000,0,False,1819,010-vfr.mkv-28800-1-10000.bmp,,,candidate_captured,1605,1705,False,1,28800,30021,candidate_captured
+vfr.mkv,28800,2,10000,0,False,2019,011-vfr.mkv-28800-2-10000.bmp,,,candidate_captured,1789,1884,False,1,28800,30021,candidate_captured
+vfr.mkv,28800,3,10000,0,False,2020,012-vfr.mkv-28800-3-10000.bmp,,,candidate_captured,1789,1887,False,1,28800,30021,candidate_captured
+ordinary.mp4,14750,1,100,124,False,215,,,,,,,,,,,
+ordinary.mp4,14750,2,100,124,False,265,,,,,,,,,,,
+ordinary.mp4,14750,3,100,124,False,215,,,,,,,,,,,

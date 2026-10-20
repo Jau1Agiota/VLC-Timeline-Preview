@@ -90,6 +90,8 @@ protected:
     int   getValueFromXPos( int );
 
 private:
+    void traceHover( const QPoint &, const char *event, bool hovering = true );
+    const bool hoverDiagnostics;
     intf_thread_t *p_intf;
     bool isSliding;        /* Whether we are currently sliding by user action */
     bool isJumping;              /* if we requested a jump to another chapter */

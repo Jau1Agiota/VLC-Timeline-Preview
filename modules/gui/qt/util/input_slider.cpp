@@ -30,6 +30,7 @@
 #include "qt.hpp"
 
 #include "util/input_slider.hpp"
+#include "util/seekhover.hpp"
 #include "util/timetooltip.hpp"
 #include "adapters/seekpoints.hpp"
 #include "input_manager.hpp"
@@ -66,7 +67,9 @@ namespace {
 }
 
 SeekSlider::SeekSlider( intf_thread_t *p_intf, Qt::Orientation q, QWidget *_parent, bool _static )
-          : QSlider( q, _parent ), p_intf( p_intf ), b_classic( _static ), animLoading( NULL )
+          : QSlider( q, _parent ),
+            hoverDiagnostics( qgetenv( "VLC_TIMELINE_HOVER_DEBUG" ) == "1" ),
+            p_intf( p_intf ), b_classic( _static ), animLoading( NULL )
 {
     isSliding = false;
     isJumping = false;
@@ -373,8 +376,50 @@ void SeekSlider::mousePressEvent( QMouseEvent* event )
     event->accept();
 }
 
+void SeekSlider::traceHover( const QPoint &pos, const char *event, bool hovering )
+{
+    if( !hoverDiagnostics ) return;
+
+    // Qt owns the current-input reference; this runs only on its GUI thread.
+    // Read current values rather than the whole-second positionUpdated duration.
+    input_thread_t *input = THEMIM->getInput();
+    const int state = input ? var_GetInteger( input, "state" ) : END_S;
+    const bool active = input && (state == PLAYING_S || state == PAUSE_S);
+    const bool seekable = input && b_seekable && var_GetBool( input, "can-seek" );
+    const int64_t durationMs = input ? MS_FROM_VLC_TICK( var_GetInteger( input, "length" ) ) : 0;
+    QStyleOptionSlider option;
+    initStyleOption( &option );
+    // SeekStyle paints left-to-right; classic QSlider uses initStyleOption's
+    // direction. Ask the style afresh, including stylesheet/DPI offsets.
+    if( alternativeStyle ) option.upsideDown = false;
+    option.sliderPosition = option.sliderValue = minimum();
+    const QRect first = style()->subControlRect( QStyle::CC_Slider, &option,
+                                                 QStyle::SC_SliderHandle, this );
+    option.sliderPosition = option.sliderValue = maximum();
+    const QRect last = style()->subControlRect( QStyle::CC_Slider, &option,
+                                                QStyle::SC_SliderHandle, this );
+    const SeekHover::Position hover = SeekHover::map( pos.x(), pos.y(), width(), height(),
+                                                     first.center().x(), last.center().x(),
+                                                     durationMs, orientation() == Qt::Horizontal &&
+                                                     first.isValid() && last.isValid() );
+    const bool valid = hovering && hover.inside && durationMs > 0 && active &&
+                       seekable && isEnabled() && !isSliding && !qApp->activePopupWidget();
+    const QString message = QStringLiteral(
+        "event=%1 x=%2 y=%3 width=%4 height=%5 start_x=%6 end_x=%7 span=%8 "
+        "timestamp_ms=%9 duration_ms=%10 inside=%11 valid=%12 "
+        "active=%13 seekable=%14 dragging=%15" )
+        .arg( QString::fromLatin1( event ) ).arg( pos.x() ).arg( pos.y() )
+        .arg( width() ).arg( height() ).arg( hover.start ).arg( hover.end ).arg( hover.span )
+        .arg( static_cast<qlonglong>( hover.timestampMs ) )
+        .arg( static_cast<qlonglong>( durationMs ) ).arg( hover.inside ).arg( valid )
+        .arg( active ).arg( seekable ).arg( isSliding );
+    msg_Dbg( p_intf, "timeline-hover widget=%p %s", static_cast<void *>( this ),
+             qUtf8Printable( message ) );
+}
+
 void SeekSlider::mouseMoveEvent( QMouseEvent *event )
 {
+    traceHover( event->pos(), "move" );
     if ( ! ( event->buttons() & ( Qt::LeftButton | Qt::MiddleButton ) ) )
     {
         /* Handle button release when mouserelease has been hijacked by popup */
@@ -442,6 +487,7 @@ void SeekSlider::enterEvent( QEnterEvent * )
 void SeekSlider::enterEvent( QEvent * )
 #endif
 {
+    traceHover( mapFromGlobal( QCursor::pos() ), "enter" );
     /* Cancel the fade-out timer */
     hideHandleTimer->stop();
     /* Only start the fade-in if needed */
@@ -460,6 +506,7 @@ void SeekSlider::enterEvent( QEvent * )
 
 void SeekSlider::leaveEvent( QEvent * )
 {
+    traceHover( mapFromGlobal( QCursor::pos() ), "leave", false );
     hideHandleTimer->start();
     /* Hide the tooltip
        - if the mouse leave the slider rect (Note: it can still be
@@ -502,6 +549,7 @@ void SeekSlider::paintEvent( QPaintEvent *ev )
 
 void SeekSlider::hideEvent( QHideEvent * )
 {
+    traceHover( mapFromGlobal( QCursor::pos() ), "hide", false );
     mTimeTooltip->hide();
 }
 

@@ -6,6 +6,7 @@
 #include <windows.h>
 #include <vlc/vlc.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <wchar.h>
@@ -264,8 +265,8 @@ int wmain(int argc, wchar_t **argv)
     media = libvlc_media_new_path(vlc, source);
     if (!media) goto done;
     char start[64];
-    snprintf(start, sizeof(start), ":start-time=%llu.%03llu",
-             (unsigned long long)(target / 1000), (unsigned long long)(target % 1000));
+    snprintf(start, sizeof(start), ":start-time=%" PRIu64 ".%03" PRIu64,
+             (uint64_t)(target / 1000), (uint64_t)(target % 1000));
     libvlc_media_add_option(media, start);
     player = libvlc_media_player_new_from_media(media);
     if (!player) goto done;
@@ -299,10 +300,10 @@ done:
     if (guard) { WaitForSingleObject(guard, INFINITE); CloseHandle(guard); }
     if (c.ready) CloseHandle(c.ready);
     if (c.finished) CloseHandle(c.finished);
-    printf("{\"status\":\"%s\",\"requested_ms\":%llu,\"capture_latency_ms\":%llu,"
-           "\"total_latency_ms\":%llu,\"width\":%u,\"height\":%u,"
+    printf("{\"status\":\"%s\",\"requested_ms\":%" PRIu64 ",\"capture_latency_ms\":%" PRIu64 ","
+           "\"total_latency_ms\":%" PRIu64 ",\"width\":%u,\"height\":%u,"
            "\"frame_timestamp_verified\":false,\"exit_code\":%d}\n",
-           status, (unsigned long long)target, (unsigned long long)c.capture_latency,
-           (unsigned long long)(GetTickCount64() - c.started), c.width, c.height, rc);
+           status, (uint64_t)target, (uint64_t)c.capture_latency,
+           (uint64_t)(GetTickCount64() - c.started), c.width, c.height, rc);
     return rc;
 }

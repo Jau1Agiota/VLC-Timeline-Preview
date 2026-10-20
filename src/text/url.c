@@ -398,7 +398,7 @@ static bool vlc_uri_host_validate(const char *str)
 
 static bool vlc_uri_path_validate(const char *str)
 {
-    return vlc_uri_component_validate(str, "/@:");
+    return vlc_uri_component_validate(str, "/@:[]");
 }
 
 static int vlc_UrlParseInner(vlc_url_t *restrict url, const char *str)
@@ -829,7 +829,7 @@ error:
     return ret;
 }
 
-static char *vlc_uri_fixup_inner(const char *str, const char *extras)
+VLC_MALLOC static char *vlc_uri_fixup_inner(const char *str, const char *extras)
 {
     assert(str && extras);
 
@@ -892,7 +892,8 @@ static int IdnToAscii(DWORD flags, LPCWSTR str, int len, LPWSTR buf, int size)
     int (WINAPI *IdnToAsciiReal)(DWORD, LPCWSTR, int, LPWSTR, int);
     int ret = 0;
 
-    IdnToAsciiReal = GetProcAddress(h, "IdnToAscii");
+    IdnToAsciiReal = (int (WINAPI *)(DWORD, LPCWSTR, int, LPWSTR, int))
+                     GetProcAddress(h, "IdnToAscii");
     if (IdnToAsciiReal != NULL)
         ret = IdnToAsciiReal(flags, str, len, buf, size);
     else

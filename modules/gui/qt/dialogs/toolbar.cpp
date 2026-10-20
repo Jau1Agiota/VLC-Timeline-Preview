@@ -188,8 +188,8 @@ ToolbarEditDialog::ToolbarEditDialog( QWidget *_w, intf_thread_t *_p_intf)
     previewBox->setLayout( new QVBoxLayout() );
     previewBox->layout()->addWidget( previewWidget );
     mainLayout->addWidget( previewBox, 5, 6, 3, 3 );
-    CONNECT( positionCheckbox, stateChanged(int),
-             previewWidget, setBarsTopPosition(int) );
+    connect( positionCheckbox, &QCheckBox::stateChanged,
+             previewWidget, &PreviewWidget::setBarsTopPosition );
 
     /* Buttons */
     QDialogButtonBox *okCancel = new QDialogButtonBox;
@@ -199,11 +199,11 @@ ToolbarEditDialog::ToolbarEditDialog( QWidget *_w, intf_thread_t *_p_intf)
     okCancel->addButton( okButton, QDialogButtonBox::AcceptRole );
     okCancel->addButton( cancelButton, QDialogButtonBox::RejectRole );
 
-    BUTTONACT( deleteButton, deleteProfile() );
-    BUTTONACT( newButton, newProfile() );
-    CONNECT( profileCombo, currentIndexChanged( int ), this, changeProfile( int ) );
-    BUTTONACT( okButton, close() );
-    BUTTONACT( cancelButton, cancel() );
+    BUTTONACT( deleteButton, deleteProfile );
+    BUTTONACT( newButton, newProfile );
+    connect( profileCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ToolbarEditDialog::changeProfile );
+    BUTTONACT( okButton, close );
+    BUTTONACT( cancelButton, cancel );
     mainLayout->addWidget( okCancel, 8, 0, 1, 9 );
 }
 
@@ -333,7 +333,7 @@ void PreviewWidget::paintEvent( QPaintEvent * )
             if ( !strcmp( item->widget()->metaObject()->className(), "QLabel" ) )
             {
                 QPainter eraser( &pixmaps[i] );
-                eraser.fillRect( item->geometry(), palette().background() );
+                eraser.fillRect( item->geometry(), palette().window() );
                 eraser.end();
             }
         }
@@ -497,7 +497,7 @@ WidgetListing::WidgetListing( intf_thread_t *p_intf, QWidget *_parent )
                 QWidget *discFrame = new QWidget( this );
                 //discFrame->setLineWidth( 1 );
                 QHBoxLayout *discLayout = new QHBoxLayout( discFrame );
-                discLayout->setSpacing( 0 ); discLayout->setMargin( 0 );
+                discLayout->setSpacing( 0 ); discLayout->setContentsMargins( 0, 0, 0, 0 );
 
                 QToolButton *prevSectionButton = new QToolButton( discFrame );
                 prevSectionButton->setIcon( QIcon( ":/toolbar/dvd_prev.svg" ) );
@@ -522,7 +522,7 @@ WidgetListing::WidgetListing( intf_thread_t *p_intf, QWidget *_parent )
             {
                 QWidget *telexFrame = new QWidget( this );
                 QHBoxLayout *telexLayout = new QHBoxLayout( telexFrame );
-                telexLayout->setSpacing( 0 ); telexLayout->setMargin( 0 );
+                telexLayout->setSpacing( 0 ); telexLayout->setContentsMargins( 0, 0, 0, 0 );
 
                 QToolButton *telexOn = new QToolButton( telexFrame );
                 telexOn->setIcon( QIcon( ":/toolbar/tv.svg" ) );
@@ -638,7 +638,7 @@ DroppingController::DroppingController( intf_thread_t *_p_intf,
     setAcceptDrops( true );
     controlLayout = new QHBoxLayout( this );
     controlLayout->setSpacing( 5 );
-    controlLayout->setMargin( 0 );
+    controlLayout->setContentsMargins( 0, 0, 0, 0 );
     setFrameShape( QFrame::StyledPanel );
     setFrameShadow( QFrame::Raised );
     setMinimumHeight( 20 );

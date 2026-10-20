@@ -86,7 +86,7 @@ static const struct
     {VLC_CODEC_I420_9B, AV_PIX_FMT_YUV420P9BE, 0, 0, 0 },
     {VLC_CODEC_I420_10L, AV_PIX_FMT_YUV420P10LE, 0, 0, 0 },
     {VLC_CODEC_I420_10B, AV_PIX_FMT_YUV420P10BE, 0, 0, 0 },
-#if (LIBAVUTIL_VERSION_MICRO >= 100 && LIBAVUTIL_VERSION_INT >= AV_VERSION_INT( 54, 17, 100 ) )
+#if LIBAVUTIL_VERSION_CHECK( 54, 17, 100 )
     {VLC_CODEC_I420_12L, AV_PIX_FMT_YUV420P12LE, 0, 0, 0 },
     {VLC_CODEC_I420_12B, AV_PIX_FMT_YUV420P12BE, 0, 0, 0 },
 #endif
@@ -100,7 +100,9 @@ static const struct
     {VLC_CODEC_I422_9B, AV_PIX_FMT_YUV422P9BE, 0, 0, 0 },
     {VLC_CODEC_I422_10L, AV_PIX_FMT_YUV422P10LE, 0, 0, 0 },
     {VLC_CODEC_I422_10B, AV_PIX_FMT_YUV422P10BE, 0, 0, 0 },
-#if (LIBAVUTIL_VERSION_MICRO >= 100 && LIBAVUTIL_VERSION_INT >= AV_VERSION_INT( 54, 17, 100 ) )
+    {VLC_CODEC_I422_16L, AV_PIX_FMT_YUV422P16LE, 0, 0, 0 },
+    {VLC_CODEC_I422_16B, AV_PIX_FMT_YUV422P16BE, 0, 0, 0 },
+#if LIBAVUTIL_VERSION_CHECK( 54, 17, 100 )
     {VLC_CODEC_I422_12L, AV_PIX_FMT_YUV422P12LE, 0, 0, 0 },
     {VLC_CODEC_I422_12B, AV_PIX_FMT_YUV422P12BE, 0, 0, 0 },
 #endif
@@ -111,12 +113,17 @@ static const struct
 
     {VLC_CODEC_YUVA_444_10L, AV_PIX_FMT_YUVA444P10LE, 0, 0, 0 },
     {VLC_CODEC_YUVA_444_10B, AV_PIX_FMT_YUVA444P10BE, 0, 0, 0 },
+    /* FFmpeg only */
+#if LIBAVUTIL_VERSION_MICRO >= 100 && LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(56, 24, 101)
+    {VLC_CODEC_YUVA_444_12L, AV_PIX_FMT_YUVA444P12LE, 0, 0, 0 },
+    {VLC_CODEC_YUVA_444_12B, AV_PIX_FMT_YUVA444P12BE, 0, 0, 0 },
+#endif
 
     {VLC_CODEC_I444_9L, AV_PIX_FMT_YUV444P9LE, 0, 0, 0 },
     {VLC_CODEC_I444_9B, AV_PIX_FMT_YUV444P9BE, 0, 0, 0 },
     {VLC_CODEC_I444_10L, AV_PIX_FMT_YUV444P10LE, 0, 0, 0 },
     {VLC_CODEC_I444_10B, AV_PIX_FMT_YUV444P10BE, 0, 0, 0 },
-#if (LIBAVUTIL_VERSION_MICRO >= 100 && LIBAVUTIL_VERSION_INT >= AV_VERSION_INT( 54, 17, 100 ) )
+#if LIBAVUTIL_VERSION_CHECK( 54, 17, 100 )
     {VLC_CODEC_I444_12L, AV_PIX_FMT_YUV444P12LE, 0, 0, 0 },
     {VLC_CODEC_I444_12B, AV_PIX_FMT_YUV444P12BE, 0, 0, 0 },
 #endif
@@ -138,6 +145,10 @@ static const struct
     VLC_RGB( VLC_CODEC_RGB16, AV_PIX_FMT_RGB565, AV_PIX_FMT_BGR565, 0xf800, 0x07e0, 0x001f )
     VLC_RGB( VLC_CODEC_RGB24, AV_PIX_FMT_RGB24, AV_PIX_FMT_BGR24, 0xff0000, 0x00ff00, 0x0000ff )
 
+    {VLC_CODEC_RGBA, AV_PIX_FMT_RGBA, 0, 0, 0 },
+    {VLC_CODEC_ARGB, AV_PIX_FMT_ARGB, 0, 0, 0 },
+    {VLC_CODEC_BGRA, AV_PIX_FMT_BGRA, 0, 0, 0 },
+
     VLC_RGB( VLC_CODEC_RGB32, AV_PIX_FMT_RGB32, AV_PIX_FMT_BGR32, 0x00ff0000, 0x0000ff00, 0x000000ff )
     VLC_RGB( VLC_CODEC_RGB32, AV_PIX_FMT_RGB32_1, AV_PIX_FMT_BGR32_1, 0xff000000, 0x00ff0000, 0x0000ff00 )
 
@@ -145,7 +156,7 @@ static const struct
     VLC_RGB( VLC_CODEC_RGB32, AV_PIX_FMT_0BGR32, AV_PIX_FMT_0RGB32, 0x000000ff, 0x0000ff00, 0x00ff0000 )
 #endif
 
-#if (LIBAVUTIL_VERSION_MICRO == 0 || LIBAVUTIL_VERSION_INT >= AV_VERSION_INT( 55, 0, 100 ) )
+#if (LIBAVUTIL_VERSION_MICRO == 0 || LIBAVUTIL_VERSION_CHECK( 55, 0, 100 ) )
 #ifdef WORDS_BIGENDIAN
     {VLC_CODEC_RGBA64, AV_PIX_FMT_RGBA64BE, 0, 0, 0 },
 #else /* !WORDS_BIGENDIAN */
@@ -153,10 +164,17 @@ static const struct
 #endif /* !WORDS_BIGENDIAN */
 #endif
 
-    {VLC_CODEC_RGBA, AV_PIX_FMT_RGBA, 0, 0, 0 },
-    {VLC_CODEC_ARGB, AV_PIX_FMT_ARGB, 0, 0, 0 },
-    {VLC_CODEC_BGRA, AV_PIX_FMT_BGRA, 0, 0, 0 },
     {VLC_CODEC_GREY, AV_PIX_FMT_GRAY8, 0, 0, 0},
+#ifdef AV_PIX_FMT_GRAY10
+    {VLC_CODEC_GREY_10L, AV_PIX_FMT_GRAY10LE, 0, 0, 0},
+    {VLC_CODEC_GREY_10B, AV_PIX_FMT_GRAY10BE, 0, 0, 0},
+#endif
+#ifdef AV_PIX_FMT_GRAY12
+    {VLC_CODEC_GREY_12L, AV_PIX_FMT_GRAY12LE, 0, 0, 0},
+    {VLC_CODEC_GREY_12B, AV_PIX_FMT_GRAY12BE, 0, 0, 0},
+#endif
+    {VLC_CODEC_GREY_16L, AV_PIX_FMT_GRAY16LE, 0, 0, 0},
+    {VLC_CODEC_GREY_16B, AV_PIX_FMT_GRAY16BE, 0, 0, 0},
 
      /* Paletized RGB */
     {VLC_CODEC_RGBP, AV_PIX_FMT_PAL8, 0, 0, 0},
@@ -170,7 +188,7 @@ static const struct
     {VLC_CODEC_GBR_PLANAR_16B, AV_PIX_FMT_GBRP16BE, 0, 0, 0 },
 
     /* XYZ */
-#if LIBAVUTIL_VERSION_CHECK(52, 10, 0, 25, 100)
+#if LIBAV_UTIL_VERSION_CHECK(52, 10, 0, 25, 100)
     {VLC_CODEC_XYZ12, AV_PIX_FMT_XYZ12, 0xfff0, 0xfff0, 0xfff0},
 #endif
     { 0, 0, 0, 0, 0 }
@@ -181,14 +199,24 @@ int GetFfmpegChroma( int *restrict i_ffmpeg_chroma, const video_format_t *fmt )
 {
     for( int i = 0; chroma_table[i].i_chroma != 0; i++ )
     {
-        if( chroma_table[i].i_chroma == fmt->i_chroma )
+        if( chroma_table[i].i_chroma == fmt->i_chroma &&
+            chroma_table[i].i_rmask  == fmt->i_rmask &&
+            chroma_table[i].i_gmask  == fmt->i_gmask &&
+            chroma_table[i].i_bmask  == fmt->i_bmask )
         {
-            if( ( chroma_table[i].i_rmask == 0 &&
-                  chroma_table[i].i_gmask == 0 &&
-                  chroma_table[i].i_bmask == 0 ) ||
-                ( chroma_table[i].i_rmask == fmt->i_rmask &&
-                  chroma_table[i].i_gmask == fmt->i_gmask &&
-                  chroma_table[i].i_bmask == fmt->i_bmask ) )
+            *i_ffmpeg_chroma = chroma_table[i].i_chroma_id;
+            return VLC_SUCCESS;
+        }
+    }
+    // try again without the mask as they may not correspond exactly
+    if (fmt->i_rmask || fmt->i_gmask || fmt->i_bmask)
+    {
+        for( int i = 0; chroma_table[i].i_chroma != 0; i++ )
+        {
+            if( chroma_table[i].i_chroma == fmt->i_chroma &&
+                chroma_table[i].i_rmask == 0 &&
+                chroma_table[i].i_gmask == 0 &&
+                chroma_table[i].i_bmask == 0 )
             {
                 *i_ffmpeg_chroma = chroma_table[i].i_chroma_id;
                 return VLC_SUCCESS;

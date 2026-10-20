@@ -199,6 +199,7 @@ typedef struct dvbsub_clut_s
     dvbsub_color_t          c_2b[4];
     dvbsub_color_t          c_4b[16];
     dvbsub_color_t          c_8b[256];
+    bool                    b_color_range_full;
 
     struct dvbsub_clut_s    *p_next;
 
@@ -256,7 +257,7 @@ struct decoder_sys_t
     /* Decoder internal data */
     int                i_id;
     int                i_ancillary_id;
-    mtime_t            i_pts;
+    vlc_tick_t         i_pts;
 
     bool               b_absolute;
     int                i_spu_position;
@@ -340,7 +341,7 @@ static int Open( vlc_object_t *p_this )
     if( !p_sys )
         return VLC_ENOMEM;
 
-    p_sys->i_pts          = VLC_TS_INVALID;
+    p_sys->i_pts          = VLC_TICK_INVALID;
     p_sys->i_id           = p_dec->fmt_in.subs.dvb.i_id & 0xFFFF;
     p_sys->i_ancillary_id = p_dec->fmt_in.subs.dvb.i_id >> 16;
 
@@ -397,7 +398,7 @@ static void Flush( decoder_t *p_dec )
 {
     decoder_sys_t *p_sys = p_dec->p_sys;
 
-    p_sys->i_pts = VLC_TS_INVALID;
+    p_sys->i_pts = VLC_TICK_INVALID;
 }
 
 /*****************************************************************************
@@ -426,7 +427,7 @@ static int Decode( decoder_t *p_dec, block_t *p_block )
         default_dds_init( p_dec );
 
     p_sys->i_pts = p_block->i_pts;
-    if( p_sys->i_pts <= VLC_TS_INVALID )
+    if( p_sys->i_pts <= VLC_TICK_INVALID )
     {
 #ifdef DEBUG_DVBSUB
         /* Some DVB channels send stuffing segments in non-dated packets so
@@ -546,6 +547,7 @@ static void default_clut_init( decoder_t *p_dec )
 
     /* 256 entries CLUT */
     memset( p_sys->default_clut.c_8b, 0xFF, 256 * sizeof(dvbsub_color_t) );
+    p_sys->default_clut.b_color_range_full = false;
 }
 
 static void decode_segment( decoder_t *p_dec, bs_t *s )
@@ -710,7 +712,8 @@ static void decode_clut( decoder_t *p_dec, bs_t *s )
 
         bs_skip( s, 4 );
 
-        if( bs_read( s, 1 ) )
+        p_clut->b_color_range_full = bs_read( s, 1 ) != 0;
+        if( p_clut->b_color_range_full )
         {
             y  = bs_read( s, 8 );
             cr = bs_read( s, 8 );
@@ -829,6 +832,8 @@ static void decode_page_composition( decoder_t *p_dec, bs_t *s )
     p_sys->p_page->i_version = i_version;
     p_sys->p_page->i_timeout = i_timeout;
     p_sys->b_page = true;
+    p_sys->p_page->p_region_defs = NULL;
+    p_sys->p_page->i_region_defs = 0;
 
     /* Number of regions */
     p_sys->p_page->i_region_defs = (i_segment_length - 2) / 6;
@@ -1503,10 +1508,10 @@ static subpicture_t *render( decoder_t *p_dec )
     p_spu->b_absolute = p_sys->b_absolute;
     /* Set the pf_render callback */
     p_spu->i_start = p_sys->i_pts;
-    //p_spu->i_stop = (mtime_t) 0;
+    //p_spu->i_stop = (vlc_tick_t) 0;
     p_spu->b_ephemer = true;
     //p_spu->b_fade = true;
-    //p_spu->i_stop = p_spu->i_start + (mtime_t) (i_timeout * 1000000);
+    //p_spu->i_stop = p_spu->i_start + (vlc_tick_t) (i_timeout * 1000000);
     p_spu->b_subtitle = true;
 
     /* Correct positioning of SPU */
@@ -1614,6 +1619,7 @@ static subpicture_t *render( decoder_t *p_dec )
             fmt.p_palette->palette[j][2] = p_color[j].Cr; /* V == Cr */
             fmt.p_palette->palette[j][3] = 0xff - p_color[j].T;
         }
+        fmt.b_color_range_full = p_clut->b_color_range_full;
 
         p_spu_region = subpicture_region_New( &fmt );
         fmt.p_palette = NULL; /* was stack var */
@@ -1691,7 +1697,7 @@ struct encoder_sys_t
     int i_regions;
     encoder_region_t *p_regions;
 
-    mtime_t i_pts;
+    vlc_tick_t i_pts;
 
     /* subpicture positioning */
     int i_offset_x;

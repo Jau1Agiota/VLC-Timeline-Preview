@@ -30,7 +30,7 @@ namespace adaptive
 {
     namespace playlist
     {
-        class AbstractPlaylist;
+        class BasePlaylist;
         class BasePeriod;
     }
 
@@ -42,28 +42,31 @@ namespace adaptive
     using namespace playlist;
     using namespace logic;
 
+    using StreamPosition = AbstractStream::StreamPosition;
+
     class PlaylistManager
     {
         public:
             PlaylistManager( demux_t *,
                              SharedResources *,
-                             AbstractPlaylist *,
+                             BasePlaylist *,
                              AbstractStreamFactory *,
                              AbstractAdaptationLogic::LogicType type );
             virtual ~PlaylistManager    ();
 
-            bool    init();
+            bool    init(bool = false);
             bool    start();
             bool    started() const;
             void    stop();
 
-            AbstractStream::buffering_status bufferize(mtime_t, unsigned, unsigned);
-            AbstractStream::status dequeue(mtime_t, mtime_t *);
-            void drain();
+            AbstractStream::BufferingStatus bufferize(Times, mtime_t,
+                                                      mtime_t, mtime_t);
+            AbstractStream::Status dequeue(Times, Times *);
 
             virtual bool needsUpdate() const;
             virtual bool updatePlaylist();
             virtual void scheduleNextUpdate();
+            virtual void preparsePlaylist();
 
             /* static callbacks */
             static int control_callback(demux_t *, int, va_list);
@@ -74,12 +77,14 @@ namespace adaptive
             virtual int doControl(int, va_list);
             virtual int doDemux(int64_t);
 
-            virtual bool    setPosition(mtime_t);
-            mtime_t getPCR() const;
-            mtime_t getFirstDTS() const;
+            void    setLivePause(bool);
+            virtual bool setPosition(mtime_t, double pos = -1, bool accurate = false);
+            StreamPosition getResumePosition() const;
+            Times getFirstTimes() const;
+            unsigned getActiveStreamsCount() const;
 
-            virtual mtime_t getFirstPlaybackTime() const;
-            mtime_t getCurrentDemuxTime() const;
+            Times getTimes(bool = false) const;
+            vlc_tick_t getMinAheadTime() const;
 
             virtual bool reactivateStream(AbstractStream *);
             bool setupPeriod();
@@ -96,18 +101,25 @@ namespace adaptive
             AbstractAdaptationLogic::LogicType  logicType;
             AbstractAdaptationLogic             *logic;
             AbstractBufferingLogic              *bufferingLogic;
-            AbstractPlaylist                    *playlist;
+            BasePlaylist                    *playlist;
             AbstractStreamFactory               *streamFactory;
             demux_t                             *p_demux;
             std::vector<AbstractStream *>        streams;
             BasePeriod                          *currentPeriod;
+            bool                                 b_preparsing;
+
+            enum class TimestampSynchronizationPoint
+            {
+                RandomAccess,
+                Discontinuity,
+            };
 
             /* shared with demux/buffering */
             struct
             {
-                mtime_t     i_nzpcr;
-                mtime_t     i_firstpcr;
-                vlc_mutex_t lock;
+                TimestampSynchronizationPoint pcr_syncpoint;
+                Times times, firsttimes;
+                mutable vlc_mutex_t lock;
                 vlc_cond_t  cond;
             } demux;
 
@@ -119,14 +131,16 @@ namespace adaptive
             struct
             {
                 bool        b_live;
-                mtime_t     i_time;
+                vlc_tick_t  i_time;
                 double      f_position;
                 mutable vlc_mutex_t lock;
-                mtime_t     playlistStart;
-                mtime_t     playlistEnd;
-                mtime_t     playlistLength;
+                vlc_tick_t  playlistStart;
+                vlc_tick_t  playlistEnd;
+                vlc_tick_t  playlistLength;
                 time_t      lastupdate;
             } cached;
+
+            SynchronizationReferences synchronizationReferences;
 
         private:
             void setBufferingRunState(bool);
@@ -138,6 +152,7 @@ namespace adaptive
             vlc_cond_t   waitcond;
             bool         b_buffering;
             bool         b_canceled;
+            vlc_tick_t   pause_start;
     };
 
 }

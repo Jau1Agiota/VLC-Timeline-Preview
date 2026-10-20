@@ -27,20 +27,22 @@
 #endif
 
 #include "BasePeriod.h"
-#include "AbstractPlaylist.hpp"
+#include "BasePlaylist.hpp"
+#include "SegmentBaseType.hpp"
 #include "../Streams.hpp"
 
 #include <vlc_common.h>
 #include <vlc_arrays.h>
+#include <algorithm>
 #include <cassert>
 
 using namespace adaptive::playlist;
 
-BasePeriod::BasePeriod(AbstractPlaylist *playlist_) :
+BasePeriod::BasePeriod(BasePlaylist *playlist_) :
     SegmentInformation( playlist_ )
 {
-    duration.Set(0);
-    startTime.Set(0);
+    duration = 0;
+    startTime = 0;
     playlist = playlist_;
 }
 
@@ -50,7 +52,7 @@ BasePeriod::~BasePeriod ()
     childs.clear();
 }
 
-AbstractPlaylist *BasePeriod::getPlaylist() const
+BasePlaylist *BasePeriod::getPlaylist() const
 {
     return playlist;
 }
@@ -62,27 +64,21 @@ const std::vector<BaseAdaptationSet*>&  BasePeriod::getAdaptationSets() const
 
 void BasePeriod::addAdaptationSet(BaseAdaptationSet *adaptationSet)
 {
-    if ( adaptationSet != NULL )
-    {
-        if(adaptationSet->getRepresentations().empty())
-        {
-            assert(!adaptationSet->getRepresentations().empty());
-            return; /* will leak */
-        }
-        adaptationSets.push_back(adaptationSet);
-        childs.push_back(adaptationSet);
-    }
+    auto p = std::find_if(adaptationSets.begin(), adaptationSets.end(),
+        [adaptationSet](BaseAdaptationSet *s){
+            return adaptationSet->getRole() < s->getRole(); });
+    adaptationSets.insert(p, adaptationSet);
+    childs.push_back(adaptationSet);
 }
 
-BaseAdaptationSet *BasePeriod::getAdaptationSetByID(const adaptive::ID &id)
+BaseAdaptationSet *BasePeriod::getAdaptationSetByID(const adaptive::ID &id) const
 {
-    std::vector<BaseAdaptationSet*>::const_iterator it;
-    for(it = adaptationSets.begin(); it!= adaptationSets.end(); ++it)
+    for(auto it = adaptationSets.cbegin(); it!= adaptationSets.cend(); ++it)
     {
         if( (*it)->getID() == id )
             return *it;
     }
-    return NULL;
+    return nullptr;
 }
 
 void BasePeriod::debug(vlc_object_t *obj, int indent) const
@@ -90,17 +86,20 @@ void BasePeriod::debug(vlc_object_t *obj, int indent) const
     std::string text(indent, ' ');
     text.append("Period");
     msg_Dbg(obj, "%s", text.c_str());
+    const AbstractSegmentBaseType *profile = getProfile();
+    if(profile)
+        profile->debug(obj, indent + 1);
     std::vector<BaseAdaptationSet *>::const_iterator k;
     for(k = adaptationSets.begin(); k != adaptationSets.end(); ++k)
         (*k)->debug(obj, indent + 1);
 }
 
-mtime_t BasePeriod::getPeriodStart() const
+vlc_tick_t BasePeriod::getPeriodStart() const
 {
-    return startTime.Get();
+    return startTime;
 }
 
-mtime_t BasePeriod::getPeriodDuration() const
+vlc_tick_t BasePeriod::getPeriodDuration() const
 {
-    return duration.Get();
+    return duration;
 }

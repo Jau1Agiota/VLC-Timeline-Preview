@@ -80,7 +80,7 @@ struct sout_stream_sys_t
 {
     sout_stream_id_sys_t *id;
     int i_id;
-    mtime_t i_delay;
+    vlc_tick_t i_delay;
 };
 
 /*****************************************************************************
@@ -106,7 +106,7 @@ static int Open( vlc_object_t *p_this )
                    p_stream->p_cfg );
 
     p_sys->i_id = var_GetInteger( p_stream, SOUT_CFG_PREFIX "id" );
-    p_sys->i_delay = 1000 * var_GetInteger( p_stream, SOUT_CFG_PREFIX "delay" );
+    p_sys->i_delay = VLC_TICK_FROM_MS(var_GetInteger( p_stream, SOUT_CFG_PREFIX "delay" ));
 
     p_stream->pf_add    = Add;
     p_stream->pf_del    = Del;
@@ -163,9 +163,9 @@ static int Send( sout_stream_t *p_stream, sout_stream_id_sys_t *id,
         block_t *p_block = p_buffer;
         while ( p_block != NULL )
         {
-            if ( p_block->i_pts != VLC_TS_INVALID )
+            if ( p_block->i_pts != VLC_TICK_INVALID )
                 p_block->i_pts += p_sys->i_delay;
-            if ( p_block->i_dts != VLC_TS_INVALID )
+            if ( p_block->i_dts != VLC_TICK_INVALID )
                 p_block->i_dts += p_sys->i_delay;
             p_block = p_block->p_next;
         }

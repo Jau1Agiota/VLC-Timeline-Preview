@@ -69,7 +69,7 @@ static int vlc_http_file_req(const struct vlc_http_resource *res,
         }
     }
 
-    if (vlc_http_msg_add_header(req, "Range", "bytes=%ju-", *offset)
+    if (vlc_http_msg_add_header(req, "Range", "bytes=%" PRIuMAX "-", *offset)
      && *offset != 0)
         return -1;
     return 0;
@@ -89,7 +89,7 @@ static int vlc_http_file_resp(const struct vlc_http_resource *res,
             goto fail;
 
         uintmax_t start, end;
-        if (sscanf(str, "bytes %ju-%ju", &start, &end) != 2
+        if (sscanf(str, "bytes %" SCNuMAX "-%" SCNuMAX, &start, &end) != 2
          || start != *offset || start > end)
             /* A single range response is what we asked for, but not at that
              * start offset. */
@@ -140,7 +140,7 @@ static uintmax_t vlc_http_msg_get_file_size(const struct vlc_http_msg *resp)
 
         uintmax_t end, total;
 
-        switch (sscanf(range, "bytes %*u-%ju/%ju", &end, &total))
+        switch (sscanf(range, "bytes %*u-%" SCNuMAX "/%" SCNuMAX, &end, &total))
         {
             case 1:
                 if (unlikely(end == UINTMAX_MAX))
@@ -159,7 +159,7 @@ static uintmax_t vlc_http_msg_get_file_size(const struct vlc_http_msg *resp)
         if (range == NULL)
             return -1; /* valid but helpless response */
 
-        if (sscanf(range, "bytes */%ju", &total) == 1)
+        if (sscanf(range, "bytes */%" SCNuMAX, &total) == 1)
             return total; /* this occurs when seeking beyond EOF */
     }
 
@@ -235,20 +235,21 @@ block_t *vlc_http_file_read(struct vlc_http_resource *res)
     block_t *block = vlc_http_res_read(res);
 
     if (block == vlc_http_error)
-    {   /* Automatically reconnect on error if server supports seek */
-        if (res->response != NULL
-         && vlc_http_msg_can_seek(res->response)
-         && file->offset < vlc_http_msg_get_file_size(res->response)
-         && vlc_http_file_seek(res, file->offset) == 0)
-            block = vlc_http_res_read(res);
+        block = NULL;
+
+    /* Automatically resume on short response or error if possible */
+    if (block == NULL && res->response != NULL
+     && vlc_http_msg_can_seek(res->response)
+     && file->offset < vlc_http_msg_get_file_size(res->response)
+     && vlc_http_file_seek(res, file->offset) == 0)
+    {
+        block = vlc_http_res_read(res);
 
         if (block == vlc_http_error)
-            return NULL;
+            block = NULL; /* Non-recovered error */
     }
 
-    if (block == NULL)
-        return NULL; /* End of stream */
-
-    file->offset += block->i_buffer;
+    if (block != NULL)
+        file->offset += block->i_buffer;
     return block;
 }

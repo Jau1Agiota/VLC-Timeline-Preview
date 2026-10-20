@@ -15,12 +15,14 @@ $(TARBALLS)/regex-$(REGEX_VERSION).tar.gz:
 regex: regex-$(REGEX_VERSION).tar.gz .sum-regex
 	$(UNPACK)
 	$(APPLY) $(SRC)/regex/no-docs.patch
+	$(APPLY) $(SRC)/regex/decls.patch
 	$(MOVE)
 
 .regex: regex
-	cd $< && $(HOSTVARS) ./configure $(HOSTCONF)
-	cd $< && $(MAKE) subirs=
-	cd $< && $(AR) rcvu libregex.a regex.o && $(RANLIB) libregex.a
-	mkdir -p $(PREFIX)/include/ && cp $</regex.h $(PREFIX)/include/
-	mkdir -p $(PREFIX)/lib/ && cp $</libregex.a $(PREFIX)/lib/
+	$(MAKEBUILDDIR)
+	$(MAKECONFIGURE)
+	+$(MAKEBUILD) subirs=
+	cd $(BUILD_DIR) && $(AR) rcvu libregex.a regex.o && $(RANLIB) libregex.a
+	mkdir -p $(PREFIX)/include/ && cp $</regex.h $(PREFIX)/include
+	mkdir -p $(PREFIX)/lib/ && cp $(BUILD_DIR)/libregex.a $(PREFIX)/lib
 	touch $@

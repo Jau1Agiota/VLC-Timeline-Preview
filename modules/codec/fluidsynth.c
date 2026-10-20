@@ -128,10 +128,17 @@ static int Open (vlc_object_t *p_this)
     else
     {
         glob_t gl;
+        int flags = GLOB_NOESCAPE;
 
-        glob("/usr/share/sounds/sf2/*.sf2", GLOB_NOESCAPE, NULL, &gl);
-        glob("/usr/share/soundfonts/*.sf2", GLOB_NOESCAPE | GLOB_APPEND, NULL,
-             &gl);
+        glob(DATADIR "/sounds/sf2/*.sf2", flags, NULL, &gl);
+        flags |= GLOB_APPEND;
+        glob(DATADIR "/soundfonts/*.sf2", flags, NULL, &gl);
+
+        if (strcmp("/usr/share", DATADIR) != 0)
+        {
+            glob("/usr/share/sounds/sf2/*.sf2", flags, NULL, &gl);
+            glob("/usr/share/soundfonts/*.sf2", flags, NULL, &gl);
+        }
 
         for (size_t i = 0; i < gl.gl_pathc; i++)
         {
@@ -201,7 +208,7 @@ static void Flush (decoder_t *p_dec)
 {
     decoder_sys_t *p_sys = p_dec->p_sys;
 
-    date_Set (&p_sys->end_date, VLC_TS_INVALID);
+    date_Set (&p_sys->end_date, VLC_TICK_INVALID);
     //fluid_synth_system_reset (p_sys->synth);
     fluid_synth_program_reset (p_sys->synth);
     for (unsigned channel = 0; channel < 16; channel++)
@@ -227,7 +234,7 @@ static int DecodeBlock (decoder_t *p_dec, block_t *p_block)
         }
     }
 
-    if (p_block->i_pts > VLC_TS_INVALID && !date_Get (&p_sys->end_date))
+    if (p_block->i_pts > VLC_TICK_INVALID && !date_Get (&p_sys->end_date))
         date_Set (&p_sys->end_date, p_block->i_pts);
     else
     if (p_block->i_pts < date_Get (&p_sys->end_date))

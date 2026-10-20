@@ -142,14 +142,16 @@ static int Start( audio_output_t *p_aout, audio_sample_format_t *restrict fmt )
     if( !psz_name )
     {
         msg_Err( p_aout, "you need to specify an output file name" );
-        free( psz_name );
         return VLC_EGENERIC;
     }
 
     /* Allocate structure */
     p_aout->sys = malloc( sizeof( aout_sys_t ) );
     if( p_aout->sys == NULL )
+    {
+        free( psz_name );
         return VLC_ENOMEM;
+    }
 
     if( !strcmp( psz_name, "-" ) )
         p_aout->sys->p_file = stdout;
@@ -181,7 +183,7 @@ static int Start( audio_output_t *p_aout, audio_sample_format_t *restrict fmt )
     i_format_list_size = (int)ARRAY_SIZE(format_list);
     for (i = 0; i < i_format_list_size; i++)
     {
-        if ( !strncmp( format_list[i], psz_format, strlen(format_list[i]) ) )
+        if ( !strcmp( format_list[i], psz_format ) )
         {
             break;
         }

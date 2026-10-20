@@ -1,17 +1,31 @@
---- upnp/upnp/src/api/upnpapi.c.orig	2013-04-08 00:23:46.000000000 +0200
-+++ upnp/upnp/src/api/upnpapi.c	2013-04-08 00:25:49.000000000 +0200
-@@ -358,13 +358,13 @@
+From f81433ed19efe3bb59eff68ab391c37eb37404ad Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Rafa=C3=ABl=20Carr=C3=A9?= <funman@videolan.org>
+Date: Mon, 8 Apr 2013 12:29:31 +0200
+Subject: [PATCH 3/7] fix build
+
+---
+ upnp/src/api/upnpapi.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/upnp/src/api/upnpapi.c b/upnp/src/api/upnpapi.c
+index b4b7c4ab..5485a3ed 100644
+--- a/upnp/src/api/upnpapi.c
++++ b/upnp/src/api/upnpapi.c
+@@ -455,13 +455,13 @@ static int UpnpInitPreamble(void)
  		return retVal;
  	}
  
 +#ifdef INTERNAL_WEB_SERVER
  #ifdef INCLUDE_DEVICE_APIS
- #if EXCLUDE_SOAP == 0
+ 	#if EXCLUDE_SOAP == 0
  	SetSoapCallback(soap_device_callback);
- #endif
+ 	#endif
  #endif /* INCLUDE_DEVICE_APIS */
  
 -#ifdef INTERNAL_WEB_SERVER
- #if EXCLUDE_GENA == 0
+ 	#if EXCLUDE_GENA == 0
  	SetGenaCallback(genaCallback);
- #endif
+ 	#endif
+-- 
+2.52.0.windows.1
+

@@ -399,9 +399,6 @@ static vlc_tls_t *gnutls_ClientSessionOpen(vlc_tls_creds_t *crd,
 
     gnutls_session_t session = priv->session;
 
-    /* minimum DH prime bits */
-    gnutls_dh_set_prime_bits (session, 1024);
-
     if (likely(hostname != NULL))
         /* fill Server Name Indication */
         gnutls_server_name_set (session, GNUTLS_NAME_DNS,
@@ -790,7 +787,7 @@ vlc_module_begin ()
     add_bool("gnutls-system-trust", true, SYSTEM_TRUST_TEXT,
              SYSTEM_TRUST_LONGTEXT, true)
     add_string("gnutls-dir-trust", NULL, DIR_TRUST_TEXT,
-               DIR_TRUST_TEXT, true)
+               DIR_TRUST_LONGTEXT, true)
     add_string ("gnutls-priorities", "NORMAL", PRIORITIES_TEXT,
                 PRIORITIES_LONGTEXT, false)
         change_string_list (priorities_values, priorities_text)

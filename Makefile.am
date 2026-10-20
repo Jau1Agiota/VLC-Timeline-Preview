@@ -21,21 +21,19 @@ BUILT_SOURCES_distclean =
 
 BUILT_SOURCES = $(BUILT_SOURCES_distclean)
 
-SUFFIXES = 
+SUFFIXES =
 
 DISTCHECK_CONFIGURE_FLAGS = \
 	--enable-fast-install \
-	--disable-a52 \
 	--disable-alsa \
 	--disable-avcodec --disable-avformat \
 	--disable-postproc --disable-swscale \
 	--disable-dbus \
-	--disable-mad --disable-libmpeg2 \
+	--disable-mad \
 	--disable-faad --disable-skins2 \
 	--disable-live555 \
 	--disable-lua \
 	--disable-fribidi \
-	--disable-mkv \
 	--with-kde-solid='$${datadir}/kde4/apps'
 
 ACLOCAL_AMFLAGS = -I m4
@@ -62,14 +60,14 @@ EXTRA_DIST += \
 	extras/tools/tools.mak \
 	extras/tools/SHA512SUMS \
 	extras/tools/automake-clang.patch \
-	extras/tools/bison-macOS-7df04f9.patch \
-	extras/tools/bison-macOS-c41f233c.patch \
-	extras/tools/cmake-enable-ALPN-support-on-macOS-10.14.patch \
-	extras/tools/libtool-2.4.6-bitcode.patch \
-	extras/tools/libtool-2.4.6-clang-libs.patch \
-	extras/tools/libtool-2.4.6-response-files.patch \
-	extras/tools/libtool-2.4.6-san.patch \
-	extras/tools/ragel-6.8-javacodegen.patch
+	extras/tools/automake-disable-documentation.patch \
+	extras/tools/gettext-no-iconv.patch \
+	extras/tools/libtool-2.4.7-bitcode.patch \
+	extras/tools/libtool-2.4.7-lpthread.patch \
+	extras/tools/libtool-2.6.2-embed-bitcode.patch \
+	extras/tools/libtool-2.5.4-ltmain.in-reference-MAGIC_EXE-in-the-main.patch \
+	extras/tools/libtool-2.5.4-libtool.m4-respect-the-provided-LTCFLAGS-LTCC-during.patch \
+	extras/tools/pkg-config-stdc23-port.patch
 
 ###############################################################################
 # Various utilities ( editor syntax files, D-Bus controller ... )
@@ -171,6 +169,7 @@ install-exec-hook:
 	if test "$(build)" = "$(host)"; then \
 		PATH="$(DESTDIR)$(bindir):$$PATH" \
 		LD_LIBRARY_PATH="$(DESTDIR)$(libdir):$$LD_LIBRARY_PATH" \
+		DYLD_LIBRARY_PATH="$(DESTDIR)$(libdir):$$DYLD_LIBRARY_PATH" \
 		"$(DESTDIR)$(vlclibdir)/vlc-cache-gen$(EXEEXT)" \
 			 "$(DESTDIR)$(vlclibdir)/plugins" ; \
 	else \
@@ -219,3 +218,13 @@ include extras/package/macosx/package.mak
 include extras/package/win32/package.mak
 include extras/package/win32/msi.mak
 
+dist-hook:
+	chmod u+w "$(distdir)/configure" "$(distdir)/configure.ac"
+	mtime_ref=$(mktemp)
+#	We keep a copy to have a reference timestamp and restore it,
+#	to avoid triggering automake again
+	cp -p "$(distdir)/configure.ac" "$mtime_ref"
+	sed -i '/^VERSION_DATE=\$$(/,/^)/c\VERSION_DATE='$(VERSION_DATE) \
+		"$(distdir)/configure" "$(distdir)/configure.ac"
+	touch -r "$mtime_ref" "$(distdir)/configure.ac"
+	rm "$mtime_ref"

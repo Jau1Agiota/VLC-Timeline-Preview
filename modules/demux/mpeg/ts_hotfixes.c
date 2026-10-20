@@ -82,7 +82,7 @@ void ProbePES( demux_t *p_demux, ts_pid_t *pid, const uint8_t *p_pesstart, size_
         return;
 
     size_t i_pesextoffset = 8;
-    mtime_t i_dts = -1;
+    ts_90khz_t i_dts = TS_90KHZ_INVALID;
     if( p_pes[7] & 0x80 ) // PTS
     {
         i_pesextoffset += 5;
@@ -185,22 +185,22 @@ void ProbePES( demux_t *p_demux, ts_pid_t *pid, const uint8_t *p_pesstart, size_
         {
             pid->probed.i_fourcc = VLC_CODEC_H264;
         }
-        else if( !memcmp( p_data, "\x00\x00\x01", 4 ) )
+        else if( !memcmp( p_data, "\x00\x00\x01", 3 ) )
         {
             pid->probed.i_fourcc = VLC_CODEC_MPGV;
         }
     }
 
     /* Track timestamps and flag missing PAT */
-    if( !p_sys->patfix.i_timesourcepid && i_dts > -1 )
+    if( !p_sys->patfix.i_timesourcepid && i_dts != TS_90KHZ_INVALID )
     {
-        p_sys->patfix.i_first_dts = i_dts;
+        p_sys->patfix.i_first_dts = FROM_SCALE(i_dts);
         p_sys->patfix.i_timesourcepid = pid->i_pid;
     }
-    else if( p_sys->patfix.i_timesourcepid == pid->i_pid && i_dts > -1 &&
+    else if( p_sys->patfix.i_timesourcepid == pid->i_pid && i_dts != TS_90KHZ_INVALID &&
              p_sys->patfix.status == PAT_WAITING )
     {
-        if( i_dts - p_sys->patfix.i_first_dts > TO_SCALE(MIN_PAT_INTERVAL) )
+        if( FROM_SCALE(i_dts) - p_sys->patfix.i_first_dts > MIN_PAT_INTERVAL )
             p_sys->patfix.status = PAT_MISSING;
     }
 

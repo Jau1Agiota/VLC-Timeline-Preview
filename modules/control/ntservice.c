@@ -140,9 +140,9 @@ void Close( vlc_object_t *p_this )
 static void *Run( void *data )
 {
     intf_thread_t *p_intf = data;
-    SERVICE_TABLE_ENTRY dispatchTable[] =
+    const SERVICE_TABLE_ENTRYA dispatchTable[] =
     {
-        { TEXT(VLCSERVICENAME), &ServiceDispatch },
+        { (LPSTR)VLCSERVICENAME, (LPSERVICE_MAIN_FUNCTIONA) &ServiceDispatch },
         { NULL, NULL }
     };
 
@@ -154,16 +154,18 @@ static void *Run( void *data )
     if( var_InheritBool( p_intf, "ntservice-install" ) )
     {
         NTServiceInstall( p_intf );
+        free( p_intf->p_sys->psz_service );
         return NULL;
     }
 
     if( var_InheritBool( p_intf, "ntservice-uninstall" ) )
     {
         NTServiceUninstall( p_intf );
+        free( p_intf->p_sys->psz_service );
         return NULL;
     }
 
-    if( StartServiceCtrlDispatcher( dispatchTable ) == 0 )
+    if( StartServiceCtrlDispatcherA( dispatchTable ) == 0 )
     {
         msg_Err( p_intf, "StartServiceCtrlDispatcher failed" ); /* str review */
     }
@@ -183,7 +185,7 @@ static int NTServiceInstall( intf_thread_t *p_intf )
     intf_sys_t *p_sys  = p_intf->p_sys;
     char *psz_extra;
     struct vlc_memstream path_stream;
-    TCHAR psz_pathtmp[MAX_PATH];
+    WCHAR psz_pathtmp[MAX_PATH];
 
     SC_HANDLE handle = OpenSCManager( NULL, NULL, SC_MANAGER_ALL_ACCESS );
     if( handle == NULL )
@@ -202,14 +204,7 @@ static int NTServiceInstall( intf_thread_t *p_intf )
     /* Find out the filename of ourselves so we can install it to the
      * service control manager */
     GetModuleFileName( NULL, psz_pathtmp, MAX_PATH );
-    psz_extra = FromT( psz_pathtmp );
-    if ( !psz_extra )
-    {
-        CloseServiceHandle( handle );
-        return VLC_ENOMEM;
-    }
-    vlc_memstream_printf( &path_stream, "\"%s\" -I ntservice", psz_extra );
-    free(psz_extra);
+    vlc_memstream_printf( &path_stream, "\"%ls\" -I ntservice", psz_pathtmp );
 
     psz_extra = var_InheritString( p_intf, "ntservice-extraintf" );
     if( psz_extra && *psz_extra )
@@ -251,7 +246,7 @@ static int NTServiceInstall( intf_thread_t *p_intf )
     }
     else
     {
-        msg_Warn( p_intf, "service successfuly created" );
+        msg_Warn( p_intf, "service successfully created" );
     }
 
     free( path_stream.ptr );
@@ -291,7 +286,7 @@ static int NTServiceUninstall( intf_thread_t *p_intf )
     }
     else
     {
-        msg_Dbg( p_intf, "service deleted successfuly" );
+        msg_Dbg( p_intf, "service deleted successfully" );
     }
 
     CloseServiceHandle( service );

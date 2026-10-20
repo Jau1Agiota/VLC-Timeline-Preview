@@ -102,7 +102,7 @@ void PLSelItem::addAction( ItemAction act, const QString& tooltip )
     layout->addWidget( lblAction, 0 );
     lblAction->hide();
 
-    CONNECT( lblAction, clicked(), this, triggerAction() );
+    connect( lblAction, &SelectorActionButton::clicked, this, &PLSelItem::triggerAction );
 }
 
 
@@ -131,12 +131,12 @@ PLSelector::PLSelector( QWidget *p, intf_thread_t *_p_intf )
     podcastsParentId = -1;
 
     /* Podcast connects */
-    CONNECT( THEMIM, playlistItemAppended( int, int ),
-             this, plItemAdded( int, int ) );
-    CONNECT( THEMIM, playlistItemRemoved( int ),
-             this, plItemRemoved( int ) );
-    DCONNECT( THEMIM->getIM(), metaChanged( input_item_t *),
-              this, inputItemUpdate( input_item_t * ) );
+    connect( THEMIM, &MainInputManager::playlistItemAppended,
+             this, &PLSelector::plItemAdded );
+    connect( THEMIM, &MainInputManager::playlistItemRemoved,
+             this, &PLSelector::plItemRemoved );
+    connect( THEMIM->getIM(), &InputManager::metaChanged,
+             this, &PLSelector::inputItemUpdate, Qt::DirectConnection );
 
     createItems();
 
@@ -152,10 +152,10 @@ PLSelector::PLSelector( QWidget *p, intf_thread_t *_p_intf )
      * See QStyle::SH_ItemView_ActivateItemOnSingleClick
      ***/
     curItem = NULL;
-    CONNECT( this, itemActivated( QTreeWidgetItem *, int ),
-             this, setSource( QTreeWidgetItem *) );
-    CONNECT( this, itemClicked( QTreeWidgetItem *, int ),
-             this, setSource( QTreeWidgetItem *) );
+    connect( this, &PLSelector::itemActivated,
+             this, &PLSelector::setSource );
+    connect( this, &PLSelector::itemClicked,
+             this, &PLSelector::setSource );
 }
 
 PLSelector::~PLSelector()
@@ -200,7 +200,7 @@ void PLSelector::updateTotalDuration( PLSelItem* item, const char* prefix )
 
     /* Get the duration of the playlist item */
     playlist_Lock( THEPL );
-    mtime_t mt_duration = playlist_GetNodeDuration( node );
+    vlc_tick_t mt_duration = playlist_GetNodeDuration( node );
     playlist_Unlock( THEPL );
 
     /* Formatting time */
@@ -277,7 +277,7 @@ void PLSelector::createItems()
             {
                 selItem->treeItem()->setData( 0, SPECIAL_ROLE, QVariant( IS_PODCAST ) );
                 selItem->addAction( ADD_ACTION, qtr( "Subscribe to a podcast" ) );
-                CONNECT( selItem, action( PLSelItem* ), this, podcastAdd( PLSelItem* ) );
+                connect( selItem, &PLSelItem::action, this, &PLSelector::podcastAdd );
                 podcastsParent = selItem->treeItem();
                 icon = QIcon( ":/sidebar/podcast.svg" );
             }
@@ -424,7 +424,20 @@ PLSelItem * PLSelector::addItem (
       new QTreeWidgetItem( parentItem ) : new QTreeWidgetItem( this );
 
   PLSelItem *selItem = new PLSelItem( item, qtr( str ) );
-  if ( bold ) selItem->setStyleSheet( "font-weight: bold;" );
+
+
+  if ( bold ) {
+      auto updateStyle = [selItem]() {
+          selItem->setStyleSheet( "font-weight: bold;" );
+      };
+      updateStyle();
+//same as Qt::AA_UseStyleSheetPropagationInWidgetStyles
+#if !HAS_QT57
+      connect(qApp, &QApplication::paletteChanged, selItem, [updateStyle](){
+          updateStyle();
+      });
+#endif
+  }
   setItemWidget( item, 0, selItem );
   item->setData( 0, TYPE_ROLE, (int)type );
   if( !drop ) item->setFlags( item->flags() & ~Qt::ItemIsDropEnabled );
@@ -444,7 +457,7 @@ PLSelItem *PLSelector::addPodcastItem( playlist_item_t *p_item )
     item->treeItem()->setData( 0, PL_ITEM_ROLE, QVariant::fromValue( p_item ) );
     item->treeItem()->setData( 0, PL_ITEM_ID_ROLE, QVariant(p_item->i_id) );
     item->treeItem()->setData( 0, IN_ITEM_ROLE, QVariant::fromValue( p_item->p_input ) );
-    CONNECT( item, action( PLSelItem* ), this, podcastRemove( PLSelItem* ) );
+    connect( item, &PLSelItem::action, this, &PLSelector::podcastRemove );
     return item;
 }
 
@@ -640,8 +653,8 @@ int PLSelector::getCurrentItemCategory()
 void PLSelector::wheelEvent( QWheelEvent *e )
 {
     if( verticalScrollBar()->isVisible() && (
-        (verticalScrollBar()->value() != verticalScrollBar()->minimum() && e->delta() >= 0 ) ||
-        (verticalScrollBar()->value() != verticalScrollBar()->maximum() && e->delta() < 0 )
+        (verticalScrollBar()->value() != verticalScrollBar()->minimum() && e->angleDelta().y() >= 0 ) ||
+        (verticalScrollBar()->value() != verticalScrollBar()->maximum() && e->angleDelta().y() < 0 )
         ) )
         QApplication::sendEvent(verticalScrollBar(), e);
 

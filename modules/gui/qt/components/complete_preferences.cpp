@@ -63,7 +63,7 @@ PrefsTree::PrefsTree( intf_thread_t *_p_intf, QWidget *_parent,
     setTextElideMode( Qt::ElideNone );
 
     setUniformRowHeights( true );
-    CONNECT( this, itemExpanded(QTreeWidgetItem*), this, resizeColumns() );
+    connect( this, &PrefsTree::itemExpanded, this, &PrefsTree::resizeColumns );
 
     /* Nice icons */
 #define BI( a,b) QIcon a##_icon = QIcon( b )
@@ -132,7 +132,7 @@ PrefsTree::PrefsTree( intf_thread_t *_p_intf, QWidget *_parent,
             current_item->setIcon( 0 , icon );
             //current_item->setSizeHint( 0, QSize( -1, ITEM_HEIGHT ) );
             current_item->setData( 0, Qt::UserRole,
-                                   qVariantFromValue( data ) );
+                                   QVariant::fromValue( data ) );
             addTopLevelItem( current_item );
             expandItem( current_item );
             break;
@@ -182,7 +182,7 @@ PrefsTree::PrefsTree( intf_thread_t *_p_intf, QWidget *_parent,
             QTreeWidgetItem *subcat_item = new QTreeWidgetItem();
             subcat_item->setText( 0, data_sub->name );
             subcat_item->setData( 0, Qt::UserRole,
-                                  qVariantFromValue( data_sub ) );
+                                  QVariant::fromValue( data_sub ) );
             //subcat_item->setSizeHint( 0, QSize( -1, ITEM_HEIGHT ) );
 
             /* Add it to the parent */
@@ -495,7 +495,7 @@ bool PrefsItemData::contains( const QString &text, Qt::CaseSensitivity cs )
     if( this->i_type == TYPE_CATEGORY )
         return false;
     else if( this->i_type == TYPE_MODULE )
-        p_module = module_find( this->psz_shortcut );
+        p_module = this->p_module;
     else
     {
         p_module = module_get_main();
@@ -622,7 +622,7 @@ AdvPrefsPanel::AdvPrefsPanel( intf_thread_t *_p_intf, QWidget *_parent,
 
     /* Widgets now */
     global_layout = new QVBoxLayout();
-    global_layout->setMargin( 2 );
+    global_layout->setContentsMargins( 2, 2, 2, 2 );
     QString head;
     QString help;
 
@@ -651,6 +651,7 @@ AdvPrefsPanel::AdvPrefsPanel( intf_thread_t *_p_intf, QWidget *_parent,
 
     QLabel *helpLabel = new QLabel( help, this );
     helpLabel->setWordWrap( true );
+    helpLabel->setOpenExternalLinks( true );
 
     global_layout->addWidget( titleLabel );
     global_layout->addWidget( title_line );
@@ -680,13 +681,14 @@ AdvPrefsPanel::AdvPrefsPanel( intf_thread_t *_p_intf, QWidget *_parent,
 
         if( p_item->i_type == CONFIG_SECTION )
         {
-            if( box )
+            if( box && i_boxline > 0 )
             {
                 box->setLayout( boxlayout );
                 box->show();
                 layout->addWidget( box, i_line, 0, 1, -1 );
                 i_line++;
             }
+            i_boxline = 0;
             box = new QGroupBox( qtr( p_item->psz_text ), this );
             box->hide();
             boxlayout = new QGridLayout();

@@ -30,8 +30,13 @@ check_PROGRAMS = \
 	test_src_misc_bits \
 	test_src_misc_epg \
 	test_src_misc_keystore \
+	test_src_misc_renderer_discovery \
 	test_modules_packetizer_hxxx \
+	test_modules_demux_libmp4 \
+	test_modules_demux_timestamps \
+	test_modules_demux_ts_pes \
 	test_modules_keystore
+
 if ENABLE_SOUT
 check_PROGRAMS += test_modules_tls
 endif
@@ -121,6 +126,8 @@ test_src_misc_epg_SOURCES = src/misc/epg.c
 test_src_misc_epg_LDADD = $(LIBVLCCORE) $(LIBVLC)
 test_src_misc_keystore_SOURCES = src/misc/keystore.c
 test_src_misc_keystore_LDADD = $(LIBVLCCORE) $(LIBVLC)
+test_src_misc_renderer_discovery_SOURCES = src/misc/renderer_discovery.c
+test_src_misc_renderer_discovery_LDADD = $(LIBVLCCORE)
 test_src_interface_dialog_SOURCES = src/interface/dialog.c
 test_src_interface_dialog_LDADD = $(LIBVLCCORE) $(LIBVLC)
 test_modules_packetizer_hxxx_SOURCES = modules/packetizer/hxxx.c
@@ -129,6 +136,18 @@ test_modules_keystore_SOURCES = modules/keystore/test.c
 test_modules_keystore_LDADD = $(LIBVLCCORE) $(LIBVLC)
 test_modules_tls_SOURCES = modules/misc/tls.c
 test_modules_tls_LDADD = $(LIBVLCCORE) $(LIBVLC)
+test_modules_demux_libmp4_LDADD = $(LIBVLCCORE) $(LIBVLC) $(LIBM)
+if HAVE_ZLIB
+test_modules_demux_libmp4_LDADD += -lz
+endif
+test_modules_demux_libmp4_SOURCES = modules/demux/libmp4.c \
+				../modules/demux/mp4/libmp4.c \
+				../modules/demux/mp4/libmp4.h
+test_modules_demux_timestamps_SOURCES = modules/demux/timestamps.c
+test_modules_demux_ts_pes_LDADD = $(LIBVLCCORE) $(LIBVLC)
+test_modules_demux_ts_pes_SOURCES = modules/demux/ts_pes.c \
+				../modules/demux/mpeg/ts_pes.c \
+				../modules/demux/mpeg/ts_pes.h
 
 checkall:
 	$(MAKE) check_PROGRAMS="$(check_PROGRAMS) $(EXTRA_PROGRAMS)" check
@@ -248,4 +267,15 @@ vlc_demux_dec_libfuzzer_SOURCES = vlc-demux-libfuzzer.c
 vlc_demux_dec_libfuzzer_LDADD = libvlc_demux_dec_run.la
 if HAVE_LIBFUZZER
 noinst_PROGRAMS += vlc-demux-libfuzzer vlc-demux-dec-libfuzzer vlc-demux-run vlc-demux-dec-run
+endif
+
+vlccoreios_SOURCES = iosvlc.m
+vlccoreios_LDFLAGS = $(LDFLAGS_vlc) -Wl,-framework,Foundation,-framework,UIKit
+vlccoreios_LDFLAGS += -Xlinker -rpath -Xlinker "@executable_path/Frameworks/"
+vlccoreios_OBJCFLAGS = -fobjc-arc
+vlccoreios_LDADD = ../lib/libvlc.la ../src/libvlccore.la
+if HAVE_DARWIN
+if !HAVE_OSX
+noinst_PROGRAMS += vlccoreios
+endif
 endif

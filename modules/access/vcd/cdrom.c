@@ -140,8 +140,8 @@ exit_free:
 #   error FIXME
 #endif
 
-#include "cdrom_internals.h"
 #include "cdrom.h"
+#include "cdrom_internals.h"
 
 /*****************************************************************************
  * ioctl_Open: Opens a VCD device or file and returns an opaque handle
@@ -165,6 +165,7 @@ vcddev_t *ioctl_Open( vlc_object_t *p_this, const char *psz_dev )
         return NULL;
     p_vcddev->i_vcdimage_handle = -1;
     p_vcddev->psz_dev = NULL;
+    memset( &p_vcddev->toc, 0, sizeof(p_vcddev->toc) );
     b_is_file = 1;
 
     /*
@@ -256,15 +257,28 @@ void ioctl_Close( vlc_object_t * p_this, vcddev_t *p_vcddev )
     free( p_vcddev );
 }
 
-/*****************************************************************************
- * ioctl_GetTracksMap: Read the Table of Content, fill in the pp_sectors map
- *                     if pp_sectors is not null and return the number of
- *                     tracks available.
- *****************************************************************************/
-int ioctl_GetTracksMap( vlc_object_t *p_this, const vcddev_t *p_vcddev,
-                        int **pp_sectors )
+static bool TrackNumberIsValid( int i_number )
 {
-    int i_tracks = 0;
+    return (i_number >= CD_MIN_TRACK_NO && i_number <= CD_MAX_TRACK_NO);
+}
+
+static bool TracksRangeIsValid( int i_first, int i_last )
+{
+    return TrackNumberIsValid( i_first ) &&
+           TrackNumberIsValid( i_last ) &&
+           i_last >= i_first;
+}
+
+/*****************************************************************************
+ * ioctl_GetTOC: Read the Table of Content, fill in the p_sectors map
+ *               if b_fill_sector_info is true.
+ *****************************************************************************/
+vcddev_toc_t * ioctl_GetTOC( vlc_object_t *p_this, const vcddev_t *p_vcddev,
+                             bool b_fill_sectorinfo )
+{
+    vcddev_toc_t *p_toc = calloc(1, sizeof(*p_toc));
+    if(!p_toc)
+        return NULL;
 
     if( p_vcddev->i_vcdimage_handle != -1 )
     {
@@ -272,18 +286,22 @@ int ioctl_GetTracksMap( vlc_object_t *p_this, const vcddev_t *p_vcddev,
          *  vcd image mode
          */
 
-        i_tracks = p_vcddev->i_tracks;
+        *p_toc = p_vcddev->toc;
+        p_toc->p_sectors = NULL;
 
-        if( pp_sectors )
+        if( b_fill_sectorinfo )
         {
-            *pp_sectors = calloc( i_tracks + 1, sizeof(**pp_sectors) );
-            if( *pp_sectors == NULL )
-                return 0;
-            memcpy( *pp_sectors, p_vcddev->p_sectors,
-                    (i_tracks + 1) * sizeof(**pp_sectors) );
+            p_toc->p_sectors = calloc( p_toc->i_tracks + 1, sizeof(*p_toc->p_sectors) );
+            if( p_toc->p_sectors == NULL )
+            {
+                free( p_toc );
+                return NULL;
+            }
+            memcpy( p_toc->p_sectors, p_vcddev->toc.p_sectors,
+                    (p_toc->i_tracks + 1) * sizeof(*p_toc->p_sectors) );
         }
 
-        return i_tracks;
+        return p_toc;
     }
     else
     {
@@ -300,51 +318,57 @@ int ioctl_GetTracksMap( vlc_object_t *p_this, const vcddev_t *p_vcddev,
         if( ( pTOC = darwin_getTOC( p_this, p_vcddev ) ) == NULL )
         {
             msg_Err( p_this, "failed to get the TOC" );
-            return 0;
+            vcddev_toc_Free( p_toc );
+            return NULL;
         }
 
         i_descriptors = CDTOCGetDescriptorCount( pTOC );
-        i_tracks = darwin_getNumberOfTracks( pTOC, i_descriptors );
+        p_toc->i_tracks = darwin_getNumberOfTracks( pTOC, i_descriptors,
+                                                    &p_toc->i_first_track,
+                                                    &p_toc->i_last_track );
 
-        if( pp_sectors )
+        if( b_fill_sectorinfo )
         {
             int i, i_leadout = -1;
             CDTOCDescriptor *pTrackDescriptors;
-            u_char track;
+            u_char track, track_index;
 
-            *pp_sectors = calloc( i_tracks + 1, sizeof(**pp_sectors) );
-            if( *pp_sectors == NULL )
+            p_toc->p_sectors = calloc( p_toc->i_tracks + 1,
+                                       sizeof(*p_toc->p_sectors) );
+            if( p_toc->p_sectors == NULL )
             {
+                vcddev_toc_Free( p_toc );
                 darwin_freeTOC( pTOC );
-                return 0;
+                return NULL;
             }
 
             pTrackDescriptors = pTOC->descriptors;
 
-            for( i_tracks = 0, i = 0; i < i_descriptors; i++ )
+            for( track_index = 0, i = 0; i < i_descriptors && track_index < p_toc->i_tracks; i++ )
             {
                 track = pTrackDescriptors[i].point;
 
                 if( track == 0xA2 )
                     i_leadout = i;
 
-                if( track > CD_MAX_TRACK_NO || track < CD_MIN_TRACK_NO )
+                if( !TrackNumberIsValid( track ) )
                     continue;
 
-                (*pp_sectors)[i_tracks++] =
+                p_toc->p_sectors[track_index].i_control = pTrackDescriptors[i].control;
+                p_toc->p_sectors[track_index++].i_lba =
                     CDConvertMSFToLBA( pTrackDescriptors[i].p );
             }
 
             if( i_leadout == -1 )
             {
                 msg_Err( p_this, "leadout not found" );
-                free( *pp_sectors );
+                vcddev_toc_Free( p_toc );
                 darwin_freeTOC( pTOC );
-                return 0;
+                return NULL;
             }
 
             /* set leadout sector */
-            (*pp_sectors)[i_tracks] =
+            p_toc->p_sectors[track_index].i_lba =
                 CDConvertMSFToLBA( pTrackDescriptors[i_leadout].p );
         }
 
@@ -359,24 +383,38 @@ int ioctl_GetTracksMap( vlc_object_t *p_this, const vcddev_t *p_vcddev,
                              &dwBytesReturned, NULL ) == 0 )
         {
             msg_Err( p_this, "could not read TOCHDR" );
-            return 0;
+            vcddev_toc_Free( p_toc );
+            return NULL;
         }
 
-        i_tracks = cdrom_toc.LastTrack - cdrom_toc.FirstTrack + 1;
-
-        if( pp_sectors )
+        if( !TracksRangeIsValid( cdrom_toc.FirstTrack, cdrom_toc.LastTrack ) )
         {
-            *pp_sectors = calloc( i_tracks + 1, sizeof(**pp_sectors) );
-            if( *pp_sectors == NULL )
-                return 0;
+            msg_Err( p_this, "Invalid tracks range" );
+            vcddev_toc_Free( p_toc );
+            return NULL;
+        }
 
-            for( int i = 0 ; i <= i_tracks ; i++ )
+        p_toc->i_tracks = cdrom_toc.LastTrack - cdrom_toc.FirstTrack + 1;
+        p_toc->i_first_track = cdrom_toc.FirstTrack;
+        p_toc->i_last_track = cdrom_toc.LastTrack;
+
+        if( b_fill_sectorinfo )
+        {
+            p_toc->p_sectors = calloc( p_toc->i_tracks + 1, sizeof(*p_toc->p_sectors) );
+            if( p_toc->p_sectors == NULL )
             {
-                (*pp_sectors)[ i ] = MSF_TO_LBA2(
+                vcddev_toc_Free( p_toc );
+                return NULL;
+            }
+
+            for( int i = 0 ; i <= p_toc->i_tracks ; i++ )
+            {
+                p_toc->p_sectors[ i ].i_control = cdrom_toc.TrackData[i].Control;
+                p_toc->p_sectors[ i ].i_lba = MSF_TO_LBA2(
                                            cdrom_toc.TrackData[i].Address[1],
                                            cdrom_toc.TrackData[i].Address[2],
                                            cdrom_toc.TrackData[i].Address[3] );
-                msg_Dbg( p_this, "p_sectors: %i, %i", i, (*pp_sectors)[i]);
+                msg_Dbg( p_this, "p_sectors: %i, %i", i, p_toc->p_sectors[i].i_lba);
              }
         }
 
@@ -398,19 +436,31 @@ int ioctl_GetTracksMap( vlc_object_t *p_this, const vcddev_t *p_vcddev,
             return 0;
         }
 
-        i_tracks = tochdr.last_track - tochdr.first_track + 1;
+        if( !TracksRangeIsValid( tochdr.first_track, tochdr.last_track ) )
+        {
+            msg_Err( p_this, "Invalid tracks range" );
+            vcddev_toc_Free( p_toc );
+            return NULL;
+        }
 
-        if( pp_sectors )
+        p_toc->i_tracks = tochdr.last_track - tochdr.first_track + 1;
+        p_toc->i_first_track = tochdr.first_track;
+        p_toc->i_last_track = tochdr.last_track;
+
+        if( b_fill_sectorinfo )
         {
             cdrom_get_track_t get_track = {{'C', 'D', '0', '1'}, };
             cdrom_track_t track;
             int i;
 
-            *pp_sectors = calloc( i_tracks + 1, sizeof(**pp_sectors) );
-            if( *pp_sectors == NULL )
-                return 0;
+            p_toc->p_sectors = calloc( p_toc->i_tracks + 1, sizeof(*p_toc->p_sectors) );
+            if( p_toc->p_sectors == NULL )
+            {
+                vcddev_toc_Free( p_toc );
+                return NULL;
+            }
 
-            for( i = 0 ; i < i_tracks ; i++ )
+            for( i = 0 ; i < p_toc->i_tracks ; i++ )
             {
                 get_track.track = tochdr.first_track + i;
                 rc = DosDevIOCtl( p_vcddev->hcd, IOCTL_CDROMAUDIO,
@@ -421,22 +471,23 @@ int ioctl_GetTracksMap( vlc_object_t *p_this, const vcddev_t *p_vcddev,
                 {
                     msg_Err( p_this, "could not read %d track",
                              get_track.track );
-                    return 0;
+                    vcddev_toc_Free( p_toc );
+                    return NULL;
                 }
 
-                (*pp_sectors)[ i ] = MSF_TO_LBA2(
+                p_toc->p_sectors[ i ].i_lba = MSF_TO_LBA2(
                                        track.start.minute,
                                        track.start.second,
                                        track.start.frame );
-                msg_Dbg( p_this, "p_sectors: %i, %i", i, (*pp_sectors)[i]);
+                msg_Dbg( p_this, "p_sectors: %i, %i", i, p_toc->p_sectors[i].i_lba);
             }
 
             /* for lead-out track */
-            (*pp_sectors)[ i ] = MSF_TO_LBA2(
+            p_toc->p_sectors[ i ].i_lba = MSF_TO_LBA2(
                                    tochdr.lead_out.minute,
                                    tochdr.lead_out.second,
                                    tochdr.lead_out.frame );
-            msg_Dbg( p_this, "p_sectors: %i, %i", i, (*pp_sectors)[i]);
+            msg_Dbg( p_this, "p_sectors: %i, %i", i, p_toc->p_sectors[i].i_lba);
         }
 
 #elif defined( HAVE_IOC_TOC_HEADER_IN_SYS_CDIO_H ) \
@@ -448,27 +499,40 @@ int ioctl_GetTracksMap( vlc_object_t *p_this, const vcddev_t *p_vcddev,
             == -1 )
         {
             msg_Err( p_this, "could not read TOCHDR" );
-            return 0;
+            vcddev_toc_Free( p_toc );
+            return NULL;
         }
 
-        i_tracks = tochdr.ending_track - tochdr.starting_track + 1;
-
-        if( pp_sectors )
+        if( !TracksRangeIsValid( tochdr.starting_track, tochdr.ending_track ) )
         {
-             *pp_sectors = calloc( i_tracks + 1, sizeof(**pp_sectors) );
-             if( *pp_sectors == NULL )
-                 return 0;
+            msg_Err( p_this, "Invalid tracks range" );
+            vcddev_toc_Free( p_toc );
+            return NULL;
+        }
+
+        p_toc->i_tracks = tochdr.ending_track - tochdr.starting_track + 1;
+        p_toc->i_first_track = tochdr.starting_track;
+        p_toc->i_last_track = tochdr.ending_track;
+
+        if( b_fill_sectorinfo )
+        {
+             p_toc->p_sectors = calloc( p_toc->i_tracks + 1, sizeof(*p_toc->p_sectors) );
+             if( p_toc->p_sectors == NULL )
+             {
+                 vcddev_toc_Free( p_toc );
+                 return NULL;
+             }
 
              toc_entries.address_format = CD_LBA_FORMAT;
              toc_entries.starting_track = 0;
-             toc_entries.data_len = ( i_tracks + 1 ) *
+             toc_entries.data_len = ( p_toc->i_tracks + 1 ) *
                                         sizeof( struct cd_toc_entry );
              toc_entries.data = (struct cd_toc_entry *)
                                     malloc( toc_entries.data_len );
              if( toc_entries.data == NULL )
              {
-                 free( *pp_sectors );
-                 return 0;
+                 vcddev_toc_Free( p_toc );
+                 return NULL;
              }
 
              /* Read the TOC */
@@ -476,19 +540,19 @@ int ioctl_GetTracksMap( vlc_object_t *p_this, const vcddev_t *p_vcddev,
                         &toc_entries ) == -1 )
              {
                  msg_Err( p_this, "could not read the TOC" );
-                 free( *pp_sectors );
                  free( toc_entries.data );
-                 return 0;
+                 vcddev_toc_Free( p_toc );
+                 return NULL;
              }
 
              /* Fill the p_sectors structure with the track/sector matches */
-             for( int i = 0 ; i <= i_tracks ; i++ )
+             for( int i = 0 ; i <= p_toc->i_tracks ; i++ )
              {
 #if defined( HAVE_SCSIREQ_IN_SYS_SCSIIO_H )
                  /* FIXME: is this ok? */
-                 (*pp_sectors)[ i ] = toc_entries.data[i].addr.lba;
+                 p_toc->p_sectors[ i ].i_lba = toc_entries.data[i].addr.lba;
 #else
-                 (*pp_sectors)[ i ] = ntohl( toc_entries.data[i].addr.lba );
+                 p_toc->p_sectors[ i ].i_lba = ntohl( toc_entries.data[i].addr.lba );
 #endif
              }
         }
@@ -501,38 +565,53 @@ int ioctl_GetTracksMap( vlc_object_t *p_this, const vcddev_t *p_vcddev,
             == -1 )
         {
             msg_Err( p_this, "could not read TOCHDR" );
-            return 0;
+            free( p_toc );
+            return NULL;
         }
 
-        i_tracks = tochdr.cdth_trk1 - tochdr.cdth_trk0 + 1;
-
-        if( pp_sectors )
+        if( !TracksRangeIsValid( tochdr.cdth_trk0, tochdr.cdth_trk1 ) )
         {
-            *pp_sectors = calloc( i_tracks + 1, sizeof(**pp_sectors) );
-            if( *pp_sectors == NULL )
-                return 0;
+            msg_Err( p_this, "Invalid tracks range" );
+            vcddev_toc_Free( p_toc );
+            return NULL;
+        }
+
+        p_toc->i_tracks = tochdr.cdth_trk1 - tochdr.cdth_trk0 + 1;
+        p_toc->i_first_track = tochdr.cdth_trk0;
+        p_toc->i_last_track = tochdr.cdth_trk1;
+
+        if( b_fill_sectorinfo )
+        {
+            p_toc->p_sectors = calloc( p_toc->i_tracks + 1, sizeof(*p_toc->p_sectors) );
+            if( p_toc->p_sectors == NULL )
+            {
+                free( p_toc );
+                return NULL;
+            }
 
             /* Fill the p_sectors structure with the track/sector matches */
-            for( int i = 0 ; i <= i_tracks ; i++ )
+            for( int i = 0 ; i <= p_toc->i_tracks ; i++ )
             {
                 tocent.cdte_format = CDROM_LBA;
                 tocent.cdte_track =
-                    ( i == i_tracks ) ? CDROM_LEADOUT : tochdr.cdth_trk0 + i;
+                    ( i == p_toc->i_tracks ) ? CDROM_LEADOUT : tochdr.cdth_trk0 + i;
 
                 if( ioctl( p_vcddev->i_device_handle, CDROMREADTOCENTRY,
                            &tocent ) == -1 )
                 {
                     msg_Err( p_this, "could not read TOCENTRY" );
-                    free( *pp_sectors );
-                    return 0;
+                    free( p_toc->p_sectors );
+                    free( p_toc );
+                    return NULL;
                 }
 
-                (*pp_sectors)[ i ] = tocent.cdte_addr.lba;
+                p_toc->p_sectors[ i ].i_lba = tocent.cdte_addr.lba;
+                p_toc->p_sectors[ i ].i_control = tocent.cdte_ctrl;
             }
         }
 #endif
 
-        return i_tracks;
+        return p_toc;
     }
 }
 
@@ -767,7 +846,7 @@ static int OpenVCDImage( vlc_object_t * p_this, const char *psz_dev,
     char *psz_vcdfile = NULL;
     char *psz_cuefile = NULL;
     FILE *cuefile     = NULL;
-    int *p_sectors    = NULL;
+    vcddev_toc_t *p_toc = &p_vcddev->toc;
     char line[1024];
     bool b_found      = false;
 
@@ -817,7 +896,7 @@ static int OpenVCDImage( vlc_object_t * p_this, const char *psz_dev,
     p_vcddev->i_vcdimage_handle = vlc_open( psz_vcdfile,
                                     O_RDONLY | O_NONBLOCK | O_BINARY );
 
-    while( fgets( line, 1024, cuefile ) && !b_found )
+    while( !b_found && fgets( line, 1024, cuefile ) )
     {
         /* We have a cue file, but no valid vcd file yet */
         char filename[1024];
@@ -839,9 +918,23 @@ static int OpenVCDImage( vlc_object_t * p_this, const char *psz_dev,
                     {
                         psz_vcdfile = malloc( strlen(filename) +
                                       (p_pos - psz_cuefile + 1) + 1 );
+                        if (psz_vcdfile == NULL)
+                        {
+                            i_ret = VLC_ENOMEM;
+                            goto error;
+                        }
                         strncpy( psz_vcdfile, psz_cuefile, (p_pos - psz_cuefile + 1) );
                         strcpy( psz_vcdfile + (p_pos - psz_cuefile + 1), filename );
-                    } else psz_vcdfile = strdup( filename );
+                    }
+                    else
+                    {
+                        psz_vcdfile = strdup( filename );
+                        if( psz_vcdfile == NULL )
+                        {
+                            i_ret = VLC_ENOMEM;
+                            goto error;
+                        }
+                    }
                     msg_Dbg( p_this,"using vcd image file: %s", psz_vcdfile );
                     p_vcddev->i_vcdimage_handle = vlc_open( psz_vcdfile,
                                         O_RDONLY | O_NONBLOCK | O_BINARY );
@@ -857,14 +950,33 @@ static int OpenVCDImage( vlc_object_t * p_this, const char *psz_dev,
 
     /* Try to parse the i_tracks and p_sectors info so we can just forget
      * about the cuefile */
-    size_t i_tracks = 0;
+    p_toc->i_tracks = 0;
 
-    while( fgets( line, 1024, cuefile ) && i_tracks < INT_MAX-1 )
+    int track_subcodes = 0x00;
+
+    while( fgets( line, 1024, cuefile ) && p_toc->i_tracks < CD_TRACKS_COUNT_MAX )
     {
         /* look for a TRACK line */
-        char psz_dummy[10];
-        if( !sscanf( line, "%9s", psz_dummy ) || strcmp(psz_dummy, "TRACK") )
+        unsigned track_num;
+        char psz_track_type[32];
+        const char *track_start = strstr(line, "TRACK ");
+        if( track_start == NULL )
             continue;
+        track_start += 6; // skip the "TRACK " part
+        int i = sscanf( track_start, "%u %31s", &track_num, psz_track_type );
+        if( i != 2 ) // no type set: assume audio track
+            psz_track_type[0] = '\0';
+        if( i<=0 )
+            i = sscanf( track_start, "%u", &track_num);
+        if( i<=0 )
+            continue;
+        if ( psz_track_type[0] && strcmp(psz_track_type,"AUDIO")!=0)
+        {
+            msg_Dbg( p_this, "detected %s track %02u", psz_track_type, track_num);
+            track_subcodes = CD_ROM_DATA_FLAG;
+        }
+        else
+            track_subcodes = 0x00;
 
         /* look for an INDEX line */
         while( fgets( line, 1024, cuefile ) )
@@ -875,35 +987,41 @@ static int OpenVCDImage( vlc_object_t * p_this, const char *psz_dev,
                          &i_min, &i_sec, &i_frame ) != 4) || (i_num != 1) )
                 continue;
 
-            int *buf = realloc (p_sectors, (i_tracks + 1) * sizeof (*buf));
+            vcddev_sector_t *buf = realloc (p_toc->p_sectors,
+                                            (p_toc->i_tracks + 1) * sizeof (*buf));
             if (buf == NULL)
                 goto error;
-            p_sectors = buf;
-            p_sectors[i_tracks] = MSF_TO_LBA(i_min, i_sec, i_frame);
+            p_toc->p_sectors = buf;
+            p_toc->p_sectors[p_toc->i_tracks].i_lba = MSF_TO_LBA(i_min, i_sec, i_frame);
+            p_toc->p_sectors[p_toc->i_tracks].i_control = track_subcodes;
             msg_Dbg( p_this, "vcd track %i begins at sector:%i",
-                     (int)i_tracks, (int)p_sectors[i_tracks] );
-            i_tracks++;
+                     p_toc->i_tracks, p_toc->p_sectors[p_toc->i_tracks].i_lba );
+            p_toc->i_tracks++;
             break;
         }
     }
 
     /* fill in the last entry */
-    int *buf = realloc (p_sectors, (i_tracks + 1) * sizeof (*buf));
+    vcddev_sector_t *buf = realloc (p_toc->p_sectors,
+                                    (p_toc->i_tracks + 1) * sizeof (*buf));
     if (buf == NULL)
         goto error;
-    p_sectors = buf;
-    p_sectors[i_tracks] = lseek(p_vcddev->i_vcdimage_handle, 0, SEEK_END)
-                                 / VCD_SECTOR_SIZE;
-    msg_Dbg( p_this, "vcd track %i, begins at sector:%i",
-             (int)i_tracks, (int)p_sectors[i_tracks] );
-    p_vcddev->i_tracks = ++i_tracks;
-    p_vcddev->p_sectors = p_sectors;
-    p_sectors = NULL;
+    p_toc->p_sectors = buf;
+    p_toc->p_sectors[p_toc->i_tracks].i_lba =
+            lseek(p_vcddev->i_vcdimage_handle, 0, SEEK_END) / VCD_SECTOR_SIZE;
+    p_toc->p_sectors[p_toc->i_tracks].i_control = track_subcodes;
+    msg_Dbg( p_this, "vcd tracks end at sector:%i",
+             p_toc->p_sectors[p_toc->i_tracks].i_lba );
+    p_toc->i_first_track = 1;
+    p_toc->i_last_track = p_toc->i_tracks;
     i_ret = 0;
+    goto end;
 
 error:
+    free( p_toc->p_sectors );
+    memset( p_toc, 0, sizeof(*p_toc) );
+end:
     if( cuefile ) fclose( cuefile );
-    free( p_sectors );
     free( psz_cuefile );
     free( psz_vcdfile );
 
@@ -921,7 +1039,7 @@ static void CloseVCDImage( vlc_object_t * p_this, vcddev_t *p_vcddev )
     else
         return;
 
-    free( p_vcddev->p_sectors );
+    free( p_vcddev->toc.p_sectors );
 }
 
 #if defined( __APPLE__ )
@@ -1028,11 +1146,16 @@ static CDTOC *darwin_getTOC( vlc_object_t * p_this, const vcddev_t *p_vcddev )
 
 /****************************************************************************
  * darwin_getNumberOfTracks: get number of tracks in TOC
+ *                           and first and last CDDA ones
  ****************************************************************************/
-static int darwin_getNumberOfTracks( CDTOC *pTOC, int i_descriptors )
+static int darwin_getNumberOfTracks( CDTOC *pTOC, int i_descriptors,
+                                     int *pi_first_track,
+                                     int *pi_last_track )
 {
     u_char track;
     int i, i_tracks = 0;
+    int i_min = CD_MAX_TRACK_NO;
+    int i_max = CD_MIN_TRACK_NO;
     CDTOCDescriptor *pTrackDescriptors = NULL;
 
     pTrackDescriptors = (CDTOCDescriptor *)pTOC->descriptors;
@@ -1041,10 +1164,24 @@ static int darwin_getNumberOfTracks( CDTOC *pTOC, int i_descriptors )
     {
         track = pTrackDescriptors[i].point;
 
-        if( track > CD_MAX_TRACK_NO || track < CD_MIN_TRACK_NO )
+        if( !TrackNumberIsValid( track ) )
             continue;
 
+        if( pTrackDescriptors[i].adr == 0x01 /* kCDSectorTypeCDDA */ )
+        {
+            i_min = __MIN(i_min, track);
+            i_max = __MAX(i_max, track);
+        }
+
         i_tracks++;
+    }
+
+    if( i_max < i_min )
+        *pi_first_track = *pi_last_track = 0;
+    else
+    {
+        *pi_first_track = i_min;
+        *pi_last_track = i_max;
     }
 
     return( i_tracks );
@@ -1389,4 +1526,3 @@ int ioctl_GetCdText( vlc_object_t *p_object, const vcddev_t *p_vcddev,
     free( p_text );
     return 0;
 }
-

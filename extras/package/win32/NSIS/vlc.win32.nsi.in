@@ -27,7 +27,6 @@ ManifestDPIAware true
 Unicode true
 
 !define INSTALL_ACTIVEX
-!define INSTALL_MOZILLA
 
 Var ReinstallType
 Var ReinstallUninstallBtn
@@ -45,8 +44,9 @@ Var 32bitPath
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
 Name "${PRODUCT_NAME}"
-@HAVE_WIN64_FALSE@ OutFile ..\vlc-${VERSION}-win32.exe
-@HAVE_WIN64_TRUE@  OutFile ..\vlc-${VERSION}-win64.exe
+@HAVE_WIN64_FALSE@                   OutFile ..\vlc-${VERSION}-win32.exe
+@HAVE_WIN64_TRUE@@HAVE_ARM64_FALSE@  OutFile ..\vlc-${VERSION}-win64.exe
+@HAVE_WIN64_TRUE@@HAVE_ARM64_TRUE@   OutFile ..\vlc-${VERSION}-winarm64.exe
 InstallDir "$@PROGRAMFILES@\VideoLAN\VLC"
 !ifdef NSIS_LZMA_COMPRESS_WHOLE
 SetCompressor lzma
@@ -389,23 +389,6 @@ ${MementoSection} "$(Name_Section02b)" SEC02b
 ${MementoSectionEnd}
 
 SectionGroup /e "!$(Name_Section34)"
-!ifdef INSTALL_MOZILLA
-${MementoSection} "$(Name_Section03)" SEC03
-  SectionIn 1 3
-
-  SetOutPath "$INSTDIR"
-  !insertmacro OpenUninstallLog
-  !insertmacro InstallFile npvlc.dll
-  !insertmacro CloseUninstallLog
-
-  !define Moz "SOFTWARE\MozillaPlugins\@videolan.org/vlc,version=${VERSION}"
-  WriteRegStr HKLM ${Moz} "Description" "VLC Multimedia Plugin"
-  WriteRegStr HKLM ${Moz} "Path" "$INSTDIR\npvlc.dll"
-  WriteRegStr HKLM ${Moz} "Product" "VLC media player"
-  WriteRegStr HKLM ${Moz} "Vendor" "VideoLAN"
-  WriteRegStr HKLM ${Moz} "Version" "${VERSION}"
-${MementoSectionEnd}
-!endif
 
 !ifdef INSTALL_ACTIVEX
 ${MementoSection} "$(Name_Section04)" SEC04
@@ -416,7 +399,7 @@ ${MementoSection} "$(Name_Section04)" SEC04
   !insertmacro InstallFile axvlc.dll
   !insertmacro CloseUninstallLog
 @HAVE_WIN64_FALSE@ RegDLL "$INSTDIR\axvlc.dll"
-@HAVE_WIN64_TRUE@  ExecWait 'regsvr32.exe /s "$INSTDIR\axvlc.dll"'
+@HAVE_WIN64_TRUE@  ExecWait '"$SYSDIR\regsvr32.exe" /s "$INSTDIR\axvlc.dll"'
 ${MementoSectionEnd}
 !endif
 SectionGroupEnd
@@ -557,9 +540,6 @@ ${MementoSectionDone}
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC01} "$(Desc_Section01)"
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC02a} "$(Desc_Section02a)"
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC02b} "$(Desc_Section02b)"
-!ifdef INSTALL_MOZILLA
-  !insertmacro MUI_DESCRIPTION_TEXT ${SEC03} "$(Desc_Section03)"
-!endif
 !ifdef INSTALL_ACTIVEX
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC04} "$(Desc_Section04)"
 !endif
@@ -836,7 +816,7 @@ Section "un.$(Name_Section91)" SEC91
 
   ;remove activex plugin
 @HAVE_WIN64_FALSE@ UnRegDLL "$INSTDIR\axvlc.dll"
-@HAVE_WIN64_TRUE@  ExecWait 'regsvr32.exe /s /u "$INSTDIR\axvlc.dll"'
+@HAVE_WIN64_TRUE@  ExecWait '"$SYSDIR\regsvr32.exe" /s /u "$INSTDIR\axvlc.dll"'
   Delete /REBOOTOK "$INSTDIR\axvlc.dll"
 
   ;remove mozilla plugin

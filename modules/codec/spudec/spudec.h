@@ -28,15 +28,15 @@ struct decoder_sys_t
     bool b_packetizer;
     bool b_disabletrans;
 
-    mtime_t i_pts;
+    vlc_tick_t i_pts;
     unsigned int i_spu_size;
     unsigned int i_rle_size;
     unsigned int i_spu;
 
     block_t *p_block;
 
-    /* We will never overflow */
-    uint8_t buffer[65536];
+    uint8_t *buffer;
+    size_t  buffer_size;
 };
 
 /*****************************************************************************
@@ -60,4 +60,4 @@ struct decoder_sys_t
 /*****************************************************************************
  * Prototypes
  *****************************************************************************/
-void ParsePacket( decoder_t *, void(*pf_queue)(decoder_t *, subpicture_t *) );
+void ParsePacket( decoder_t *, int(*pf_queue)(decoder_t *, subpicture_t *) );

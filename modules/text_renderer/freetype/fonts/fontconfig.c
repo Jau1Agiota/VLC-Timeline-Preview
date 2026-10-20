@@ -51,7 +51,7 @@ static vlc_mutex_t lock = VLC_STATIC_MUTEX;
 
 int FontConfig_Prepare( filter_t *p_filter )
 {
-    mtime_t ts;
+    vlc_tick_t ts;
 
     vlc_mutex_lock( &lock );
     if( refs++ > 0 )
@@ -90,8 +90,7 @@ int FontConfig_Prepare( filter_t *p_filter )
 #endif
 
     vlc_mutex_unlock( &lock );
-    ts -= mdate();
-    msg_Dbg( p_filter, "Took %ld microseconds", (long)ts );
+    msg_Dbg( p_filter, "Took %" PRId64 " microseconds", mdate() - ts );
 
     return (config != NULL) ? VLC_SUCCESS : VLC_EGENERIC;
 }

@@ -20,12 +20,12 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
 
 -->
-<?include $(sys.CURRENTDIR)\config.wxi?>
+<?include $(sys.CURRENTDIR)/config.wxi?>
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'
      xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
     <Product
         Id='*'
-        Name='$(var.ProductName) $(var.Version) ($(var.PlatformString))'
+        Name='$(var.ProductName)'
         Language='1033'
         Version='$(var.VersionLong)'
         Manufacturer='$(var.Manufacturer)'
@@ -135,10 +135,6 @@
 
                         <Component Id='CompLibvlc' Guid='50d7e1e1-4512-4020-9f7b-5dc8484574f3' Win64="$(var.Win64)">
                             <File Id='libvlc.dll' Name='libvlc.dll' KeyPath='yes' Vital='yes' DiskId='1' />
-                        </Component>
-
-                        <Component Id='CompNpvlc' Guid='e7d6b54c-c4ea-4280-90f5-c6ae80073d25' Win64="$(var.Win64)">
-                            <File Id='npvlc.dll' Name='npvlc.dll' KeyPath='yes' DiskId='1' />
                         </Component>
 
                         <Component Id='CompAxvlc' Guid='cabe28b1-5586-4ac3-815b-4f3a834c0d54' Win64="$(var.Win64)">
@@ -296,7 +292,6 @@
             <ComponentRef Id='CompVLC' />
             <ComponentRef Id='CompLibvlccore' />
             <ComponentRef Id='CompLibvlc' />
-            <ComponentRef Id='CompNpvlc' />
             <ComponentRef Id='CompCacheGen' />
             <ComponentRef Id='CompIcon' />
             <ComponentRef Id='CompTXT' />
@@ -312,9 +307,6 @@
                 <Feature Id='ACTIVEX' Title='ActiveX plugin' Level='1' AllowAdvertise="no">
                     <ComponentRef Id='CompAxvlc' />
                     <ComponentGroupRef Id='CompAxvlcGroup' />
-                </Feature>
-                <Feature Id='MOZILLA' Title='Mozilla plugin' Level='1' AllowAdvertise="no">
-                    <ComponentRef Id='CompNpvlc' />
                 </Feature>
             </Feature>
             <Feature Id='FILEASSOCIATION' Title='File associations' Level='1' AllowAdvertise="no">
@@ -334,6 +326,7 @@
         </Feature>
 
         <UIRef Id="WixUI_Advanced" />
+        <UIRef Id="WixUI_ErrorProgressText" />
 
         <InstallExecuteSequence>
             <!-- <RemoveExistingProducts After="InstallValidate" /> -->
@@ -408,5 +401,3 @@
     <ProgressText Action="RegisterAxvlc">Registering DirectX plugin...</ProgressText>
     <ProgressText Action="UnregisterAxvlc">Removing DirectX plugin...</ProgressText>
 -->
-
-

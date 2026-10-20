@@ -54,7 +54,10 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QSignalMapper>
-#include <QStatusBar>
+
+#ifndef QT_NO_STATUSBAR
+# include <QStatusBar>
+#endif
 
 /*
   This file defines the main menus and the pop-up menu (right-click menu)
@@ -144,9 +147,9 @@ QAction* addMIMStaticEntry( intf_thread_t *p_intf,
     {
         action = menu->addAction( text, THEMIM, member );
     }
-    action->setData( VLCMenuBar::ACTION_STATIC |
-                     ( bStatic ) ? VLCMenuBar::ACTION_ALWAYS_ENABLED
-                                 : VLCMenuBar::ACTION_NONE
+    action->setData( static_cast<int>( VLCMenuBar::ACTION_STATIC |
+                     ( bStatic ? VLCMenuBar::ACTION_ALWAYS_ENABLED
+                               : VLCMenuBar::ACTION_NONE ) )
                    );
     return action;
 }
@@ -289,7 +292,7 @@ static inline void addMenuToMainbar( QMenu *func, QString title, QMenuBar *bar )
 #define BAR_DADD( func, title, id ) { \
     QMenu *_menu = func; _menu->setTitle( title ); bar->addMenu( _menu ); \
     MenuFunc *f = new MenuFunc( _menu, id ); \
-    CONNECT( _menu, aboutToShow(), THEDP->menusUpdateMapper, map() ); \
+    connect( _menu, &QMenu::aboutToShow, THEDP->menusUpdateMapper, QOverload<>::of(&QSignalMapper::map) ); \
     THEDP->menusUpdateMapper->setMapping( _menu, f ); }
 
 // Add a simple action
@@ -491,7 +494,7 @@ QMenu *VLCMenuBar::ViewMenu( intf_thread_t *p_intf, QMenu *current, MainInterfac
     action = menu->addAction( qtr( "Docked Playlist" ) );
     action->setCheckable( true );
     action->setChecked( mi->isPlDocked() );
-    CONNECT( action, triggered( bool ), mi, dockPlaylist( bool ) );
+    connect( action, &QAction::triggered, mi, &MainInterface::dockPlaylist );
 
     if( mi->getPlaylistView() )
         menu->addMenu( StandardPLPanel::viewSelectionMenu( mi->getPlaylistView() ) );
@@ -501,7 +504,7 @@ QMenu *VLCMenuBar::ViewMenu( intf_thread_t *p_intf, QMenu *current, MainInterfac
     action = menu->addAction( qtr( "Always on &top" ) );
     action->setCheckable( true );
     action->setChecked( mi->isInterfaceAlwaysOnTop() );
-    CONNECT( action, triggered( bool ), mi, setInterfaceAlwaysOnTop( bool ) );
+    connect( action, &QAction::triggered, mi, &MainInterface::setInterfaceAlwaysOnTop );
 
     menu->addSeparator();
 
@@ -512,16 +515,16 @@ QMenu *VLCMenuBar::ViewMenu( intf_thread_t *p_intf, QMenu *current, MainInterfac
     action->setChecked( (mi->getControlsVisibilityStatus()
                          & MainInterface::CONTROLS_HIDDEN ) );
 
-    CONNECT( action, triggered( bool ), mi, toggleMinimalView( bool ) );
-    CONNECT( mi, minimalViewToggled( bool ), action, setChecked( bool ) );
+    connect( action, &QAction::triggered, mi, &MainInterface::toggleMinimalView );
+    connect( mi, &MainInterface::minimalViewToggled, action, &QAction::setChecked );
 
     /* FullScreen View */
     action = menu->addAction( qtr( "&Fullscreen Interface" ), mi,
             SLOT( toggleInterfaceFullScreen() ), QString( "F11" ) );
     action->setCheckable( true );
     action->setChecked( mi->isInterfaceFullScreen() );
-    CONNECT( mi, fullscreenInterfaceToggled( bool ),
-             action, setChecked( bool ) );
+    connect( mi, &MainInterface::fullscreenInterfaceToggled,
+             action, &QAction::setChecked );
 
     /* Advanced Controls */
     action = menu->addAction( qtr( "&Advanced Controls" ), mi,
@@ -529,11 +532,14 @@ QMenu *VLCMenuBar::ViewMenu( intf_thread_t *p_intf, QMenu *current, MainInterfac
     action->setCheckable( true );
     if( mi->getControlsVisibilityStatus() & MainInterface::CONTROLS_ADVANCED )
         action->setChecked( true );
+    action->setEnabled(mi->isAdvancedWidgetAvailable());
 
+#ifndef QT_NO_STATUSBAR
     action = menu->addAction( qtr( "Status Bar" ) );
     action->setCheckable( true );
     action->setChecked( mi->statusBar()->isVisible() );
-    CONNECT( action, triggered( bool ), mi, setStatusBarVisibility( bool) );
+    connect( action, &QAction::triggered, mi, &MainInterface::setStatusBarVisibility );
+#endif
 #if 0 /* For Visualisations. Not yet working */
     adv = menu->addAction( qtr( "Visualizations selector" ), mi,
                            SLOT( visual() ) );
@@ -845,20 +851,20 @@ void VLCMenuBar::PopupMenuPlaylistEntries( QMenu *menu,
     action = addMIMStaticEntry( p_intf, menu, qtr( "Pre&vious" ),
             ":/toolbar/previous_b.svg", SLOT( prev() ), true );
     action->setEnabled( !bPlaylistEmpty );
-    action->setData( ACTION_NO_CLEANUP + ACTION_DELETE_ON_REBUILD );
-    CONNECT( THEMIM, playlistNotEmpty(bool), action, setEnabled(bool) );
+    action->setData( static_cast<int>(ACTION_NO_CLEANUP | ACTION_DELETE_ON_REBUILD) );
+    connect( THEMIM, &MainInputManager::playlistNotEmpty, action, &QAction::setEnabled );
 
     action = addMIMStaticEntry( p_intf, menu, qtr( "Ne&xt" ),
             ":/toolbar/next_b.svg", SLOT( next() ), true );
     action->setEnabled( !bPlaylistEmpty );
-    action->setData( ACTION_NO_CLEANUP + ACTION_DELETE_ON_REBUILD );
-    CONNECT( THEMIM, playlistNotEmpty(bool), action, setEnabled(bool) );
+    action->setData( static_cast<int>(ACTION_NO_CLEANUP | ACTION_DELETE_ON_REBUILD) );
+    connect( THEMIM, &MainInputManager::playlistNotEmpty, action, &QAction::setEnabled );
 
     action = menu->addAction( qtr( "Record" ), THEAM, SLOT( record() ) );
     action->setIcon( QIcon( ":/toolbar/record.svg" ) );
     if( !p_input )
         action->setEnabled( false );
-    action->setData( ACTION_NO_CLEANUP + ACTION_DELETE_ON_REBUILD );
+    action->setData( static_cast<int>(ACTION_NO_CLEANUP | ACTION_DELETE_ON_REBUILD) );
     menu->addSeparator();
 }
 
@@ -1120,8 +1126,8 @@ QMenu* VLCMenuBar::PopupMenu( intf_thread_t *p_intf, bool show )
     plMenu->setTitle( qtr("Playlist") );
     PLModel *model = PLModel::getPLModel( p_intf );
     plMenu->setModel( model );
-    CONNECT( plMenu, activated(const QModelIndex&),
-             model, activateItem(const QModelIndex&));
+    connect( plMenu, &QMenuView::activated,
+             model, QOverload<const QModelIndex &>::of(&PLModel::activateItem) );
     menu->addMenu( plMenu );
 
     /* Static entries for ending, like open */
@@ -1243,7 +1249,7 @@ static bool IsMenuEmpty( const char *psz_var, vlc_object_t *p_object )
 
 #define TEXT_OR_VAR qfue ( text.psz_string ? text.psz_string : psz_var )
 
-void VLCMenuBar::UpdateItem( intf_thread_t *p_intf, QMenu *menu,
+void VLCMenuBar::UpdateItem( intf_thread_t *, QMenu *menu,
         const char *psz_var, vlc_object_t *p_object, bool b_submenu )
 {
     vlc_value_t val, text;
@@ -1437,7 +1443,7 @@ int VLCMenuBar::CreateChoicesMenu( QMenu *submenu, const char *psz_var,
             case VLC_VAR_FLOAT:
                 var_Get( p_object, psz_var, &val );
                 if( CURTEXT ) menutext = qfue( CURTEXT );
-                else menutext.sprintf( "%.2f", CURVAL.f_float );
+                else menutext.setNum(CURVAL.f_float, 'f', 2);
                 CreateAndConnect( submenu, psz_var, menutext, "", RADIO_OR_COMMAND,
                         p_object, CURVAL, i_type,
                         CURVAL.f_float == val.f_float );
@@ -1499,7 +1505,7 @@ void VLCMenuBar::CreateAndConnect( QMenu *menu, const char *psz_var,
     /* remove previous signal-slot connection(s) if any */
     action->disconnect( );
 
-    CONNECT( action, triggered(), THEDP->menusMapper, map() );
+    connect( action, &QAction::triggered, THEDP->menusMapper, QOverload<>::of(&QSignalMapper::map) );
     THEDP->menusMapper->setMapping( action, itemData );
 
     if( b_new )
@@ -1558,14 +1564,14 @@ void VLCMenuBar::updateAudioDevice( intf_thread_t * p_intf, audio_output_t *p_ao
     for( int i = 0; i < i_result; i++ )
     {
         action = new QAction( qfue( names[i] ), actionGroup );
-        action->setData( ids[i] );
+        action->setData( qfu(ids[i]) );
         action->setCheckable( true );
         if( (selected && !strcmp( ids[i], selected ) ) ||
             (selected == NULL && ids[i] && ids[i][0] == '\0' ) )
             action->setChecked( true );
         actionGroup->addAction( action );
         current->addAction( action );
-        CONNECT(action, triggered(), THEMIM->menusAudioMapper, map());
+        connect(action, &QAction::triggered, THEMIM->menusAudioMapper, QOverload<>::of(&QSignalMapper::map) );
         THEMIM->menusAudioMapper->setMapping(action, ids[i]);
         free( ids[i] );
         free( names[i] );
@@ -1647,9 +1653,9 @@ QMenu *VLCMenuBar::RendererMenu(intf_thread_t *p_intf, QMenu *menu )
     action->setEnabled( false );
     submenu->addAction( action );
 
-    CONNECT( submenu, aboutToShow(), ActionsManager::getInstance( p_intf ), StartRendererScan() );
-    CONNECT( submenu, aboutToHide(), ActionsManager::getInstance( p_intf ), RendererMenuCountdown() );
-    CONNECT( rendererGroup, triggered(QAction*), ActionsManager::getInstance( p_intf ), RendererSelected( QAction* ) );
+    connect( submenu, &QMenu::aboutToShow, ActionsManager::getInstance( p_intf ), &ActionsManager::StartRendererScan );
+    connect( submenu, &QMenu::aboutToHide, ActionsManager::getInstance( p_intf ), &ActionsManager::RendererMenuCountdown );
+    connect( rendererGroup, &QActionGroup::triggered, ActionsManager::getInstance( p_intf ), &ActionsManager::RendererSelected );
 
     return submenu;
 }

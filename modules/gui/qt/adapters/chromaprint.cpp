@@ -23,7 +23,6 @@
 #endif
 
 #include "chromaprint.hpp"
-#include <vlc_fingerprinter.h>
 #include <vlc_modules.h>
 
 Chromaprint::Chromaprint( intf_thread_t *_p_intf ) : p_intf( _p_intf )
@@ -56,7 +55,7 @@ bool Chromaprint::enqueue( input_item_t *p_item )
     if ( ! p_fingerprinter ) return false;
     fingerprint_request_t *p_r = fingerprint_request_New( p_item );
     if ( ! p_r ) return false;
-    mtime_t t = input_item_GetDuration( p_item );
+    vlc_tick_t t = input_item_GetDuration( p_item );
     if ( t ) p_r->i_duration = (unsigned int) ( t / 1000000 );
     if( p_fingerprinter->pf_enqueue( p_fingerprinter, p_r ) != 0 )
     {

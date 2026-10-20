@@ -184,10 +184,10 @@ static int parse_transport(stream_t *access, char *request_line) {
 
 /*
  * Semi-interruptible net_Gets replacement.
- * If an interruption is occuring it will fallback to non-interruptible read
+ * If an interruption is occurring it will fallback to non-interruptible read
  * with a given timeout before it returns.
  *
- * interrupted: Informs the caller whether an interrupt occured or not
+ * interrupted: Informs the caller whether an interrupt occurred or not
  */
 static char *net_readln_timeout(vlc_object_t *obj, int fd, int timeout, bool *interrupted)
 {
@@ -393,7 +393,7 @@ static void satip_teardown(void *data) {
                     return;
                 }
 
-                ret = send(sys->tcp_sock, msg + sent, len, MSG_NOSIGNAL);
+                ret = send(sys->tcp_sock, msg + sent, len - sent, MSG_NOSIGNAL);
                 if (ret < 0) {
                     msg_Err(access, "Failed to send RTSP teardown: %d\n", ret);
                     free(msg);
@@ -424,9 +424,9 @@ static void *satip_thread(void *data) {
     stream_t *access = data;
     access_sys_t *sys = access->p_sys;
     int sock = sys->udp_sock;
-    mtime_t last_recv = mdate();
+    vlc_tick_t last_recv = mdate();
     ssize_t len;
-    mtime_t next_keepalive = mdate() + sys->keepalive_interval * 1000 * 1000;
+    vlc_tick_t next_keepalive = mdate() + sys->keepalive_interval * 1000 * 1000;
 #ifdef HAVE_RECVMMSG
     struct mmsghdr msgs[VLEN];
     struct iovec iovecs[VLEN];
@@ -472,7 +472,7 @@ static void *satip_thread(void *data) {
             block_t *block = input_blocks[i];
 
             len = msgs[i].msg_len;
-            if (check_rtp_seq(access, block))
+            if (len < RTP_HEADER_SIZE || check_rtp_seq(access, block))
                 continue;
 
             block->p_buffer += RTP_HEADER_SIZE;

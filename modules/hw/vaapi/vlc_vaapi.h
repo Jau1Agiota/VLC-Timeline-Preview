@@ -84,7 +84,7 @@ vlc_vaapi_CreateContext(vlc_object_t *o, VADisplay dpy, VAConfigID conf,
                         VASurfaceID *render_targets, int num_render_targets);
 
 /* Creates a VA buffer for 'num_elements' elements of 'size' bytes and
- * initalized with 'data'. If 'data' is NULL, then the content of the buffer is
+ * initialized with 'data'. If 'data' is NULL, then the content of the buffer is
  * undefined. */
 VABufferID
 vlc_vaapi_CreateBuffer(vlc_object_t *o, VADisplay dpy, VAContextID ctx,
@@ -208,7 +208,7 @@ vlc_vaapi_PicSysGetRenderTargets(picture_sys_t *sys,
 struct vlc_vaapi_instance *
 vlc_vaapi_PicSysHoldInstance(picture_sys_t *sys, VADisplay *dpy);
 
-/* Attachs the VASurface to the picture context, the picture must be allocated
+/* Attaches the VASurface to the picture context, the picture must be allocated
  * by a vaapi pool (see vlc_vaapi_PoolNew()) */
 void
 vlc_vaapi_PicAttachContext(picture_t *pic);
@@ -227,5 +227,15 @@ vlc_vaapi_IsChromaOpaque(int i_vlc_chroma)
     return i_vlc_chroma == VLC_CODEC_VAAPI_420
         || i_vlc_chroma == VLC_CODEC_VAAPI_420_10BPP;
 }
+
+#if VA_CHECK_VERSION(1, 1, 0)
+int
+vlc_vaapi_ExportSurfaceHandle(vlc_object_t *o,
+                              VADisplay dpy,
+                              VASurfaceID surface,
+                              uint32_t mem_type,
+                              uint32_t flags,
+                              void *descriptor);
+#endif
 
 #endif /* VLC_VAAPI_H */

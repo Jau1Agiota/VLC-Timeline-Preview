@@ -37,30 +37,27 @@
 
 #include <QDate>
 #include <QLabel>
-#include <QToolButton>
 #include <QPalette>
-#include <QEvent>
-#include <QResizeEvent>
-#include <QDate>
-#include <QMenu>
+#include <QAction>
 #include <QWidgetAction>
-#include <QDesktopWidget>
 #include <QPainter>
 #include <QTimer>
-#include <QSlider>
-#include <QBitmap>
 #include <QUrl>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#include <QRandomGenerator>
 
-#if defined (QT5_HAS_X11)
+static inline int qrand() {
+    auto * q = QRandomGenerator::system();
+    return q->generate();
+}
+#endif
+
+#if defined (QT_HAS_X11)
 # include <X11/Xlib.h>
-# include <QX11Info>
-# if defined(QT5_HAS_XCB)
+# include "qt_x11.hpp"
+# if defined(QT_HAS_XCB)
 #  include <xcb/xproto.h>
 # endif
-#endif
-#ifdef QT5_HAS_WAYLAND
-# include QPNI_HEADER
-# include <QWindow>
 #endif
 
 #if defined(_WIN32)
@@ -69,7 +66,7 @@
 #endif
 
 #include <math.h>
-#include <assert.h>
+#include <cassert>
 
 #include <vlc_vout.h>
 #include <vlc_vout_window.h>
@@ -89,6 +86,7 @@ VideoWidget::VideoWidget( intf_thread_t *_p_i, QWidget* p_parent )
     layout->setContentsMargins( 0, 0, 0, 0 );
     stable = NULL;
     p_window = NULL;
+    qApp->installNativeEventFilter(this);
     show();
 }
 
@@ -104,9 +102,9 @@ void VideoWidget::sync( void )
     /* Make sure the X server has processed all requests.
      * This protects other threads using distinct connections from getting
      * the video widget window in an inconsistent states. */
-#ifdef QT5_HAS_X11
-    if( QX11Info::isPlatformX11() )
-        XSync( QX11Info::display(), False );
+#ifdef QT_HAS_X11
+    if( vlcQtIsX11() )
+        XSync( vlcQtX11Display(), False );
 #endif
 }
 
@@ -138,7 +136,7 @@ bool VideoWidget::request( struct vout_window_t *p_wnd )
        management */
     /* This is currently disabled on X11 as it does not seem to improve
      * performance, but causes the video widget to be transparent... */
-#if !defined (QT5_HAS_X11)
+#if !defined (QT_HAS_X11)
     stable->setAttribute( Qt::WA_PaintOnScreen, true );
 #else
     stable->setMouseTracking( true );
@@ -162,39 +160,20 @@ bool VideoWidget::request( struct vout_window_t *p_wnd )
         case VOUT_WINDOW_TYPE_NSOBJECT:
             p_wnd->handle.nsobject = (void *)stable->winId();
             break;
-#ifdef QT5_HAS_WAYLAND
-        case VOUT_WINDOW_TYPE_WAYLAND:
-        {
-            /* Ensure only the video widget is native (needed for Wayland) */
-            stable->setAttribute( Qt::WA_DontCreateNativeAncestors, true);
-
-            QWindow *window = stable->windowHandle();
-            assert(window != NULL);
-            window->create();
-
-            QPlatformNativeInterface *qni = qApp->platformNativeInterface();
-            assert(qni != NULL);
-
-            p_wnd->handle.wl = static_cast<wl_surface*>(
-                qni->nativeResourceForWindow(QByteArrayLiteral("surface"),
-                                             window));
-            p_wnd->display.wl = static_cast<wl_display*>(
-                qni->nativeResourceForIntegration(QByteArrayLiteral("wl_display")));
-            break;
-        }
-#endif
         default:
             vlc_assert_unreachable();
     }
+
+    enable_mouse_events = var_InheritBool(p_window, "mouse-events");
     return true;
 }
 
 QSize VideoWidget::physicalSize() const
 {
-#ifdef QT5_HAS_X11
-    if ( QX11Info::isPlatformX11() )
+#ifdef QT_HAS_X11
+    if ( vlcQtIsX11() )
     {
-        Display *p_x_display = QX11Info::display();
+        Display *p_x_display = vlcQtX11Display();
         Window x_window = stable->winId();
         XWindowAttributes x_attributes;
 
@@ -229,7 +208,7 @@ QSize VideoWidget::physicalSize() const
 }
 
 void WindowResized(vout_window_t *, const QSize&);
-void WindowReleased(vout_window_t *);
+void WindowOrphaned(vout_window_t *);
 
 void VideoWidget::reportSize()
 {
@@ -266,10 +245,14 @@ void VideoWidget::setSize( unsigned int w, unsigned int h )
     sync();
 }
 
-bool VideoWidget::nativeEvent( const QByteArray& eventType, void* message, long* )
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+bool VideoWidget::nativeEventFilter(const QByteArray &eventType, void *message, qintptr *)
+#else
+bool VideoWidget::nativeEventFilter(const QByteArray &eventType, void *message, long *)
+#endif
 {
-#if defined(QT5_HAS_X11)
-# if defined(QT5_HAS_XCB)
+#if defined(QT_HAS_X11)
+# if defined(QT_HAS_XCB)
     if ( eventType == "xcb_generic_event_t" )
     {
         const xcb_generic_event_t* xev = static_cast<const xcb_generic_event_t*>( message );
@@ -320,31 +303,50 @@ int VideoWidget::qtMouseButton2VLC( Qt::MouseButton qtButton )
 
 void VideoWidget::mouseReleaseEvent( QMouseEvent *event )
 {
+    if ( !p_window || !enable_mouse_events )
+    {
+        event->ignore();
+        return;
+    }
+
     int vlc_button = qtMouseButton2VLC( event->button() );
     if( vlc_button >= 0 )
     {
         vout_window_ReportMouseReleased( p_window, vlc_button );
         event->accept();
+        return;
     }
-    else
-        event->ignore();
+
+    event->ignore();
 }
 
 void VideoWidget::mousePressEvent( QMouseEvent* event )
 {
+    if ( !p_window || !enable_mouse_events )
+    {
+        event->ignore();
+        return;
+    }
+
     int vlc_button = qtMouseButton2VLC( event->button() );
     if( vlc_button >= 0 )
     {
         vout_window_ReportMousePressed( p_window, vlc_button );
         event->accept();
+        return;
     }
-    else
-        event->ignore();
+
+    event->ignore();
 }
 
 void VideoWidget::mouseMoveEvent( QMouseEvent *event )
 {
-    if( p_window != NULL )
+    if ( !p_window || !enable_mouse_events )
+    {
+        event->ignore();
+        return;
+    }
+
     {
         QPointF current_pos = event->localPos();
 
@@ -355,31 +357,40 @@ void VideoWidget::mouseMoveEvent( QMouseEvent *event )
 #endif
         vout_window_ReportMouseMoved( p_window, current_pos.x(), current_pos.y() );
         event->accept();
+        return;
     }
-    else
-        event->ignore();
+
+    event->ignore();
 }
 
 void VideoWidget::mouseDoubleClickEvent( QMouseEvent *event )
 {
+    if ( !p_window || !enable_mouse_events )
+    {
+        event->ignore();
+        return;
+    }
+
     int vlc_button = qtMouseButton2VLC( event->button() );
     if( vlc_button >= 0 )
     {
         vout_window_ReportMouseDoubleClick( p_window, vlc_button );
         event->accept();
+        return;
     }
-    else
-        event->ignore();
+
+    event->ignore();
 }
 
 
-void VideoWidget::release( void )
+void VideoWidget::release( bool forced )
 {
-    msg_Dbg( p_intf, "Video is not needed anymore" );
+    msg_Dbg( p_intf, "video widget is %s", forced ? "orphaned" : "released" );
 
     if( stable )
     {
-        WindowReleased(p_window);
+        if( forced )
+            WindowOrphaned(p_window);
         layout->removeWidget( stable );
         stable->deleteLater();
         stable = NULL;
@@ -415,13 +426,13 @@ BackgroundWidget::BackgroundWidget( intf_thread_t *_p_i )
     fadeAnimation->setStartValue( 0.0 );
     fadeAnimation->setEndValue( 1.0 );
     fadeAnimation->setEasingCurve( QEasingCurve::OutSine );
-    CONNECT( fadeAnimation, valueChanged( const QVariant & ),
-             this, update() );
+    connect( fadeAnimation, &QPropertyAnimation::valueChanged,
+             this, QOverload<>::of(&BackgroundWidget::update) );
 
-    CONNECT( THEMIM->getIM(), artChanged( QString ),
-             this, updateArt( const QString& ) );
-    CONNECT( THEMIM->getIM(), nameChanged( const QString& ),
-             this, titleUpdated( const QString & ) );
+    connect( THEMIM->getIM(), QOverload<QString>::of(&InputManager::artChanged),
+             this, &BackgroundWidget::updateArt );
+    connect( THEMIM->getIM(), &InputManager::nameChanged,
+             this, &BackgroundWidget::titleUpdated );
 }
 
 void BackgroundWidget::updateArt( const QString& url )
@@ -528,13 +539,13 @@ void BackgroundWidget::contextMenuEvent( QContextMenuEvent *event )
 EasterEggBackgroundWidget::EasterEggBackgroundWidget( intf_thread_t *p_intf )
     : BackgroundWidget( p_intf )
 {
-    flakes = new QLinkedList<flake *>();
+    flakes = new std::list<flake *>();
     i_rate = 2;
     i_speed = 1;
     b_enabled = false;
     timer = new QTimer( this );
     timer->setInterval( 100 );
-    CONNECT( timer, timeout(), this, spawnFlakes() );
+    connect( timer, &QTimer::timeout, this, &EasterEggBackgroundWidget::spawnFlakes );
     if ( isVisible() && b_enabled ) timer->start();
     defaultArt = QString( ":/logo/vlc128-xmas.png" );
     updateArt( "" );
@@ -581,7 +592,7 @@ void EasterEggBackgroundWidget::spawnFlakes()
 
     int i_spawn = ( (double) qrand() / RAND_MAX ) * i_rate;
 
-    QLinkedList<flake *>::iterator it = flakes->begin();
+    auto it = flakes->begin();
     while( it != flakes->end() )
     {
         flake *current = *it;
@@ -601,15 +612,16 @@ void EasterEggBackgroundWidget::spawnFlakes()
         flake *f = new flake;
         f->point.setX( qrand() * w );
         f->b_fat = ( qrand() < ( RAND_MAX * .33 ) );
-        flakes->append( f );
+        flakes->push_back( f );
     }
     update();
 }
 
 void EasterEggBackgroundWidget::reset()
 {
-    while ( !flakes->isEmpty() )
-        delete flakes->takeFirst();
+    for(flake* f: *flakes)
+        delete f;
+    flakes->clear();
 }
 
 void EasterEggBackgroundWidget::paintEvent( QPaintEvent *e )
@@ -619,8 +631,8 @@ void EasterEggBackgroundWidget::paintEvent( QPaintEvent *e )
     painter.setBrush( QBrush( QColor(Qt::white) ) );
     painter.setPen( QPen(Qt::white) );
 
-    QLinkedList<flake *>::const_iterator it = flakes->constBegin();
-    while( it != flakes->constEnd() )
+    auto it = flakes->cbegin();
+    while( it != flakes->cend() )
     {
         const flake * const f = *(it++);
         if ( f->b_fat )
@@ -654,10 +666,9 @@ SpeedLabel::SpeedLabel( intf_thread_t *_p_intf, QWidget *parent )
     speedControlMenu->addAction( widgetAction );
 
     /* Change the SpeedRate in the Label */
-    CONNECT( THEMIM->getIM(), rateChanged( float ), this, setRate( float ) );
+    connect( THEMIM->getIM(), &InputManager::rateChanged, this, &SpeedLabel::setRate );
 
-    DCONNECT( THEMIM, inputChanged( bool ),
-              speedControl, activateOnState() );
+    connect( THEMIM, &MainInputManager::inputChanged, speedControl, &SpeedControlWidget::activateOnState, Qt::DirectConnection );
 
     setContentsMargins(4, 0, 4, 0);
     setRate( var_InheritFloat( THEPL, "rate" ) );
@@ -710,7 +721,7 @@ SpeedControlWidget::SpeedControlWidget( intf_thread_t *_p_i, QWidget *_parent )
     speedSlider->setPageStep( 1 );
     speedSlider->setTickInterval( 17 );
 
-    CONNECT( speedSlider, valueChanged( int ), this, updateRate( int ) );
+    connect( speedSlider, &QSlider::valueChanged, this, &SpeedControlWidget::updateRate );
 
     QToolButton *normalSpeedButton = new QToolButton( this );
     normalSpeedButton->setMaximumSize( QSize( 26, 16 ) );
@@ -718,37 +729,27 @@ SpeedControlWidget::SpeedControlWidget( intf_thread_t *_p_i, QWidget *_parent )
     normalSpeedButton->setText( "1x" );
     normalSpeedButton->setToolTip( qtr( "Revert to normal play speed" ) );
 
-    CONNECT( normalSpeedButton, clicked(), this, resetRate() );
+    connect( normalSpeedButton, &QToolButton::clicked, this, &SpeedControlWidget::resetRate );
 
     QToolButton *slowerButton = new QToolButton( this );
     slowerButton->setMaximumSize( QSize( 26, 16 ) );
     slowerButton->setAutoRaise( true );
     slowerButton->setToolTip( tooltipL[SLOWER_BUTTON] );
     slowerButton->setIcon( QIcon( iconL[SLOWER_BUTTON] ) );
-    CONNECT( slowerButton, clicked(), THEMIM->getIM(), slower() );
+    connect( slowerButton, &QToolButton::clicked, THEMIM->getIM(), &InputManager::slower );
 
     QToolButton *fasterButton = new QToolButton( this );
     fasterButton->setMaximumSize( QSize( 26, 16 ) );
     fasterButton->setAutoRaise( true );
     fasterButton->setToolTip( tooltipL[FASTER_BUTTON] );
     fasterButton->setIcon( QIcon( iconL[FASTER_BUTTON] ) );
-    CONNECT( fasterButton, clicked(), THEMIM->getIM(), faster() );
-
-/*    spinBox = new QDoubleSpinBox();
-    spinBox->setDecimals( 2 );
-    spinBox->setMaximum( 32 );
-    spinBox->setMinimum( 0.03F );
-    spinBox->setSingleStep( 0.10F );
-    spinBox->setAlignment( Qt::AlignRight );
-
-    CONNECT( spinBox, valueChanged( double ), this, updateSpinBoxRate( double ) ); */
+    connect( fasterButton, &QToolButton::clicked, THEMIM->getIM(), &InputManager::faster );
 
     QGridLayout* speedControlLayout = new QGridLayout( this );
     speedControlLayout->addWidget( speedSlider, 0, 0, 1, 3 );
     speedControlLayout->addWidget( slowerButton, 1, 0 );
     speedControlLayout->addWidget( normalSpeedButton, 1, 1, 1, 1, Qt::AlignRight );
     speedControlLayout->addWidget( fasterButton, 1, 2, 1, 1, Qt::AlignRight );
-    //speedControlLayout->addWidget( spinBox );
     speedControlLayout->setContentsMargins( 0, 0, 0, 0 );
     speedControlLayout->setSpacing( 0 );
 
@@ -815,8 +816,8 @@ CoverArtLabel::CoverArtLabel( QWidget *parent, intf_thread_t *_p_i )
     : QLabel( parent ), p_intf( _p_i ), p_item( NULL )
 {
     setContextMenuPolicy( Qt::ActionsContextMenu );
-    CONNECT( THEMIM->getIM(), artChanged( input_item_t * ),
-             this, showArtUpdate( input_item_t * ) );
+    connect( THEMIM->getIM(), QOverload<QString>::of(&InputManager::artChanged),
+             this, QOverload<const QString &>::of(&CoverArtLabel::showArtUpdate) );
 
     setMinimumHeight( 128 );
     setMinimumWidth( 128 );
@@ -824,11 +825,11 @@ CoverArtLabel::CoverArtLabel( QWidget *parent, intf_thread_t *_p_i )
     setAlignment( Qt::AlignCenter );
 
     QAction *action = new QAction( qtr( "Download cover art" ), this );
-    CONNECT( action, triggered(), this, askForUpdate() );
+    connect( action, &QAction::triggered, this, &CoverArtLabel::askForUpdate );
     addAction( action );
 
     action = new QAction( qtr( "Add cover art from file" ), this );
-    CONNECT( action, triggered(), this, setArtFromFile() );
+    connect( action, &QAction::triggered, this, &CoverArtLabel::setArtFromFile );
     addAction( action );
 
     p_item = THEMIM->currentInputItem();
@@ -940,19 +941,31 @@ TimeLabel::TimeLabel( intf_thread_t *_p_intf, TimeLabel::Display _displayType  )
     }
     setAlignment( Qt::AlignRight | Qt::AlignVCenter );
 
-    CONNECT( THEMIM->getIM(), seekRequested( float ),
-             this, setDisplayPosition( float ) );
+    connect( THEMIM->getIM(), &InputManager::seekRequested,
+             this, QOverload<float>::of(&TimeLabel::setDisplayPosition) );
 
-    CONNECT( THEMIM->getIM(), positionUpdated( float, int64_t, int ),
-              this, setDisplayPosition( float, int64_t, int ) );
+    connect( THEMIM->getIM(), &InputManager::positionUpdated,
+              this, QOverload<float, vlc_tick_t, int>::of(&TimeLabel::setDisplayPosition) );
 
-    connect( this, SIGNAL( broadcastRemainingTime( bool ) ),
-         THEMIM->getIM(), SIGNAL( remainingTimeChanged( bool ) ) );
+    connect( this, &TimeLabel::broadcastRemainingTime,
+         THEMIM->getIM(), &InputManager::remainingTimeChanged );
 
-    CONNECT( THEMIM->getIM(), remainingTimeChanged( bool ),
-              this, setRemainingTime( bool ) );
+    connect( THEMIM->getIM(), &InputManager::remainingTimeChanged,
+              this, &TimeLabel::setRemainingTime );
 
-    setStyleSheet( "QLabel { padding-left: 4px; padding-right: 4px; }" );
+
+    auto updateStyle = [this]() {
+        setStyleSheet( "TimeLabel {  padding-left: 4px; padding-right: 4px; }" );
+    };
+
+    updateStyle();
+
+//same as Qt::AA_UseStyleSheetPropagationInWidgetStyles
+#if !HAS_QT57
+    connect(qApp, &QApplication::paletteChanged, this, [updateStyle](){
+        updateStyle();
+    });
+#endif
 }
 
 void TimeLabel::setRemainingTime( bool remainingTime )

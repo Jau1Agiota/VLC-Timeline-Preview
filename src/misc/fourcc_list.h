@@ -160,6 +160,9 @@ static const staticentry_t p_list_video[] = {
         E("QMP4", "QNAP Systems MPEG-4"),
         E("qMP4", "QNAP Systems MPEG-4"),
         E("wMP4", "QNAP Systems MPEG-4"),
+        E("G264", "GeoVision MPEG-4"),
+        E("GM40", "GeoVision MPEG-4"),
+        E("GMP4", "GeoVision MPEG-4"),
         /* 3ivx delta 3.5 Unsupported
          * putting it here gives extreme distorted images */
         //E("3IV1", "3ivx delta 3.5 MPEG-4 Video"),
@@ -230,10 +233,12 @@ static const staticentry_t p_list_video[] = {
         A("h265"),
         A("H265"),
         A("x265"),
+        A("X265"),
         A("hev1"),
         A("hvc1"),
         A("HM10"),
         E("dvhe", "Dolby Vision HEVC (H.265)"),
+        E("GHEC", "GeoVision HEVC"),
         /* E("dvh1", "Dolby Vision HEVC (H.265)"), Collides with DV */
 
     /* h264 */
@@ -516,6 +521,7 @@ static const staticentry_t p_list_video[] = {
 
     B(VLC_CODEC_AV1, "AOMedia's AV1 Video"),
         A("av10"),
+        A("AV01"),
 
     /* Xiph.org theora */
     B(VLC_CODEC_THEORA, "Xiph.org's Theora Video"),
@@ -778,7 +784,10 @@ static const staticentry_t p_list_video[] = {
         A("I40A"),
     B(VLC_CODEC_YUV422A, "Planar YUV 4:2:2 Y:U:V:A"),
         A("I42A"),
-    B(VLC_CODEC_YUVA_444_10L, "Planar YUV 4:4:4 Y:U:V:A 10bits"),
+    B(VLC_CODEC_YUVA_444_10L, "Planar YUV 4:4:4 Y:U:V:A 10bits LE"),
+    B(VLC_CODEC_YUVA_444_10B, "Planar YUV 4:4:4 Y:U:V:A 10bits BE"),
+    B(VLC_CODEC_YUVA_444_12L, "Planar YUV 4:4:4 Y:U:V:A 12bits LE"),
+    B(VLC_CODEC_YUVA_444_12B, "Planar YUV 4:4:4 Y:U:V:A 12bits BE"),
 
     B(VLC_CODEC_RGBP, "Palettized RGB with palette element R:G:B"),
         A("RGBP"),
@@ -811,6 +820,24 @@ static const staticentry_t p_list_video[] = {
         A("GREY"),
         A("Y800"),
         A("Y8  "),
+
+    B(VLC_CODEC_GREY_10L, "10 bits greyscale LE"),
+        A("G0FL"),
+
+    B(VLC_CODEC_GREY_10B, "10 bits greyscale BE"),
+        A("G0FB"),
+
+    B(VLC_CODEC_GREY_12L, "12 bits greyscale LE"),
+        A("G2FL"),
+
+    B(VLC_CODEC_GREY_12B, "12 bits greyscale BE"),
+        A("G2FB"),
+
+    B(VLC_CODEC_GREY_16L, "16 bits greyscale LE"),
+        A("GRFL"),
+
+    B(VLC_CODEC_GREY_16B, "16 bits greyscale BE"),
+        A("GRFB"),
 
     B(VLC_CODEC_UYVY, "Packed YUV 4:2:2, U:Y:V:Y"),
         A("UYVY"),
@@ -1006,6 +1033,9 @@ static const staticentry_t p_list_video[] = {
         A("LJ2C"),
         A("LJ2K"),
 
+    B(VLC_CODEC_WEBP, "WebP Image"),
+        A("WEBP"),
+
     B(VLC_CODEC_LAGARITH, "Lagarith Lossless"),
         A("LAGS"),
 
@@ -1135,6 +1165,8 @@ static const staticentry_t p_list_video[] = {
 
     B(VLC_CODEC_PIXLET, "Apple Pixlet" ),
         A("pxlt"),
+
+    B(VLC_CODEC_APV, "Advanced Professional Video (APV)"),
 };
 
 static const staticentry_t p_list_audio[] = {
@@ -1226,7 +1258,7 @@ static const staticentry_t p_list_audio[] = {
         A("ms\x20\x00"),
 
     B(VLC_CODEC_EAC3, "A/52 B Audio (aka E-AC3)"),
-        A("eac3"),
+        A("ec-3"),
 
     /* DTS Audio */
     B(VLC_CODEC_DTS, "DTS Audio"),
@@ -1381,6 +1413,15 @@ static const staticentry_t p_list_audio[] = {
 
     B(VLC_CODEC_ATRAC3P, "atrac 3+"),
         A("atrp"),
+
+    B(VLC_CODEC_ATRAC3AL, "atrac 3 advanced lossless"),
+        A("atrl"),
+
+    B(VLC_CODEC_ATRAC3PAL, "atrac 3+ advanced lossless"),
+        A("atpl"),
+
+    B(VLC_CODEC_ATRAC9, "atrac 9"),
+        A("atr9"),
 
     B(VLC_CODEC_IMC, "IMC" ),
         A("\x01\x04\x00\x00"),

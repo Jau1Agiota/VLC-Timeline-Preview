@@ -204,6 +204,12 @@ static int Open( vlc_object_t * p_this )
 
     /* add the es */
     p_sys->p_es = es_out_Add( p_demux->out, &p_sys->fmt );
+    if( unlikely(!p_sys->p_es) )
+    {
+        es_format_Clean( &p_sys->fmt );
+        free( p_sys );
+        return VLC_EGENERIC;
+    }
     msg_Dbg( p_demux, "elementary stream added");
 
     /* initialize timing */
@@ -251,7 +257,7 @@ static int Demux( demux_t *p_demux )
         return 0;
     }
 
-    p_block->i_dts = p_block->i_pts = VLC_TS_0 + date_Get( &p_sys->pts );
+    p_block->i_dts = p_block->i_pts = VLC_TICK_0 + date_Get( &p_sys->pts );
 
     es_out_SetPCR( p_demux->out, p_block->i_pts );
     es_out_Send( p_demux->out, p_sys->p_es, p_block );

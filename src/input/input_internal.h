@@ -97,6 +97,7 @@ typedef struct input_thread_private_t
     bool        is_running;
     bool        is_stopped;
     bool        b_recording;
+    bool        b_next_frame;
     int         i_rate;
 
     /* Playtime configuration and state */
@@ -116,7 +117,7 @@ typedef struct input_thread_private_t
 
     /* Title infos FIXME multi-input (not easy) ? */
     int          i_title;
-    const input_title_t **title;
+    input_title_t * const *title;
 
     int i_title_offset;
     int i_seekpoint_offset;

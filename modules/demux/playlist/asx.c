@@ -50,7 +50,7 @@
  *****************************************************************************/
 static int ReadDir( stream_t *, input_item_node_t * );
 
-static bool ParseTime(xml_reader_t *p_xml_reader, mtime_t* pi_result )
+static bool ParseTime(xml_reader_t *p_xml_reader, vlc_tick_t* pi_result )
 {
     assert( pi_result );
     char *psz_value = NULL;
@@ -62,7 +62,7 @@ static bool ParseTime(xml_reader_t *p_xml_reader, mtime_t* pi_result )
     int i_subfractions = -1;
 
     int i_subresult = 0;
-    mtime_t i_result = 0;
+    vlc_tick_t i_result = 0;
 
     do
     {
@@ -202,8 +202,8 @@ static void ProcessEntry( int *pi_n_entry, xml_reader_t *p_xml_reader,
     input_item_t *p_entry = NULL;
 
     int i_options;
-    mtime_t i_start = 0;
-    mtime_t i_duration = 0;
+    vlc_tick_t i_start = 0;
+    vlc_tick_t i_duration = 0;
     char *ppsz_options[2];
 
     do
@@ -439,7 +439,7 @@ static void memstream_puts_xmlencoded(struct vlc_memstream* p_stream, const char
  *  - make tags and attributes upercase
  *  - escape strings when required
  */
-static char* ASXToXML( char* psz_source )
+VLC_MALLOC static char* ASXToXML( char* psz_source )
 {
     bool b_in_string= false;
     char *psz_source_cur = psz_source;
@@ -464,7 +464,7 @@ static char* ASXToXML( char* psz_source )
         memstream_puts_xmlencoded(&stream_out, psz_source_old, psz_source_cur);
         psz_source_old = psz_source_cur;
 
-        //skip if comment, no need to copy them to the ouput.
+        //skip if comment, no need to copy them to the output.
         if( strncmp( psz_source_cur, "<!--", 4 ) == 0 )
         {
             psz_source_cur += 4;
@@ -614,7 +614,11 @@ static stream_t* PreparseStream( stream_t *p_demux )
          else
          {
             //strip xml prologue to avoid double conversion
-            char *tmp = strstr( psz_source, "?>" ) + 2;
+            char *tmp = strstr( psz_source, "?>" );
+            if ( tmp )
+                tmp += 2;
+            else
+                tmp = psz_source;
             tmp = FromCharset( encoding, tmp, strlen( tmp ) );
             free( psz_source );
             free( encoding );
@@ -674,7 +678,7 @@ static int ReadDir( stream_t *p_demux, input_item_node_t *p_subitems )
     do
     {
         i_type = xml_ReaderNextNode( p_xml_reader, &psz_node );
-        if( i_type == XML_READER_ERROR )
+        if( i_type == XML_READER_ERROR || i_type == XML_READER_NONE )
             break;
 
         if( i_type == XML_READER_STARTELEM )

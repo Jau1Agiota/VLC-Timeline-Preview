@@ -219,7 +219,7 @@ const char *vlc_http_msg_get_path(const struct vlc_http_msg *);
 /**
  * Looks up a token in a header field.
  *
- * Finds the first occurence of a token within a HTTP field header.
+ * Finds the first occurrence of a token within a HTTP field header.
  *
  * @param field HTTP header field name
  * @param token HTTP token name
@@ -401,7 +401,7 @@ static inline void vlc_http_stream_close(struct vlc_http_stream *s, bool abort)
  *         or NULL on error
  */
 char *vlc_http_msg_format(const struct vlc_http_msg *m, size_t *restrict lenp,
-                          bool proxied) VLC_USED;
+                          bool proxied) VLC_USED VLC_MALLOC;
 
 /**
  * Parses an HTTP 1.1 message header.

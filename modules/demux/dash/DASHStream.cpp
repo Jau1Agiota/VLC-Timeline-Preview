@@ -23,6 +23,8 @@
 
 #include "DASHStream.hpp"
 
+#include <new>
+
 using namespace dash;
 
 DASHStream::DASHStream(demux_t *demux)
@@ -38,28 +40,28 @@ block_t * DASHStream::checkBlock(block_t *p_block, bool)
 AbstractDemuxer *DASHStream::newDemux(vlc_object_t *p_obj, const StreamFormat &format,
                                       es_out_t *out, AbstractSourceStream *source) const
 {
-    AbstractDemuxer *ret = NULL;
-    switch((unsigned)format)
+    AbstractDemuxer *ret = nullptr;
+    switch(format)
     {
-        case StreamFormat::MP4:
-        case StreamFormat::MPEG2TS:
+        case StreamFormat::Type::MP4:
+        case StreamFormat::Type::MPEG2TS:
             ret = AbstractStream::newDemux(p_obj, format, out, source);
             break;
 
-        case StreamFormat::WEBM:
+        case StreamFormat::Type::WebM:
             ret = new Demuxer(p_obj, "mkv", out, source);
             break;
 
-        case StreamFormat::WEBVTT:
+        case StreamFormat::Type::WebVTT:
             ret = new SlaveDemuxer(p_obj, "webvtt", out, source);
             break;
 
-        case StreamFormat::TTML:
+        case StreamFormat::Type::TTML:
             ret = new SlaveDemuxer(p_obj, "ttml", out, source);
             break;
 
         default:
-        case StreamFormat::UNSUPPORTED:
+        case StreamFormat::Type::Unsupported:
             break;
     }
 
@@ -67,13 +69,13 @@ AbstractDemuxer *DASHStream::newDemux(vlc_object_t *p_obj, const StreamFormat &f
 }
 
 AbstractStream * DASHStreamFactory::create(demux_t *realdemux, const StreamFormat &format,
-                                   SegmentTracker *tracker, AbstractConnectionManager *manager) const
+                                   SegmentTracker *tracker) const
 {
     AbstractStream *stream = new (std::nothrow) DASHStream(realdemux);
-    if(stream && !stream->init(format, tracker, manager))
+    if(stream && !stream->init(format, tracker))
     {
         delete stream;
-        return NULL;
+        return nullptr;
     }
     return stream;
 }

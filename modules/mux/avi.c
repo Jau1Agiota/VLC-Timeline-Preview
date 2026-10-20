@@ -93,7 +93,7 @@ typedef struct avi_stream_s
 
     char fcc[4];
 
-    mtime_t i_duration;       // in µs
+    vlc_tick_t i_duration;       // in µs
 
     int     i_frames;        // total frame count
     int64_t i_totalsize;    // total stream size
@@ -354,6 +354,11 @@ static int AddStream( sout_mux_t *p_mux, sout_input_t *p_input )
                     break;
                 case VLC_CODEC_MP3:
                     p_wf->wFormatTag = WAVE_FORMAT_MPEGLAYER3;
+                    p_wf->nBlockAlign= 1;
+                    break;
+                case VLC_CODEC_MPGA:
+                case VLC_CODEC_MP2:
+                    p_wf->wFormatTag = WAVE_FORMAT_MPEG;
                     p_wf->nBlockAlign= 1;
                     break;
                 case VLC_CODEC_WMA1:
@@ -703,7 +708,7 @@ static int avi_HeaderAdd_strh( bo_t *p_bo, avi_stream_t *p_stream )
                 bo_add_32be( p_bo, p_stream->p_bih->biCompression );
                 bo_add_32le( p_bo, 0 );   /* flags */
                 bo_add_16le(  p_bo, 0 );   /* priority */
-                bo_add_16le(  p_bo, 0 );   /* langage */
+                bo_add_16le(  p_bo, 0 );   /* language */
                 bo_add_32le( p_bo, 0 );   /* initial frame */
                 bo_add_32le( p_bo, 1000 );/* scale */
                 bo_add_32le( p_bo, (uint32_t)( 1000 * p_stream->f_fps ));
@@ -738,7 +743,7 @@ static int avi_HeaderAdd_strh( bo_t *p_bo, avi_stream_t *p_stream )
                 bo_add_32le( p_bo, 0 );   /* tag */
                 bo_add_32le( p_bo, 0 );   /* flags */
                 bo_add_16le(  p_bo, 0 );   /* priority */
-                bo_add_16le(  p_bo, 0 );   /* langage */
+                bo_add_16le(  p_bo, 0 );   /* language */
                 bo_add_32le( p_bo, 0 );   /* initial frame */
                 bo_add_32le( p_bo, i_scale );/* scale */
                 bo_add_32le( p_bo, i_rate );
@@ -904,7 +909,7 @@ static block_t *avi_HeaderCreateRIFF( sout_mux_t *p_mux )
 
     /* Now set hdrl size */
     bo_set_32le( &bo, offsets.i_hdrllistsize,
-                 bo.b->i_buffer - offsets.i_hdrldatastart );
+                 bo.b->i_buffer + 4 - offsets.i_hdrldatastart );
 
     avi_HeaderAdd_INFO( p_mux, &bo );
 

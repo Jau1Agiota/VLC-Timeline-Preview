@@ -128,6 +128,12 @@ static int Open (vlc_object_t *obj)
     fmt.i_bitrate = RATE * 4;
 
     sys->es = es_out_Add (demux->out, &fmt);
+    if (unlikely(sys->es == NULL))
+    {
+        gme_delete (sys->emu);
+        free (sys);
+        return VLC_ENOMEM;
+    }
     date_Init (&sys->pts, RATE, 1);
     date_Set (&sys->pts, 0);
 
@@ -228,7 +234,7 @@ static int Demux (demux_t *demux)
         return 0;
     }
 
-    block->i_pts = block->i_dts = VLC_TS_0 + date_Get (&sys->pts);
+    block->i_pts = block->i_dts = VLC_TICK_0 + date_Get (&sys->pts);
     es_out_SetPCR (demux->out, block->i_pts);
     es_out_Send (demux->out, sys->es, block);
     date_Increment (&sys->pts, SAMPLES);
@@ -271,7 +277,7 @@ static int Control (demux_t *demux, int query, va_list args)
              || (sys->titlev[sys->track_id]->i_length == 0))
                 break;
 
-            int seek = (sys->titlev[sys->track_id]->i_length / 1000) * pos;
+            int seek = MS_FROM_VLC_TICK(sys->titlev[sys->track_id]->i_length) * pos;
             if (gme_seek (sys->emu, seek))
                 break;
             return VLC_SUCCESS;

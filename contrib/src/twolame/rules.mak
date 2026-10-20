@@ -1,6 +1,6 @@
 # twolame
 
-TWOLAME_VERSION := 0.3.13
+TWOLAME_VERSION := 0.4.0
 TWOLAME_URL := $(SF)/twolame/twolame-$(TWOLAME_VERSION).tar.gz
 
 ifdef BUILD_ENCODERS
@@ -17,13 +17,18 @@ $(TARBALLS)/twolame-$(TWOLAME_VERSION).tar.gz:
 
 twolame: twolame-$(TWOLAME_VERSION).tar.gz .sum-twolame
 	$(UNPACK)
-	$(UPDATE_AUTOCONFIG) && cd $(UNPACK_DIR) && cp config.guess config.sub build-scripts
+	$(UPDATE_AUTOCONFIG)
+	cd $(UNPACK_DIR) && cp config.guess config.sub build-scripts
+	$(call pkg_static,"twolame.pc.in")
 	$(MOVE)
 
+TWOLAME_CONF := --enable-static
+
 .twolame: twolame
-	$(RECONF)
-	cd $< && $(HOSTVARS) CFLAGS="${CFLAGS} -DLIBTWOLAME_STATIC" ./configure $(HOSTCONF)
-	cd $< && $(MAKE)
-	cd $< && $(MAKE) -C libtwolame install
-	cd $< && $(MAKE) install-data
+	$(MAKEBUILDDIR)
+	$(MAKECONFIGURE) $(TWOLAME_CONF)
+	+$(MAKEBUILD)
+	+$(MAKEBUILD) -C libtwolame
+	+$(MAKEBUILD) -C libtwolame install
+	+$(MAKEBUILD) install-data
 	touch $@

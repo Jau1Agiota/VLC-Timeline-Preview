@@ -42,11 +42,24 @@
 # include <va/va_drm.h>
 #endif
 #include <libavcodec/avcodec.h>
+#if FF_API_STRUCT_VAAPI_CONTEXT
 #include <libavcodec/vaapi.h>
+#else
+#include <libavutil/hwcontext_vaapi.h>
+#endif
 
 #include "avcodec.h"
 #include "va.h"
 #include "../../hw/vaapi/vlc_vaapi.h"
+
+#if !FF_API_STRUCT_VAAPI_CONTEXT
+struct vaapi_context
+{
+    VADisplay display;
+    VAConfigID config_id;
+    VAContextID context_id;
+};
+#endif
 
 struct vlc_va_sys_t
 {
@@ -87,9 +100,9 @@ static int GetVaProfile(AVCodecContext *ctx, const es_format_t *fmt,
         count = 18;
         break;
     case AV_CODEC_ID_HEVC:
-        if (fmt->i_profile == FF_PROFILE_HEVC_MAIN)
+        if (ctx->profile == AVPROFILE(HEVC_MAIN))
             i_profile = VAProfileHEVCMain;
-        else if (fmt->i_profile == FF_PROFILE_HEVC_MAIN_10)
+        else if (ctx->profile == AVPROFILE(HEVC_MAIN_10))
         {
             i_profile = VAProfileHEVCMain10;
             i_vlc_chroma = VLC_CODEC_VAAPI_420_10BPP;
@@ -103,10 +116,10 @@ static int GetVaProfile(AVCodecContext *ctx, const es_format_t *fmt,
         count = 5;
         break;
     case AV_CODEC_ID_VP9:
-        if (ctx->profile == FF_PROFILE_VP9_0)
+        if (ctx->profile == AVPROFILE(VP9_0))
             i_profile = VAProfileVP9Profile0;
 #if VA_CHECK_VERSION( 0, 39, 0 )
-        else if (ctx->profile == FF_PROFILE_VP9_2)
+        else if (ctx->profile == AVPROFILE(VP9_2))
         {
             i_profile = VAProfileVP9Profile2;
             i_vlc_chroma = VLC_CODEC_VAAPI_420_10BPP;
@@ -145,16 +158,20 @@ static void Delete(vlc_va_t *va, void **hwctx)
 
     (void) hwctx;
 
-    vlc_vaapi_DestroyContext(o, sys->hw_ctx.display, sys->hw_ctx.context_id);
-    vlc_vaapi_DestroyConfig(o, sys->hw_ctx.display, sys->hw_ctx.config_id);
+    if (sys->hw_ctx.context_id != VA_INVALID_ID)
+        vlc_vaapi_DestroyContext(o, sys->hw_ctx.display, sys->hw_ctx.context_id);
+    if (sys->hw_ctx.config_id != VA_INVALID_ID)
+        vlc_vaapi_DestroyConfig(o, sys->hw_ctx.display, sys->hw_ctx.config_id);
     vlc_vaapi_ReleaseInstance(sys->va_inst);
     free(sys);
 }
 
-static int Create(vlc_va_t *va, AVCodecContext *ctx, enum PixelFormat pix_fmt,
+static int Create(vlc_va_t *va, AVCodecContext *ctx, const AVPixFmtDescriptor *desc,
+                  enum PixelFormat pix_fmt,
                   const es_format_t *fmt, picture_sys_t *p_sys)
 {
-    if (pix_fmt != AV_PIX_FMT_VAAPI_VLD || p_sys == NULL)
+    VLC_UNUSED(desc);
+    if (pix_fmt != AV_PIX_FMT_VAAPI || p_sys == NULL)
         return VLC_EGENERIC;
 
     (void) fmt;
@@ -194,6 +211,7 @@ static int Create(vlc_va_t *va, AVCodecContext *ctx, enum PixelFormat pix_fmt,
     sys->hw_ctx.config_id = VA_INVALID_ID;
     sys->hw_ctx.context_id = VA_INVALID_ID;
 
+#if FF_API_STRUCT_VAAPI_CONTEXT
     sys->hw_ctx.config_id =
         vlc_vaapi_CreateConfigChecked(o, sys->hw_ctx.display, i_profile,
                                       VAEntrypointVLD, i_vlc_chroma);
@@ -209,6 +227,24 @@ static int Create(vlc_va_t *va, AVCodecContext *ctx, enum PixelFormat pix_fmt,
         goto error;
 
     ctx->hwaccel_context = &sys->hw_ctx;
+#else
+    AVBufferRef *hwdev_ref = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_VAAPI);
+    if (hwdev_ref == NULL)
+        goto error;
+
+    AVHWDeviceContext *hwdev_ctx = (void *) hwdev_ref->data;
+    AVVAAPIDeviceContext *vadev_ctx = hwdev_ctx->hwctx;
+    vadev_ctx->display = va_dpy;
+
+    if (av_hwdevice_ctx_init(hwdev_ref) < 0)
+    {
+        av_buffer_unref(&hwdev_ref);
+        goto error;
+    }
+
+    ctx->hw_device_ctx = hwdev_ref;
+#endif
+
     va->sys = sys;
     va->description = vaQueryVendorString(sys->hw_ctx.display);
     va->get = Get;
@@ -254,16 +290,20 @@ static void DeleteDRM(vlc_va_t *va, void **hwctx)
 
     (void) hwctx;
     picture_pool_Release(sys->pool);
-    vlc_vaapi_DestroyContext(o, sys->hw_ctx.display, sys->hw_ctx.context_id);
-    vlc_vaapi_DestroyConfig(o, sys->hw_ctx.display, sys->hw_ctx.config_id);
+    if (sys->hw_ctx.context_id != VA_INVALID_ID)
+        vlc_vaapi_DestroyContext(o, sys->hw_ctx.display, sys->hw_ctx.context_id);
+    if (sys->hw_ctx.config_id != VA_INVALID_ID)
+        vlc_vaapi_DestroyConfig(o, sys->hw_ctx.display, sys->hw_ctx.config_id);
     vlc_vaapi_ReleaseInstance(sys->va_inst);
     free(sys);
 }
 
-static int CreateDRM(vlc_va_t *va, AVCodecContext *ctx, enum PixelFormat pix_fmt,
+static int CreateDRM(vlc_va_t *va, AVCodecContext *ctx,
+                     const AVPixFmtDescriptor *desc, enum PixelFormat pix_fmt,
                      const es_format_t *fmt, picture_sys_t *p_sys)
 {
-    if (pix_fmt != AV_PIX_FMT_VAAPI_VLD || p_sys)
+    VLC_UNUSED(desc);
+    if (pix_fmt != AV_PIX_FMT_VAAPI || p_sys)
         return VLC_EGENERIC;
 
     (void) fmt;
@@ -319,6 +359,7 @@ static int CreateDRM(vlc_va_t *va, AVCodecContext *ctx, enum PixelFormat pix_fmt
     if (!sys->pool)
         goto error;
 
+#if FF_API_STRUCT_VAAPI_CONTEXT
     /* Create a context */
     sys->hw_ctx.context_id =
         vlc_vaapi_CreateContext(o, sys->hw_ctx.display, sys->hw_ctx.config_id,
@@ -328,6 +369,27 @@ static int CreateDRM(vlc_va_t *va, AVCodecContext *ctx, enum PixelFormat pix_fmt
         goto error;
 
     ctx->hwaccel_context = &sys->hw_ctx;
+#else
+    /* libavcodec creates its own VA config and context and ignores
+     * hwaccel_context; it only needs the VA display. */
+    (void) surfaces;
+
+    AVBufferRef *hwdev_ref = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_VAAPI);
+    if (hwdev_ref == NULL)
+        goto error;
+
+    AVHWDeviceContext *hwdev_ctx = (void *) hwdev_ref->data;
+    AVVAAPIDeviceContext *vadev_ctx = hwdev_ctx->hwctx;
+    vadev_ctx->display = sys->hw_ctx.display;
+
+    if (av_hwdevice_ctx_init(hwdev_ref) < 0)
+    {
+        av_buffer_unref(&hwdev_ref);
+        goto error;
+    }
+
+    ctx->hw_device_ctx = hwdev_ref;
+#endif
     va->sys = sys;
     va->description = vaQueryVendorString(sys->hw_ctx.display);
     va->get = GetDRM;

@@ -237,7 +237,7 @@ const char *vlc_fourcc_GetDescription(int cat, vlc_fourcc_t fourcc)
     VLC_CODEC_I444, VLC_CODEC_J444
 
 #define VLC_CODEC_YUV_PLANAR_444_ALPHA \
-    VLC_CODEC_YUVA, VLC_CODEC_YUVA_444_10L, VLC_CODEC_YUVA_444_10B
+    VLC_CODEC_YUVA, VLC_CODEC_YUVA_444_10L, VLC_CODEC_YUVA_444_10B, VLC_CODEC_YUVA_444_12L, VLC_CODEC_YUVA_444_12B
 
 #define VLC_CODEC_YUV_SEMIPLANAR_444 \
     VLC_CODEC_NV24, VLC_CODEC_NV42
@@ -717,6 +717,8 @@ static const struct
         VLC_CODEC_I420_10B },                  PLANAR_16(3, 2, 2, 10) },
     { { VLC_CODEC_I420_9L,
         VLC_CODEC_I420_9B },                   PLANAR_16(3, 2, 2,  9) },
+    { { VLC_CODEC_I422_16L,
+        VLC_CODEC_I422_16B },                  PLANAR_16(3, 2, 1, 16) },
     { { VLC_CODEC_I422_12L,
         VLC_CODEC_I422_12B },                  PLANAR_16(3, 2, 1, 12) },
     { { VLC_CODEC_I422_10L,
@@ -733,11 +735,20 @@ static const struct
         VLC_CODEC_I444_16B },                  PLANAR_16(3, 1, 1, 16) },
     { { VLC_CODEC_YUVA_444_10L,
         VLC_CODEC_YUVA_444_10B },              PLANAR_16(4, 1, 1, 10) },
+    { { VLC_CODEC_YUVA_444_12L,
+        VLC_CODEC_YUVA_444_12B },              PLANAR_16(4, 1, 1, 12) },
     { { VLC_CODEC_P010 },                      SEMIPLANAR(2, 2, 2, 10) },
 
     { { VLC_CODEC_YUV_PACKED },                PACKED_FMT(2, 16) },
     { { VLC_CODEC_RGB8, VLC_CODEC_GREY,
         VLC_CODEC_YUVP, VLC_CODEC_RGBP },      PACKED_FMT(1, 8) },
+
+    { { VLC_CODEC_GREY_10L,
+        VLC_CODEC_GREY_10B },                  PACKED_FMT(2, 10) },
+    { { VLC_CODEC_GREY_12L,
+        VLC_CODEC_GREY_12B },                  PACKED_FMT(2, 12) },
+    { { VLC_CODEC_GREY_16L,
+        VLC_CODEC_GREY_16B },                  PACKED_FMT(2, 16) },
 
     { { VLC_CODEC_RGB15, 0 },                  PACKED_FMT(2, 15) },
     { { VLC_CODEC_RGB12, 0 },                  PACKED_FMT(2, 12) },

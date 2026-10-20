@@ -928,7 +928,7 @@ void InputManager::jumpFwd()
     int i_interval = var_InheritInteger( p_input, "short-jump-size" );
     if( i_interval > 0 && hasInput() )
     {
-        mtime_t val = CLOCK_FREQ * i_interval;
+        vlc_tick_t val = CLOCK_FREQ * i_interval;
         var_SetInteger( p_input, "time-offset", val );
     }
 }
@@ -938,7 +938,7 @@ void InputManager::jumpBwd()
     int i_interval = var_InheritInteger( p_input, "short-jump-size" );
     if( i_interval > 0 && hasInput() )
     {
-        mtime_t val = -CLOCK_FREQ * i_interval;
+        vlc_tick_t val = -CLOCK_FREQ * i_interval;
         var_SetInteger( p_input, "time-offset", val );
     }
 }
@@ -953,15 +953,15 @@ void InputManager::setAtoB()
     {
         timeB = var_GetInteger( p_mim->getInput(), "time"  );
         var_SetInteger( p_mim->getInput(), "time" , timeA );
-        CONNECT( this, positionUpdated( float, int64_t, int ),
-                 this, AtoBLoop( float, int64_t, int ) );
+        connect( this, &InputManager::positionUpdated,
+                 this, &InputManager::AtoBLoop );
     }
     else
     {
         timeA = 0;
         timeB = 0;
-        disconnect( this, SIGNAL( positionUpdated( float, int64_t, int ) ),
-                    this, SLOT( AtoBLoop( float, int64_t, int ) ) );
+        disconnect( this, &InputManager::positionUpdated,
+                    this, &InputManager::AtoBLoop );
     }
     emit AtoBchanged( (timeA != 0 ), (timeB != 0 ) );
 }
@@ -989,7 +989,7 @@ MainInputManager::MainInputManager( intf_thread_t *_p_intf )
 
     /* Audio Menu */
     menusAudioMapper = new QSignalMapper();
-    CONNECT( menusAudioMapper, mapped(QString), this, menusUpdateAudio( QString ) );
+    connect( menusAudioMapper, QSIGNALMAPPER_MAPPEDSTR_SIGNAL, this, &MainInputManager::menusUpdateAudio );
 
     /* Core Callbacks */
     var_AddCallback( THEPL, "item-change", MainInputManager::ItemChanged, im );
@@ -1006,8 +1006,8 @@ MainInputManager::MainInputManager( intf_thread_t *_p_intf )
     mute.addCallback(   this, SLOT(notifyMute(bool)) );
 
     /* Warn our embedded IM about input changes */
-    DCONNECT( this, inputChanged( bool ),
-              im, inputChangedHandler() );
+    connect( this, &MainInputManager::inputChanged,
+             im, &InputManager::inputChangedHandler, Qt::DirectConnection );
 }
 
 MainInputManager::~MainInputManager()

@@ -42,6 +42,7 @@
 #include <QVariant>
 #include <QModelIndex>
 #include <QAction>
+#include <QFont>
 
 class PLItem;
 class PlMimeData;
@@ -87,6 +88,7 @@ public:
     QStringList mimeTypes() const Q_DECL_OVERRIDE;
 
     /* Sort */
+    void shuffle();
     void sort( const int column, Qt::SortOrder order = Qt::AscendingOrder ) Q_DECL_OVERRIDE;
 
     /*** VLCModelSubInterface subclassing ***/
@@ -138,6 +140,7 @@ private:
     void dropMove( const PlMimeData * data, PLItem *target, int new_pos );
 
     /* */
+    void sortInternal( QModelIndex rootIndex, int mode, int type );
     void sort( QModelIndex caller, QModelIndex rootIndex, const int column, Qt::SortOrder order );
 
     /* Lookups */
@@ -156,13 +159,15 @@ private:
     QString latestSearch;
     QFont   customFont;
 
+public slots:
+    virtual void activateItem( const QModelIndex &index ) Q_DECL_OVERRIDE;
+
 private slots:
     void processInputItemUpdate( input_item_t *);
     void processInputItemUpdate();
     void processItemRemoval( int i_pl_itemid );
     void processItemAppend( int i_pl_itemid, int i_pl_itemidparent );
     void activateItem( playlist_item_t *p_item );
-    virtual void activateItem( const QModelIndex &index ) Q_DECL_OVERRIDE;
 };
 
 class PlMimeData : public QMimeData

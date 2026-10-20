@@ -1,7 +1,7 @@
 /*****************************************************************************
  * CoreInteraction.m: MacOS X interface module
  *****************************************************************************
- * Copyright (C) 2011-2015 Felix Paul Kühne
+ * Copyright (C) 2011-2021 Felix Paul Kühne
  * $Id$
  *
  * Authors: Felix Paul Kühne <fkuehne -at- videolan -dot- org>
@@ -40,6 +40,7 @@
 #import "SPMediaKeyTap.h"
 #import "AppleRemote.h"
 #import "VLCInputManager.h"
+#import "CompatibilityFixes.h"
 
 #import "NSSound+VLCAdditions.h"
 
@@ -59,7 +60,7 @@ static int BossCallback(vlc_object_t *p_this, const char *psz_var,
 @interface VLCCoreInteraction () <SPMediaKeyTapDelegate>
 {
     int i_currentPlaybackRate;
-    mtime_t timeA, timeB;
+    vlc_tick_t timeA, timeB;
 
     float f_maxVolume;
 
@@ -98,15 +99,18 @@ static int BossCallback(vlc_object_t *p_this, const char *psz_var,
     if (self) {
         intf_thread_t *p_intf = getIntf();
 
-        /* init media key support */
-        b_mediaKeySupport = var_InheritBool(p_intf, "macosx-mediakeys");
-        if (b_mediaKeySupport) {
-            _mediaKeyController = [[SPMediaKeyTap alloc] initWithDelegate:self];
+        /* init media key support on earlier macOS versions
+         * this feature is covered by VLCRemoteControlService in later releases */
+        if (!OSX_SIERRA_AND_HIGHER) {
+            b_mediaKeySupport = var_InheritBool(p_intf, "macosx-mediakeys");
+            if (b_mediaKeySupport) {
+                _mediaKeyController = [[SPMediaKeyTap alloc] initWithDelegate:self];
+            }
+            [[NSNotificationCenter defaultCenter] addObserver:self
+                                                     selector:@selector(coreChangedMediaKeySupportSetting:)
+                                                         name:VLCMediaKeySupportSettingChangedNotification
+                                                       object:nil];
         }
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(coreChangedMediaKeySupportSetting:)
-                                                     name:VLCMediaKeySupportSettingChangedNotification
-                                                   object:nil];
 
         /* init Apple Remote support */
         _remote = [[AppleRemote alloc] init];
@@ -127,6 +131,12 @@ static int BossCallback(vlc_object_t *p_this, const char *psz_var,
 
 
 #pragma mark - Playback Controls
+
+- (void)play
+{
+    playlist_t *p_playlist = pl_Get(getIntf());
+    playlist_Play(p_playlist);
+}
 
 - (void)playOrPause
 {
@@ -230,6 +240,19 @@ static int BossCallback(vlc_object_t *p_this, const char *psz_var,
     return returnValue;
 }
 
+- (float)internalPlaybackRate
+{
+    input_thread_t *p_input_thread = pl_CurrentInput(getIntf());
+    float rate = 0.;
+
+    if (p_input_thread) {
+        rate = var_GetFloat(p_input_thread, "rate");
+        vlc_object_release(p_input_thread);
+    }
+
+    return rate;
+}
+
 - (void)previous
 {
     playlist_Prev(pl_Get(getIntf()));
@@ -331,6 +354,33 @@ static int BossCallback(vlc_object_t *p_this, const char *psz_var,
     return o_name;
 }
 
+- (long long)currentPlaybackTimeInSeconds
+{
+    input_thread_t *p_input_thread = pl_CurrentInput(getIntf());
+    long long timeInSeconds = 0;
+
+    if (p_input_thread) {
+        int64_t time = var_GetInteger(p_input_thread, "time");
+        timeInSeconds = time / CLOCK_FREQ;
+        vlc_object_release(p_input_thread);
+    }
+
+    return timeInSeconds;
+}
+
+- (float)currentPlaybackPosition
+{
+    input_thread_t * p_input_thread = pl_CurrentInput(getIntf());
+    float position = 0.;
+
+    if (p_input_thread) {
+        position = var_GetFloat(p_input_thread, "position");
+        vlc_object_release(p_input_thread);
+    }
+
+    return position;
+}
+
 - (void)forward
 {
     //LEGACY SUPPORT
@@ -349,12 +399,15 @@ static int BossCallback(vlc_object_t *p_this, const char *psz_var,
     if (!p_input)
         return;
 
-    int i_interval = var_InheritInteger( p_input, p_value );
-    if (i_interval > 0) {
-        mtime_t val = CLOCK_FREQ * i_interval;
-        if (!b_value)
-            val = val * -1;
-        var_SetInteger( p_input, "time-offset", val );
+    bool b_seekable = var_GetBool(p_input, "can-seek");
+    if (b_seekable) {
+        long long i_interval = var_InheritInteger( p_input, p_value );
+        if (i_interval > 0) {
+            vlc_tick_t val = CLOCK_FREQ * i_interval;
+            if (!b_value)
+                val = val * -1;
+            var_SetInteger( p_input, "time-offset", val );
+        }
     }
     vlc_object_release(p_input);
 }
@@ -397,6 +450,21 @@ static int BossCallback(vlc_object_t *p_this, const char *psz_var,
 - (void)backwardLong
 {
     [self jumpWithValue:"long-jump-size" forward:NO];
+}
+
+- (BOOL)seekToTime:(vlc_tick_t)time
+{
+    input_thread_t * p_input_thread = pl_CurrentInput(getIntf());
+    if (p_input_thread) {
+        bool b_seekable = var_GetBool(p_input_thread, "can-seek");
+        if (b_seekable) {
+            var_SetInteger(p_input_thread, "time", time);
+            vlc_object_release(p_input_thread);
+            return YES;
+        }
+        vlc_object_release(p_input_thread);
+    }
+    return NO;
 }
 
 - (void)shuffle
@@ -518,7 +586,7 @@ static int BossCallback(vlc_object_t *p_this, const char *psz_var,
     if (timeB) {
         input_thread_t * p_input = pl_CurrentInput(getIntf());
         if (p_input) {
-            mtime_t currentTime = var_GetInteger(p_input, "time");
+            vlc_tick_t currentTime = var_GetInteger(p_input, "time");
             if ( currentTime >= timeB || currentTime < timeA)
                 var_SetInteger(p_input, "time", timeA);
             vlc_object_release(p_input);

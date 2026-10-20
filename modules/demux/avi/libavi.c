@@ -64,7 +64,7 @@ static int AVI_ChunkReadCommon( stream_t *s, avi_chunk_t *p_chk,
 {
     const uint8_t *p_peek;
 
-    memset( p_chk, 0, sizeof( avi_chunk_t ) );
+    AVI_ChunkInit( p_chk );
 
     const uint64_t i_pos = vlc_stream_Tell( s );
     if( vlc_stream_Peek( s, &p_peek, 8 ) < 8 )
@@ -87,8 +87,8 @@ static int AVI_ChunkReadCommon( stream_t *s, avi_chunk_t *p_chk,
 
     if( p_father && AVI_ChunkEnd( p_chk ) > AVI_ChunkEnd( p_father ) )
     {
-        msg_Warn( s, "chunk %4.4s does not fit into parent %ld",
-                     (char*)&p_chk->common.i_chunk_fourcc, AVI_ChunkEnd( p_father ) );
+        msg_Warn( s, "chunk %4.4s does not fit into parent %"PRIu64,
+                  (char*)&p_chk->common.i_chunk_fourcc, AVI_ChunkEnd( p_father ) );
 
         /* How hard is to produce files with the correct declared size ? */
         if( p_father->common.i_chunk_fourcc != AVIFOURCC_RIFF ||
@@ -180,7 +180,7 @@ static int AVI_ChunkRead_list( stream_t *s, avi_chunk_t *p_container )
         if( !b_seekable )
             return VLC_SUCCESS;
         msg_Dbg( (vlc_object_t*)s, "skipping movi chunk" );
-        return AVI_NextChunk( s, p_container ); /* points at begining of LIST-movi if not seekable */
+        return AVI_NextChunk( s, p_container ); /* points at beginning of LIST-movi if not seekable */
     }
 
     if( vlc_stream_Read( s, NULL, 12 ) != 12 )
@@ -516,7 +516,7 @@ static int AVI_ChunkRead_strf( stream_t *s, avi_chunk_t *p_chk )
                 if ( !p_bih->biClrUsed )
                 {
                     if( p_bih->biBitCount < 32 )
-                        p_bih->biClrUsed = (1 << p_bih->biBitCount);
+                        p_bih->biClrUsed = (UINT32_C(1) << p_bih->biBitCount);
                     else
                         p_bih->biBitCount = UINT16_MAX;
                 }
@@ -539,8 +539,9 @@ static int AVI_ChunkRead_strf( stream_t *s, avi_chunk_t *p_chk )
             msg_Dbg( (vlc_object_t*)s,
                      "strf: video:%4.4s %"PRIu32"x%"PRIu32" planes:%d %dbpp",
                      (char*)&p_bih->biCompression,
-                     (uint32_t)p_bih->biWidth,
-                     (uint32_t)p_bih->biHeight,
+                     p_bih->biWidth,
+                     p_bih->biHeight <= INT32_MAX ? p_bih->biHeight
+                                                  : -1 * p_bih->biHeight,
                      p_bih->biPlanes,
                      p_bih->biBitCount );
 #endif
@@ -572,13 +573,13 @@ static void AVI_ChunkFree_strf( avi_chunk_t *p_chk )
 
 static int AVI_ChunkRead_strd( stream_t *s, avi_chunk_t *p_chk )
 {
+    AVI_READCHUNK_ENTER;
     if ( p_chk->common.i_chunk_size == 0 )
     {
         msg_Dbg( (vlc_object_t*)s, "Zero sized pre-JUNK section met" );
-        return AVI_ZEROSIZED_CHUNK;
+        AVI_READCHUNK_EXIT(AVI_ZEROSIZED_CHUNK);
     }
 
-    AVI_READCHUNK_ENTER;
     p_chk->strd.p_data = malloc( p_chk->common.i_chunk_size );
     if( p_chk->strd.p_data )
         memcpy( p_chk->strd.p_data, p_buff + 8, p_chk->common.i_chunk_size );
@@ -1050,9 +1051,14 @@ void AVI_ChunkClean( stream_t *s,
         msg_Warn( (vlc_object_t*)s, "unknown chunk: %4.4s (not unloaded)",
                 (char*)&p_chk->common.i_chunk_fourcc );
     }
-    p_chk->common.p_first = NULL;
+    AVI_ChunkInit( p_chk );
 
     return;
+}
+
+void AVI_ChunkInit( avi_chunk_t *p_chk )
+{
+    memset( p_chk, 0, sizeof(*p_chk) );
 }
 
 static void AVI_ChunkDumpDebug_level( vlc_object_t *p_obj,

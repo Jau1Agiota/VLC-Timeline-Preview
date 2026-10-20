@@ -251,7 +251,9 @@ time_t timegm(struct tm *);
 #endif
 
 #ifndef HAVE_TIMESPEC_GET
+#ifndef TIME_UTC
 #define TIME_UTC 1
+#endif
 struct timespec;
 int timespec_get(struct timespec *, int);
 #endif
@@ -501,8 +503,11 @@ void *tsearch( const void *key, void **rootp, int(*cmp)(const void *, const void
 void *tfind( const void *key, const void **rootp, int(*cmp)(const void *, const void *) );
 void *tdelete( const void *key, void **rootp, int(*cmp)(const void *, const void *) );
 void twalk( const void *root, void(*action)(const void *nodep, VISIT which, int depth) );
+#ifndef _WIN32
+/* the Win32 prototype of lfind() expects an unsigned* for 'nmemb' */
 void *lfind( const void *key, const void *base, size_t *nmemb,
              size_t size, int(*cmp)(const void *, const void *) );
+#endif
 #endif /* HAVE_SEARCH_H */
 #ifndef HAVE_TDESTROY
 void tdestroy( void *root, void (*free_node)(void *nodep) );
@@ -589,6 +594,12 @@ struct addrinfo
     struct addrinfo *ai_next;
 };
 
+# ifdef __LIBCN__
+/* OS/2 LIBCn has inet_pton(). Because of this, socklen_t is not defined above.
+ * And OS/2 LIBCn has socklen_t. So include sys/socket.h here for socklen_t. */
+#  include <sys/socket.h>
+# endif
+
 const char *gai_strerror (int);
 
 int  getaddrinfo  (const char *node, const char *service,
@@ -621,6 +632,8 @@ struct sockaddr_in6
 static const struct in6_addr in6addr_any =
     { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } };
 
+# define INET6_ADDRSTRLEN   46
+
 # include <errno.h>
 # ifndef EPROTO
 #  define EPROTO (ELAST + 1)
@@ -646,13 +659,11 @@ void sincosf(float, float *, float *);
 char *realpath(const char * restrict pathname, char * restrict resolved_path);
 #endif
 
-#ifdef _WIN32
-FILE *vlc_win32_tmpfile(void);
-#endif
-
 /* mingw-w64 has a broken IN6_IS_ADDR_MULTICAST macro */
 #if defined(_WIN32) && defined(__MINGW64_VERSION_MAJOR)
+# if __MINGW64_VERSION_MAJOR < 6 /* fixed in 4c2df0d02ed71ae07e85f1b35ac857a148cd2b8f */
 # define IN6_IS_ADDR_MULTICAST IN6_IS_ADDR_MULTICAST
+# endif
 #endif
 
 #ifdef __APPLE__

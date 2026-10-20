@@ -32,6 +32,7 @@
 #include <vlc_plugin.h>
 #include <vlc_codec.h>
 #include <png.h>
+#include <stdckdint.h>
 
 /* PNG_SYS_COMMON_MEMBERS:
  * members common to encoder and decoder descriptors
@@ -74,7 +75,7 @@ static int DecodeBlock  ( decoder_t *, block_t * );
 struct encoder_sys_t
 {
     PNG_SYS_COMMON_MEMBERS
-    int i_blocksize;
+    size_t i_blocksize;
 };
 
 static int  OpenEncoder(vlc_object_t *);
@@ -158,7 +159,7 @@ static void user_write( png_structp p_png, png_bytep data, png_size_t i_length )
 {
     block_t *p_block = (block_t *)png_get_io_ptr( p_png );
     if( i_length > p_block->i_buffer ) {
-        char err_str[64];
+        char err_str[128];
         snprintf( err_str, sizeof(err_str),
                   "block size %zu too small for %zu encoded bytes",
                   p_block->i_buffer, i_length );
@@ -307,7 +308,7 @@ static int DecodeBlock( decoder_t *p_dec, block_t *p_block )
     png_destroy_read_struct( &p_png, &p_info, &p_end_info );
     free( p_row_pointers );
 
-    p_pic->date = p_block->i_pts > VLC_TS_INVALID ? p_block->i_pts : p_block->i_dts;
+    p_pic->date = p_block->i_pts > VLC_TICK_INVALID ? p_block->i_pts : p_block->i_dts;
 
     block_Release( p_block );
     decoder_QueueVideo( p_dec, p_pic );
@@ -346,8 +347,12 @@ static int OpenEncoder(vlc_object_t *p_this)
 
     p_enc->p_sys->p_obj = p_this;
 
-    p_enc->p_sys->i_blocksize = 3 * p_enc->fmt_in.video.i_visible_width *
-        p_enc->fmt_in.video.i_visible_height;
+    if( ckd_mul( &p_enc->p_sys->i_blocksize, 3, p_enc->fmt_in.video.i_visible_width ) ||
+        ckd_mul( &p_enc->p_sys->i_blocksize, p_enc->p_sys->i_blocksize, p_enc->fmt_in.video.i_visible_height ) )
+    {
+        free( p_enc->p_sys );
+        return VLC_EGENERIC;
+    }
 
     p_enc->fmt_in.i_codec = VLC_CODEC_RGB24;
     p_enc->fmt_in.video.i_bmask = 0;

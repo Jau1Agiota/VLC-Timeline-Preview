@@ -220,6 +220,9 @@ static int OpenCommon( decoder_t *p_dec, bool b_packetizer )
     int i_type;
     int i_header_size;
 
+    if( p_dec->fmt_in.i_cat != AUDIO_ES )
+        return VLC_EGENERIC;
+
     switch( p_dec->fmt_in.i_codec )
     {
     /* DVD LPCM */
@@ -349,7 +352,7 @@ static block_t *Packetize( decoder_t *p_dec, block_t **pp_block )
     }
 
     /* Date management */
-    if( p_block->i_pts > VLC_TS_INVALID &&
+    if( p_block->i_pts > VLC_TICK_INVALID &&
         p_block->i_pts != date_Get( &p_sys->end_date ) )
     {
         date_Set( &p_sys->end_date, p_block->i_pts );
@@ -659,9 +662,9 @@ static block_t *EncodeFrames( encoder_t *p_enc, block_t *p_aout_buf )
         i_bytes_consumed += i_consume_bytes;
 
         /* We need to find i_length by means of next_pts due to possible roundoff errors. */
-        mtime_t this_pts = p_aout_buf->i_pts +
+        vlc_tick_t this_pts = p_aout_buf->i_pts +
             (i * p_sys->i_frame_samples + i_start_offset) * CLOCK_FREQ / p_sys->i_rate;
-        mtime_t next_pts = p_aout_buf->i_pts +
+        vlc_tick_t next_pts = p_aout_buf->i_pts +
             ((i + 1) * p_sys->i_frame_samples + i_start_offset) * CLOCK_FREQ / p_sys->i_rate;
 
         p_block->i_pts = p_block->i_dts = this_pts;
@@ -1038,7 +1041,7 @@ static int BdHeader( decoder_sys_t *p_sys,
     default:
         return -1;
     }
-    switch( (h >> 8) & 0x0f ) 
+    switch( (h >> 8) & 0x0f )
     {
     case 1:
         *pi_rate = 48000;
@@ -1090,6 +1093,8 @@ static int WidiHeader( unsigned *pi_rate,
         *pi_bits = 16;
 
     *pi_channels = (p_header[3] & 0x7) + 1;
+    if( *pi_channels != 2 )
+        return -1;
 
     *pi_original_channels = AOUT_CHAN_LEFT | AOUT_CHAN_RIGHT;
 

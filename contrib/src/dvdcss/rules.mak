@@ -16,8 +16,12 @@ dvdcss: libdvdcss-$(DVDCSS_VERSION).tar.bz2 .sum-dvdcss
 	$(UNPACK)
 	$(MOVE)
 
+DVDCSS_CONF := --disable-doc
+
 .dvdcss: dvdcss
-	$(RECONF)
-	cd $< && $(HOSTVARS) ./configure --disable-doc $(HOSTCONF)
-	cd $< && $(MAKE) install
+	$(REQUIRE_GPL)
+	$(MAKEBUILDDIR)
+	$(MAKECONFIGURE) $(DVDCSS_CONF)
+	+$(MAKEBUILD)
+	+$(MAKEBUILD) install
 	touch $@

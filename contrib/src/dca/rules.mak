@@ -19,15 +19,17 @@ $(TARBALLS)/libdca-$(DCA_VERSION).tar.bz2:
 
 libdca: libdca-$(DCA_VERSION).tar.bz2 .sum-dca
 	$(UNPACK)
-	$(UPDATE_AUTOCONFIG) && cd $(UNPACK_DIR)
 	$(call pkg_static,"./libdca/libdca.pc.in")
 	$(MOVE)
 
 .dca: libdca
 	$(REQUIRE_GPL)
 	$(RECONF)
-	cd $< && $(HOSTVARS) CFLAGS="$(CFLAGS) -std=gnu89" ./configure $(HOSTCONF)
-	cd $< && $(MAKE) -C include install
-	cd $< && $(MAKE) -C libdca install
+	$(MAKEBUILDDIR)
+	$(MAKECONFIGURE)
+	+$(MAKEBUILD) -C include
+	+$(MAKEBUILD) -C libdca
+	+$(MAKEBUILD) -C include install
+	+$(MAKEBUILD) -C libdca install
 	rm -f $(PREFIX)/lib/libdts.a
 	touch $@

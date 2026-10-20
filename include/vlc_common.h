@@ -89,7 +89,7 @@
 #  define VLC_DEPRECATED_ENUM
 # endif
 
-# if defined( _WIN32 )
+# if defined( _WIN32 ) && !defined( __clang__ )
 #  define VLC_FORMAT(x,y) __attribute__ ((format(gnu_printf,x,y)))
 # else
 #  define VLC_FORMAT(x,y) __attribute__ ((format(printf,x,y)))
@@ -112,7 +112,9 @@
 #ifdef __GNUC__
 # define likely(p)     __builtin_expect(!!(p), 1)
 # define unlikely(p)   __builtin_expect(!!(p), 0)
-# define unreachable() __builtin_unreachable()
+# if !defined(unreachable)
+#  define unreachable() __builtin_unreachable()
+# endif
 #else
 # define likely(p)     (!!(p))
 # define unlikely(p)   (!!(p))
@@ -152,7 +154,11 @@
  * epoch). Note that date and time intervals can be manipulated using regular
  * arithmetic operators, and that no special functions are required.
  */
-typedef int64_t mtime_t;
+typedef int64_t vlc_tick_t;
+typedef vlc_tick_t mtime_t; /* deprecated, use vlc_tick_t */
+
+#define VLC_TICK_INVALID  VLC_TS_INVALID
+#define VLC_TICK_0        VLC_TS_0
 
 /**
  * The vlc_fourcc_t type.
@@ -473,8 +479,8 @@ struct vlc_common_members
 #if !defined(__cplusplus)
 # define VLC_OBJECT(x) \
     _Generic((x)->obj, \
-        struct vlc_common_members: (vlc_object_t *)(&(x)->obj), \
-        const struct vlc_common_members: (const vlc_object_t *)(&(x)->obj) \
+        vlc_object_t: (vlc_object_t *)(&(x)->obj), \
+        struct vlc_common_members: (vlc_object_t *)(x) \
     )
 #else
 # define VLC_OBJECT( x ) ((vlc_object_t *)&(x)->obj)
@@ -942,6 +948,11 @@ static inline void SetQWLE (void *p, uint64_t qw)
 #   ifndef O_NONBLOCK
 #       define O_NONBLOCK 0
 #   endif
+
+/* the mingw32 swab() and win32 _swab() prototypes expect a char* instead of a
+   const void* */
+#  define swab(a,b,c)  swab((char*) (a), (char*) (b), (c))
+
 
 #   include <tchar.h>
 #endif /* _WIN32 */

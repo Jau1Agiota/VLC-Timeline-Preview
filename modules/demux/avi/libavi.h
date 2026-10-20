@@ -20,6 +20,9 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
  *****************************************************************************/
 
+#define AVIF_MAX_STREAMS 100 /* chunk storage index is twocc + 2 digits */
+                             /* and is a de-facto limit of 100 tracks */
+
 /* biCompression / Others are FourCC */
 #define BI_RGB              0x0000
 #define BI_RLE8             0x0001
@@ -249,6 +252,7 @@ int     AVI_ChunkRead( stream_t *,
                        avi_chunk_t *p_chk,
                        avi_chunk_t *p_father );
 void    AVI_ChunkClean( stream_t *, avi_chunk_t * );
+void    AVI_ChunkInit( avi_chunk_t * );
 
 int     AVI_ChunkCount_( avi_chunk_t *, vlc_fourcc_t, bool );
 void   *AVI_ChunkFind_ ( avi_chunk_t *, vlc_fourcc_t, int, bool );
@@ -366,3 +370,14 @@ int     AVI_ChunkFetchIndexes( stream_t *, avi_chunk_t *p_riff );
 #define FOURCC_dvsl         VLC_FOURCC('d','v','s','l')
 #define FOURCC_dv25         VLC_FOURCC('d','v','2','5')
 #define FOURCC_dv50         VLC_FOURCC('d','v','5','0')
+
+/* QNap */
+#define QNAP_FCC_w264       VLC_FOURCC('w','2','6','4')
+#define QNAP_FCC_q264       VLC_FOURCC('q','2','6','4')
+#define QNAP_FCC_Q264       VLC_FOURCC('Q','2','6','4')
+#define QNAP_FCC_wMP4       VLC_FOURCC('w','M','P','4')
+#define QNAP_FCC_qMP4       VLC_FOURCC('q','M','P','4')
+#define QNAP_FCC_QMP4       VLC_FOURCC('Q','M','P','4')
+#define QNAP_FCC_wIVG       VLC_FOURCC('w','I','V','G')
+#define QNAP_FCC_qIVG       VLC_FOURCC('q','I','V','G')
+#define QNAP_FCC_QIVG       VLC_FOURCC('Q','I','V','G')

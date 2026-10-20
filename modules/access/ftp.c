@@ -46,6 +46,7 @@
 #include <vlc_charset.h>
 #include <vlc_interrupt.h>
 #include <vlc_keystore.h>
+#include <vlc_strings.h>
 
 #ifndef IPPORT_FTP
 # define IPPORT_FTP 21u
@@ -86,7 +87,7 @@ vlc_module_begin ()
     set_category( CAT_INPUT )
     set_subcategory( SUBCAT_INPUT_ACCESS )
     add_string( "ftp-user", NULL, USER_TEXT, USER_LONGTEXT, false )
-    add_string( "ftp-pwd", NULL, PASS_TEXT, PASS_LONGTEXT, false )
+    add_password( "ftp-pwd", NULL, PASS_TEXT, PASS_LONGTEXT, false )
     add_string( "ftp-account", "anonymous", ACCOUNT_TEXT,
                 ACCOUNT_LONGTEXT, false )
     add_shortcut( "ftp", "ftps", "ftpes" )
@@ -356,6 +357,21 @@ static void clearCmd( access_sys_t *p_sys )
     }
 }
 
+/* Sanitize for the protocol rfc1738. epscially \n\r */
+static bool HasControlChar( const char *p )
+{
+    if( p )
+    {
+        for( ; *p; p++ )
+        {
+            unsigned char c = (unsigned char)*p;
+            if( (c < 0x20 && c != '\t') || c == 0x7F || c == 0xFF /* IAC control byte */ )
+                return true;
+        }
+    }
+    return false;
+}
+
 static int Login( vlc_object_t *p_access, access_sys_t *p_sys, const char *path )
 {
     int i_answer;
@@ -458,6 +474,13 @@ static int Login( vlc_object_t *p_access, access_sys_t *p_sys, const char *path 
     {
         const char *psz_username = credential.psz_username;
 
+        if( HasControlChar( credential.psz_username ) ||
+            HasControlChar( credential.psz_password ) )
+        {
+            msg_Err( p_access, "Invalid chars in the username/password" );
+            break;
+        }
+
         if( psz_username == NULL ) /* use anonymous by default */
             psz_username = "anonymous";
 
@@ -521,10 +544,14 @@ static int LoginUserPwd( vlc_object_t *p_access, access_sys_t *p_sys,
                     char *psz;
                     msg_Dbg( p_access, "account needed" );
                     psz = var_InheritString( p_access, "ftp-account" );
-                    if( ftp_SendCommand( p_access, p_sys, "ACCT %s",
+                    bool badchars = HasControlChar( psz );
+                    if( badchars ||
+                        ftp_SendCommand( p_access, p_sys, "ACCT %s",
                                          psz ) < 0 ||
                         ftp_RecvCommand( p_access, p_sys, &i_answer, NULL ) < 0 )
                     {
+                        if( badchars )
+                            msg_Err( p_access, "Invalid chars in the ftp-account" );
                         free( psz );
                         return -1;
                     }
@@ -636,7 +663,7 @@ error:
 }
 
 
-static int parseURL( vlc_url_t *url, const char *path, enum tls_mode_e mode )
+static int parseURL( vlc_object_t *p_obj, vlc_url_t *url, const char *path, enum tls_mode_e mode )
 {
     if( path == NULL )
         return VLC_EGENERIC;
@@ -677,6 +704,11 @@ static int parseURL( vlc_url_t *url, const char *path, enum tls_mode_e mode )
             return VLC_EGENERIC; /* ASCII and directory not supported */
     }
     vlc_uri_decode( url->psz_path );
+    if( HasControlChar( url->psz_path ) )
+    {
+        msg_Err( p_obj, "Invalid chars in the path" );
+        return VLC_EGENERIC;
+    }
     return VLC_SUCCESS;
 }
 
@@ -703,7 +735,7 @@ static int InOpen( vlc_object_t *p_this )
     if( readTLSMode( p_this, p_sys, p_access->psz_name ) )
         goto exit_error;
 
-    if( parseURL( &p_sys->url, p_access->psz_url, p_sys->tlsmode ) )
+    if( parseURL( p_this,&p_sys->url, p_access->psz_url, p_sys->tlsmode ) )
         goto exit_error;
 
     if( Connect( p_this, p_sys, p_access->psz_url ) )
@@ -789,7 +821,7 @@ static int OutOpen( vlc_object_t *p_this )
     if( readTLSMode( p_this, p_sys, p_access->psz_access ) )
         goto exit_error;
 
-    if( parseURL( &p_sys->url, p_access->psz_path, p_sys->tlsmode ) )
+    if( parseURL( p_this, &p_sys->url, p_access->psz_path, p_sys->tlsmode ) )
         goto exit_error;
     if( p_sys->url.psz_path == NULL )
     {
@@ -916,6 +948,43 @@ static ssize_t Read( stream_t *p_access, void *p_buffer, size_t i_len )
     return i_read;
 }
 
+/**
+ * Parse MLST facts list
+ *
+ * Parses a MLST facts list (without the trailing space/filename)
+ * pointed to by linep and fills the key/value variables.
+ * If a not properly formatted fact is encountered, the
+ * whole fact value will be in key and val will be NULL.
+ *
+ * \note This function modifies the linep pointer, so
+ *       the original value for it must be saved to free
+ *       it once done.
+ * \retval false if at the end of the list
+ * \retval true  if there are more list items to process
+ */
+static bool mlst_facts_iter(char **linep, const char **key, const char **val)
+{
+    // MLST format parsed here is 'key=val;key=val...;'
+    // Lack of trailing ; at the end is accepted too, even though
+    // not permitted by the standard.
+    char *fact = strsep(linep, ";");
+    *key = NULL;
+    *val = NULL;
+
+    if (fact == NULL || fact[0] == '\0')
+        return false;
+
+    // Separate key and value
+    char *sep = strchr(fact, '=');
+    if (sep) {
+        *sep++ = '\0';
+    }
+    *key = fact;
+    *val = sep;
+
+    return true;
+}
+
 /*****************************************************************************
  * DirRead:
  *****************************************************************************/
@@ -941,21 +1010,30 @@ static int DirRead (stream_t *p_access, input_item_node_t *p_current_node)
 
         if( p_sys->features.b_mlst )
         {
-            /* MLST Format is key=val;key=val...; FILENAME */
-            if( strstr( psz_line, "type=dir" ) )
-                type = ITEM_TYPE_DIRECTORY;
-            if( strstr( psz_line, "type=file" ) )
-                type = ITEM_TYPE_FILE;
+            const char *key, *val;
+            char *facts = psz_line;
 
-            /* Get the filename or fail */
-            psz_file = strchr( psz_line, ' ' );
-            if( psz_file )
-                psz_file++;
-            else
-            {
-                msg_Warn( p_access, "Empty filename in MLST list" );
+            // Separate MLST and filename
+            psz_file = strchr(psz_line, ' ');
+            if (likely(psz_file)) {
+                *psz_file++ = '\0';
+            } else {
+                msg_Warn( p_access, "No filename in MLST list found" );
                 free( psz_line );
                 continue;
+            }
+
+            while (mlst_facts_iter( &facts, &key, &val )) {
+                if (val == NULL) {
+                    msg_Warn( p_access, "Skipping invalid MLST fact '%s'", key);
+                    continue;
+                }
+                if (!vlc_ascii_strcasecmp( key, "type" )) {
+                    if (!vlc_ascii_strcasecmp( val, "dir" ))
+                        type = ITEM_TYPE_DIRECTORY;
+                    else if (!vlc_ascii_strcasecmp( val, "file" ))
+                        type = ITEM_TYPE_FILE;
+                }
             }
         }
         else
@@ -1050,8 +1128,7 @@ static int Control( stream_t *p_access, int i_query, va_list args )
             break;
 
         case STREAM_SET_PAUSE_STATE:
-            pb_bool = va_arg( args, bool * );
-            if ( !pb_bool )
+            if ( !va_arg( args, int ) )
                  return Seek( p_access, sys->offset );
             break;
 

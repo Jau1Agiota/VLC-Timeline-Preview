@@ -161,6 +161,8 @@ static int Open (vlc_object_t *obj)
     fmt.i_bitrate = fmt.audio.i_rate * fmt.audio.i_bytes_per_frame;
 
     sys->es = es_out_Add (demux->out, &fmt);
+    if( unlikely(!sys->es) )
+        goto error;
 
     date_Init (&sys->pts, fmt.audio.i_rate, 1);
     date_Set (&sys->pts, 0);
@@ -218,7 +220,7 @@ static int Demux (demux_t *demux)
         return 0;
     }
     block->i_buffer = i_read;
-    block->i_pts = block->i_dts = VLC_TS_0 + date_Get (&sys->pts);
+    block->i_pts = block->i_dts = VLC_TICK_0 + date_Get (&sys->pts);
 
     es_out_SetPCR (demux->out, block->i_pts);
 

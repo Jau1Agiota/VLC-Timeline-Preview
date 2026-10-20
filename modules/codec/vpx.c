@@ -173,7 +173,7 @@ static int Decode(decoder_t *dec, block_t *block)
     }
 
     /* Associate packet PTS with decoded frame */
-    mtime_t *pkt_pts = malloc(sizeof(*pkt_pts));
+    vlc_tick_t *pkt_pts = malloc(sizeof(*pkt_pts));
     if (!pkt_pts) {
         block_Release(block);
         return VLCDEC_SUCCESS;
@@ -186,7 +186,7 @@ static int Decode(decoder_t *dec, block_t *block)
 
     block_Release(block);
 
-    if (err != VPX_CODEC_OK) {
+    if (err != VPX_CODEC_OK && err != VPX_CODEC_CORRUPT_FRAME) {
         free(pkt_pts);
         VPX_ERR(dec, ctx, "Failed to decode frame");
         if (err == VPX_CODEC_UNSUP_BITSTREAM)
@@ -202,9 +202,15 @@ static int Decode(decoder_t *dec, block_t *block)
         return VLCDEC_SUCCESS;
     }
 
+    if (err == VPX_CODEC_CORRUPT_FRAME) {
+        VPX_ERR(dec, ctx, "Failed to decode frame");
+        free(pkt_pts);
+        return VLCDEC_SUCCESS;
+    }
+
     /* fetches back the PTS */
     pkt_pts = img->user_priv;
-    mtime_t pts = *pkt_pts;
+    vlc_tick_t pts = *pkt_pts;
     free(pkt_pts);
 
     dec->fmt_out.i_codec = FindVlcChroma(img);
@@ -290,6 +296,7 @@ static int OpenDecoder(vlc_object_t *p_this)
     switch (dec->fmt_in.i_codec)
     {
 #ifdef ENABLE_VP8_DECODER
+    case VLC_CODEC_WEBP:
     case VLC_CODEC_VP8:
         iface = &vpx_codec_vp8_dx_algo;
         vp_version = 8;

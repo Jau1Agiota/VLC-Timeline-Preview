@@ -50,12 +50,13 @@ typedef struct
     uint32_t     i_entries_dts;
     uint32_t     *p_sample_count_dts;
     uint32_t     *p_sample_delta_dts;   /* dts delta */
+    uint32_t     small_dts_buf[4];
 
     uint32_t     i_entries_pts;
     uint32_t     *p_sample_count_pts;
-    int32_t      *p_sample_offset_pts;  /* pts-dts */
+    uint32_t     *p_sample_offset_pts;  /* pts-dts */
+    uint32_t     small_pts_buf[4];
 
-    uint32_t     *p_sample_size;
     /* TODO if needed add pts
         but quickly *add* support for edts and seeking */
 
@@ -91,7 +92,7 @@ typedef struct
     uint32_t    i_block_flags;
     uint32_t    i_next_block_flags;
     uint8_t     rgi_chans_reordering[AOUT_CHAN_MAX];
-    bool        b_chans_reorder;
+    uint8_t     i_chans_to_reorder;
     es_out_id_t *p_es;
 
     /* display size only ! */
@@ -137,7 +138,7 @@ typedef struct
     bool b_codec_need_restart;
 #endif
 
-    mtime_t i_time; // track scaled
+    vlc_tick_t i_time; // track scaled
 
     /* rrtp reception hint track */
     MP4_Box_t *p_sdp;                         /* parsed for codec and other info */
@@ -168,8 +169,8 @@ typedef struct
 
     /* ASF packets handling */
     const MP4_Box_t *p_asf;
-    mtime_t          i_dts_backup;
-    mtime_t          i_pts_backup;
+    vlc_tick_t       i_dts_backup;
+    vlc_tick_t       i_pts_backup;
     asf_track_info_t asfinfo;
 } mp4_track_t;
 

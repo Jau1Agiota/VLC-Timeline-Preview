@@ -1,7 +1,7 @@
 # HARFBUZZ
 
-HARFBUZZ_VERSION := 2.6.8
-HARFBUZZ_URL := https://github.com/harfbuzz/harfbuzz/releases/download/$(HARFBUZZ_VERSION)/harfbuzz-$(HARFBUZZ_VERSION).tar.xz
+HARFBUZZ_VERSION := 14.2.1
+HARFBUZZ_URL := $(GITHUB)/harfbuzz/harfbuzz/releases/download/$(HARFBUZZ_VERSION)/harfbuzz-$(HARFBUZZ_VERSION).tar.xz
 PKGS += harfbuzz
 ifeq ($(call need_pkg,"harfbuzz"),)
 PKGS_FOUND += harfbuzz
@@ -14,22 +14,25 @@ $(TARBALLS)/harfbuzz-$(HARFBUZZ_VERSION).tar.xz:
 
 harfbuzz: harfbuzz-$(HARFBUZZ_VERSION).tar.xz .sum-harfbuzz
 	$(UNPACK)
-	$(APPLY) $(SRC)/harfbuzz/0001-fix-OSAtomic-calls-for-AArch64.patch
-	$(APPLY) $(SRC)/harfbuzz/0002-Update-the-bundled-ax_pthread.m4.patch
-	$(APPLY) $(SRC)/harfbuzz/0003-Fix-winstore-app-detection-with-mingw64.patch
+	$(APPLY) $(SRC)/harfbuzz/0001-disable-building-hb-gpu-encode-all-app.patch
+	$(APPLY) $(SRC)/harfbuzz/0001-Ignore-Wunused-template.patch
 	$(MOVE)
 
-DEPS_harfbuzz = freetype2 $(DEPS_freetype2)
+DEPS_harfbuzz = freetype2 $(DEPS_freetype2) png $(DEPS_png)
 
-HARFBUZZ_CONF := --with-freetype \
-	--without-glib
+HARFBUZZ_CONF := -Dfreetype=enabled \
+	-Dglib=disabled \
+	-Dgobject=disabled \
+	-Ddocs=disabled \
+	-Dtests=disabled \
+	-Dgpu_demo=disabled
 
 ifdef HAVE_DARWIN_OS
-HARFBUZZ_CONF += --with-coretext
+HARFBUZZ_CONF += -Dcoretext=enabled
 endif
 
-.harfbuzz: harfbuzz
-	$(RECONF)
-	cd $< && $(HOSTVARS_PIC) ./configure $(HOSTCONF) $(HARFBUZZ_CONF) ICU_CONFIG=false
-	cd $< && $(MAKE) install
+.harfbuzz: harfbuzz crossfile.meson
+	$(MESONCLEAN)
+	$(MESON) $(HARFBUZZ_CONF)
+	+$(MESONBUILD)
 	touch $@

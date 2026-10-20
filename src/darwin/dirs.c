@@ -28,6 +28,7 @@
 #endif
 
 #include <vlc_common.h>
+#include <vlc_charset.h>
 #include "../libvlc.h"
 
 #include <libgen.h>
@@ -35,6 +36,7 @@
 #include <mach-o/dyld.h>
 
 #include <CoreFoundation/CoreFoundation.h>
+#include <TargetConditionals.h>
 
 char *config_GetLibDir (void)
 {
@@ -144,18 +146,8 @@ static char *getAppDependentDir(vlc_userdir_t type)
     CFBundleRef mainBundle = CFBundleGetMainBundle();
     if (mainBundle) {
         CFStringRef identifierAsNS = CFBundleGetIdentifier(mainBundle);
-        if (identifierAsNS) {
-            CFIndex len = CFStringGetLength(identifierAsNS);
-            CFIndex size = CFStringGetMaximumSizeForEncoding(len, kCFStringEncodingUTF8);
-            char *identifier = calloc(len + 1, sizeof(char));
-            if (identifier != NULL) {
-                Boolean ret = CFStringGetCString(identifierAsNS, identifier, size, kCFStringEncodingUTF8);
-                if (ret)
-                    name = identifier;
-                else
-                    free(identifier);
-            }
-        }
+        if (identifierAsNS)
+            name = FromCFString(identifierAsNS, kCFStringEncodingUTF8);
     }
 
     char *psz_parent = config_GetHomeDir ();

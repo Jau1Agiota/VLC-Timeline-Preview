@@ -1,9 +1,8 @@
 Instructions to code your own VLC Lua playlist script.
-$Id$
 
 See lua/README.txt for generic documentation about Lua usage in VLC.
 
-Examples: See liveleak.lua, dailymotion.lua, youtube.lua,
+Examples: See liveleak.lua, dailymotion.lua,
           soundcloud.lua, cue.lua ...
 
 VLC Lua playlist modules should define two functions:

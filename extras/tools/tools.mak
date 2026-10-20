@@ -9,14 +9,14 @@ TARBALLS := $(TOOLS)
 # common rules
 #
 
-ifeq ($(shell curl --version >/dev/null 2>&1 || echo FAIL),)
-download = curl -f -L -- "$(1)" > "$@.tmp" && touch $@.tmp && mv $@.tmp $@
-else ifeq ($(shell wget --version >/dev/null 2>&1 || echo FAIL),)
+ifeq ($(shell command -v curl >/dev/null 2>&1 || echo FAIL),)
+download = curl -f -L --retry 3 --output "$@" -- "$(1)"
+else ifeq ($(shell command -v wget >/dev/null 2>&1 || echo FAIL),)
 download = rm -f $@.tmp && \
 	wget --passive -c -p -O $@.tmp "$(1)" && \
 	touch $@.tmp && \
 	mv $@.tmp $@
-else ifeq ($(which fetch >/dev/null 2>&1 || echo FAIL),)
+else ifeq ($(shell command -v fetch >/dev/null 2>&1 || echo FAIL),)
 download = rm -f $@.tmp && \
 	fetch -p -o $@.tmp "$(1)" && \
 	touch $@.tmp && \
@@ -25,11 +25,11 @@ else
 download = $(error Neither curl nor wget found!)
 endif
 
-ifeq ($(shell sha512sum --version >/dev/null 2>&1 || echo FAIL),)
-SHA512SUM = sha512sum --check
-else ifeq ($(shell shasum --version >/dev/null 2>&1 || echo FAIL),)
+ifeq ($(shell command -v sha512sum >/dev/null 2>&1 || echo FAIL),)
+SHA512SUM = sha512sum -c
+else ifeq ($(shell command -v shasum >/dev/null 2>&1 || echo FAIL),)
 SHA512SUM = shasum -a 512 --check
-else ifeq ($(shell openssl version >/dev/null 2>&1 || echo FAIL),)
+else ifeq ($(shell command -v openssl >/dev/null 2>&1 || echo FAIL),)
 SHA512SUM = openssl dgst -sha512
 else
 SHA512SUM = $(error SHA-512 checksumming not found!)
@@ -37,12 +37,17 @@ endif
 
 download_pkg = $(call download,$(VIDEOLAN)/$(2)/$(lastword $(subst /, ,$(@)))) || \
 	( $(call download,$(1)) && echo "Please upload package $(lastword $(subst /, ,$(@))) to our FTP" )  \
-	&& grep $(@) $(TOOLS)/SHA512SUMS| $(SHA512SUM)
+	&& grep $(@) $(TOOLS)/SHA512SUMS| $(SHA512SUM) /dev/stdin
 
-UNPACK = $(RM) -R $@ \
-    $(foreach f,$(filter %.tar.gz %.tgz,$^), && tar xvzfo $(f)) \
-    $(foreach f,$(filter %.tar.bz2,$^), && tar xvjfo $(f)) \
-    $(foreach f,$(filter %.tar.xz,$^), && tar xvJfo $(f)) \
+ifeq ($(V),1)
+TAR_VERBOSE := v
+endif
+
+UNPACK = $(RM) -R $@ $(UNPACK_DIR) \
+    $(foreach f,$(filter %.tar.gz %.tgz,$^), && tar $(TAR_VERBOSE)xzfo $(f)) \
+    $(foreach f,$(filter %.tar.bz2,$^), && tar $(TAR_VERBOSE)xjfo $(f)) \
+    $(foreach f,$(filter %.tar.xz,$^), && tar $(TAR_VERBOSE)xJfo $(f)) \
+    $(foreach f,$(filter %.tar.zst,$^), && tar $(TAR_VERBOSE)xfo $(f)) \
     $(foreach f,$(filter %.zip,$^), && unzip $(f))
 
 UNPACK_DIR = $(patsubst %.tar,%,$(basename $(notdir $<)))
@@ -53,32 +58,20 @@ MOVE = mv $(UNPACK_DIR) $@ && touch $@
 # package rules
 #
 
-# yasm
-
-yasm-$(YASM_VERSION).tar.gz:
-	$(call download_pkg,$(YASM_URL),yasm)
-
-yasm: yasm-$(YASM_VERSION).tar.gz
-	$(UNPACK)
-	$(MOVE)
-
-.buildyasm: yasm
-	(cd $<; ./configure --prefix=$(PREFIX) && $(MAKE) && $(MAKE) install)
-	touch $@
-
-CLEAN_FILE += .buildyasm
-CLEAN_PKG += yasm
-DISTCLEAN_PKG += yasm-$(YASM_VERSION).tar.gz
+# nasm
 
 nasm-$(NASM_VERSION).tar.gz:
 	$(call download_pkg,$(NASM_URL),nasm)
 
+.getnasm: nasm-$(NASM_VERSION).tar.gz
 nasm: nasm-$(NASM_VERSION).tar.gz
 	$(UNPACK)
 	$(MOVE)
 
 .buildnasm: nasm
-	(cd $<; ./configure --prefix=$(PREFIX) && $(MAKE) && $(MAKE) install)
+	cd $<; ./configure --prefix=$(PREFIX)
+	+$(MAKE) -C $<
+	+$(MAKE) -C $< install
 	touch $@
 
 CLEAN_FILE += .buildnasm
@@ -90,13 +83,15 @@ DISTCLEAN_PKG += nasm-$(NASM_VERSION).tar.gz
 cmake-$(CMAKE_VERSION).tar.gz:
 	$(call download_pkg,$(CMAKE_URL),cmake)
 
+.getcmake: cmake-$(CMAKE_VERSION).tar.gz
 cmake: cmake-$(CMAKE_VERSION).tar.gz
 	$(UNPACK)
-	$(APPLY) $(TOOLS)/cmake-enable-ALPN-support-on-macOS-10.14.patch
 	$(MOVE)
 
 .buildcmake: cmake
-	(cd $<; ./configure --prefix=$(PREFIX) $(CMAKEFLAGS) --no-qt-gui -- -DCMAKE_USE_OPENSSL:BOOL=OFF -DBUILD_TESTING:BOOL=OFF && $(MAKE) && $(MAKE) install)
+	cd $<; ./configure --prefix=$(PREFIX) $(CMAKEFLAGS) --no-qt-gui -- -DCMAKE_USE_OPENSSL:BOOL=OFF -DBUILD_TESTING:BOOL=OFF
+	+$(MAKE) -C $<
+	+$(MAKE) -C $< install
 	touch $@
 
 CLEAN_FILE += .buildcmake
@@ -107,12 +102,16 @@ DISTCLEAN_PKG += cmake-$(CMAKE_VERSION).tar.gz
 help2man-$(HELP2MAN_VERSION).tar.xz:
 	$(call download_pkg,$(HELP2MAN_URL),help2man)
 
+help2man: .tar
+.gethelp2man: help2man-$(HELP2MAN_VERSION).tar.xz
 help2man: help2man-$(HELP2MAN_VERSION).tar.xz
 	$(UNPACK)
 	$(MOVE)
 
 .buildhelp2man: help2man
-	(cd $<; ./configure --prefix=$(PREFIX) && $(MAKE) && $(MAKE) install)
+	cd $<; ./configure --prefix=$(PREFIX)
+	+$(MAKE) -C $<
+	+$(MAKE) -C $< install
 	touch $@
 
 CLEAN_FILE += .buildhelp2man
@@ -124,18 +123,23 @@ DISTCLEAN_PKG += help2man-$(HELP2MAN_VERSION).tar.xz
 libtool-$(LIBTOOL_VERSION).tar.gz:
 	$(call download_pkg,$(LIBTOOL_URL),libtool)
 
+.getlibtool: libtool-$(LIBTOOL_VERSION).tar.gz
 libtool: libtool-$(LIBTOOL_VERSION).tar.gz
 	$(UNPACK)
 	(cd $(UNPACK_DIR) && chmod u+w build-aux/ltmain.sh)
-	$(APPLY) $(TOOLS)/libtool-2.4.6-bitcode.patch
-	$(APPLY) $(TOOLS)/libtool-2.4.6-san.patch
-	$(APPLY) $(TOOLS)/libtool-2.4.6-clang-libs.patch
-	$(APPLY) $(TOOLS)/libtool-2.4.6-response-files.patch
+	$(APPLY) $(TOOLS)/libtool-2.4.7-bitcode.patch
+	$(APPLY) $(TOOLS)/libtool-2.4.7-lpthread.patch
+	$(APPLY) $(TOOLS)/libtool-2.6.2-embed-bitcode.patch
+
+	$(APPLY) $(TOOLS)/libtool-2.5.4-ltmain.in-reference-MAGIC_EXE-in-the-main.patch
+	$(APPLY) $(TOOLS)/libtool-2.5.4-libtool.m4-respect-the-provided-LTCFLAGS-LTCC-during.patch
 	$(MOVE)
 
 .buildlibtool: libtool .automake .help2man
 	(cd $(UNPACK_DIR) && autoreconf -fv)
-	(cd $<; ./configure --prefix=$(PREFIX) && $(MAKE) && $(MAKE) install)
+	cd $<; ./configure --prefix=$(PREFIX)
+	+$(MAKE) -C $<
+	+$(MAKE) -C $< install
 	ln -sf libtool $(PREFIX)/bin/glibtool
 	ln -sf libtoolize $(PREFIX)/bin/glibtoolize
 	touch $@
@@ -149,12 +153,15 @@ CLEAN_FILE += .buildlibtool
 tar-$(TAR_VERSION).tar.bz2:
 	$(call download_pkg,$(TAR_URL),tar)
 
+.gettar: tar-$(TAR_VERSION).tar.bz2
 tar: tar-$(TAR_VERSION).tar.bz2
 	$(UNPACK)
 	$(MOVE)
 
-.buildtar: tar
-	(cd $<; ./configure --prefix=$(PREFIX) && $(MAKE) && $(MAKE) install)
+.buildtar: tar .xz
+	cd $<; ./configure --prefix=$(PREFIX)
+	+$(MAKE) -C $<
+	+$(MAKE) -C $< install
 	touch $@
 
 CLEAN_PKG += tar
@@ -166,29 +173,55 @@ CLEAN_FILE += .buildtar
 xz-$(XZ_VERSION).tar.bz2:
 	$(call download_pkg,$(XZ_URL),xz)
 
+.getxz: xz-$(XZ_VERSION).tar.bz2
 xz: xz-$(XZ_VERSION).tar.bz2
 	$(UNPACK)
 	$(MOVE)
 
 .buildxz: xz
-	(cd $<; ./configure --prefix=$(PREFIX) && $(MAKE) && $(MAKE) install && rm $(PREFIX)/lib/pkgconfig/liblzma.pc)
+	cd $<; ./configure --prefix=$(PREFIX)
+	+$(MAKE) -C $<
+	+$(MAKE) -C $< install
+	rm $(PREFIX)/lib/pkgconfig/liblzma.pc
 	touch $@
 
 CLEAN_PKG += xz
 DISTCLEAN_PKG += xz-$(XZ_VERSION).tar.bz2
 CLEAN_FILE += .buildxz
 
+# zstd
+
+zstd-$(ZSTD_VERSION).tar.gz:
+	$(call download_pkg,$(ZSTD_URL),zstd)
+
+.getzstd: zstd-$(ZSTD_VERSION).tar.gz
+zstd: zstd-$(ZSTD_VERSION).tar.gz
+	$(UNPACK)
+	$(MOVE)
+
+.buildzstd: zstd
+	+$(MAKE) -C $</programs
+	+$(MAKE) -C $</programs install prefix=$(PREFIX)
+	touch $@
+
+CLEAN_PKG += zstd
+DISTCLEAN_PKG += zstd-$(ZSTD_VERSION).tar.gz
+CLEAN_FILE += .buildzstd
+
 # autoconf
 
 autoconf-$(AUTOCONF_VERSION).tar.gz:
 	$(call download_pkg,$(AUTOCONF_URL),autoconf)
 
+.getautoconf: autoconf-$(AUTOCONF_VERSION).tar.gz
 autoconf: autoconf-$(AUTOCONF_VERSION).tar.gz
 	$(UNPACK)
 	$(MOVE)
 
-.buildautoconf: autoconf .pkg-config
-	(cd $<; ./configure --prefix=$(PREFIX) && $(MAKE) && $(MAKE) install)
+.buildautoconf: autoconf .pkg-config .m4
+	cd $<; ./configure --prefix=$(PREFIX)
+	+$(MAKE) -C $<
+	+$(MAKE) -C $< install
 	touch $@
 
 CLEAN_FILE += .buildautoconf
@@ -200,13 +233,18 @@ DISTCLEAN_PKG += autoconf-$(AUTOCONF_VERSION).tar.gz
 automake-$(AUTOMAKE_VERSION).tar.gz:
 	$(call download_pkg,$(AUTOMAKE_URL),automake)
 
+.getautomake: automake-$(AUTOMAKE_VERSION).tar.gz
 automake: automake-$(AUTOMAKE_VERSION).tar.gz
 	$(UNPACK)
+	$(APPLY) $(TOOLS)/automake-disable-documentation.patch
 	$(APPLY) $(TOOLS)/automake-clang.patch
 	$(MOVE)
 
 .buildautomake: automake .autoconf
-	(cd $<; ./configure --prefix=$(PREFIX) && $(MAKE) && $(MAKE) install)
+	(cd $<; ./bootstrap)
+	cd $<; ./configure --prefix=$(PREFIX)
+	+$(MAKE) -C $<
+	+$(MAKE) -C $< install
 	touch $@
 
 CLEAN_FILE += .buildautomake
@@ -218,14 +256,15 @@ DISTCLEAN_PKG += automake-$(AUTOMAKE_VERSION).tar.gz
 m4-$(M4_VERSION).tar.gz:
 	$(call download_pkg,$(M4_URL),m4)
 
+.getm4: m4-$(M4_VERSION).tar.gz
 m4: m4-$(M4_VERSION).tar.gz
 	$(UNPACK)
-	$(APPLY) $(TOOLS)/bison-macOS-c41f233c.patch
-	$(APPLY) $(TOOLS)/bison-macOS-7df04f9.patch
 	$(MOVE)
 
 .buildm4: m4
-	(cd $<; ./configure --prefix=$(PREFIX) && $(MAKE) && $(MAKE) install)
+	cd $<; ./configure --prefix=$(PREFIX)
+	+$(MAKE) -C $<
+	+$(MAKE) -C $< install
 	touch $@
 
 CLEAN_FILE += .buildm4
@@ -234,26 +273,31 @@ DISTCLEAN_PKG += m4-$(M4_VERSION).tar.gz
 
 # pkg-config
 
-pkg-config-$(PKGCFG_VERSION).tar.gz:
-	$(call download_pkg,$(PKGCFG_URL),pkgconfiglite)
+pkg-config-$(PKGCONFIG_VERSION).tar.gz:
+	$(call download_pkg,$(PKGCONFIG_URL),pkgconfiglite)
 
-pkgconfig: pkg-config-$(PKGCFG_VERSION).tar.gz
+.getpkgconfig: pkg-config-$(PKGCFG_VERSION).tar.gz
+pkgconfig: pkg-config-$(PKGCONFIG_VERSION).tar.gz
 	$(UNPACK)
-	mv pkg-config-lite-$(PKGCFG_VERSION) pkg-config-$(PKGCFG_VERSION)
+	mv pkg-config-lite-$(PKGCONFIG_VERSION) pkg-config-$(PKGCONFIG_VERSION)
+	$(APPLY) $(TOOLS)/pkg-config-stdc23-port.patch
 	$(MOVE)
 
 .buildpkg-config: pkgconfig
-	(cd pkgconfig; ./configure --prefix=$(PREFIX) --disable-shared --enable-static && $(MAKE) && $(MAKE) install)
+	cd $<; ./configure --prefix=$(PREFIX) --disable-shared --enable-static --disable-dependency-tracking
+	+$(MAKE) -C $<
+	+$(MAKE) -C $< install
 	touch $@
 
 CLEAN_FILE += .buildpkg-config
 CLEAN_PKG += pkgconfig
-DISTCLEAN_PKG += pkg-config-$(PKGCFG_VERSION).tar.gz
+DISTCLEAN_PKG += pkg-config-$(PKGCONFIG_VERSION).tar.gz
 
 # gas-preprocessor
 gas-preprocessor-$(GAS_VERSION).tar.gz:
 	$(call download_pkg,$(GAS_URL),gas-preprocessor)
 
+.getgas: gas-preprocessor-$(GAS_VERSION).tar.gz
 gas: gas-preprocessor-$(GAS_VERSION).tar.gz
 	$(UNPACK)
 	$(MOVE)
@@ -267,35 +311,20 @@ CLEAN_FILE += .buildgas
 CLEAN_PKG += gas
 DISTCLEAN_PKG += gas-preprocessor-$(GAS_VERSION).tar.gz
 
-# Ragel State Machine Compiler
-ragel-$(RAGEL_VERSION).tar.gz:
-	$(call download_pkg,$(RAGEL_URL),ragel)
-
-ragel: ragel-$(RAGEL_VERSION).tar.gz
-	$(UNPACK)
-	$(APPLY) $(TOOLS)/ragel-6.8-javacodegen.patch
-	$(MOVE)
-
-
-.buildragel: ragel
-	(cd ragel; ./configure --prefix=$(PREFIX) --disable-shared --enable-static && $(MAKE) && $(MAKE) install)
-	touch $@
-
-CLEAN_FILE += .buildragel
-CLEAN_PKG += ragel
-DISTCLEAN_PKG += ragel-$(RAGEL_VERSION).tar.gz
-
 # GNU sed
 
 sed-$(SED_VERSION).tar.bz2:
 	$(call download_pkg,$(SED_URL),sed)
 
+.getsed: sed-$(SED_VERSION).tar.bz2
 sed: sed-$(SED_VERSION).tar.bz2
 	$(UNPACK)
 	$(MOVE)
 
 .buildsed: sed
-	(cd $<; ./configure --prefix=$(PREFIX) && $(MAKE) && $(MAKE) install)
+	cd $<; ./configure --prefix=$(PREFIX)
+	+$(MAKE) -C $<
+	+$(MAKE) -C $< install
 	touch $@
 
 CLEAN_PKG += sed
@@ -307,6 +336,7 @@ CLEAN_FILE += .buildsed
 apache-ant-$(ANT_VERSION).tar.bz2:
 	$(call download_pkg,$(ANT_URL),ant)
 
+.getant: apache-ant-$(ANT_VERSION).tar.bz2
 ant: apache-ant-$(ANT_VERSION).tar.bz2
 	$(UNPACK)
 	$(MOVE)
@@ -326,12 +356,17 @@ CLEAN_FILE += .buildant
 protobuf-$(PROTOBUF_VERSION).tar.gz:
 	$(call download_pkg,$(PROTOBUF_URL),protobuf)
 
+.getprotobuf: protobuf-$(PROTOBUF_VERSION).tar.gz
 protobuf: protobuf-$(PROTOBUF_VERSION).tar.gz
 	$(UNPACK)
+	$(APPLY) $(TOOLS)/protobuf-3.4.1-missing-includes.patch
 	$(MOVE)
 
+.getprotoc: .getprotobuf
 .buildprotoc: protobuf
-	(cd $< && ./configure --prefix="$(PREFIX)" --disable-shared --enable-static && $(MAKE) && $(MAKE) install)
+	cd $< && ./configure --prefix="$(PREFIX)" --disable-shared --enable-static --disable-dependency-tracking
+	+$(MAKE) -C $<
+	+$(MAKE) -C $< install
 	(find $(PREFIX) -name 'protobuf*.pc' -exec rm -f {} \;)
 	touch $@
 
@@ -346,14 +381,16 @@ CLEAN_FILE += .buildprotoc
 bison-$(BISON_VERSION).tar.xz:
 	$(call download_pkg,$(BISON_URL),bison)
 
+bison: .tar
+.getbison: bison-$(BISON_VERSION).tar.xz
 bison: bison-$(BISON_VERSION).tar.xz
 	$(UNPACK)
-	$(APPLY) $(TOOLS)/bison-macOS-c41f233c.patch
-	$(APPLY) $(TOOLS)/bison-macOS-7df04f9.patch
 	$(MOVE)
 
 .buildbison: bison
-	(cd $<; ./configure --prefix=$(PREFIX) && $(MAKE) && $(MAKE) install)
+	cd $<; ./configure --prefix=$(PREFIX)
+	+$(MAKE) -C $<
+	+$(MAKE) -C $< install
 	touch $@
 
 CLEAN_PKG += bison
@@ -367,17 +404,59 @@ CLEAN_FILE += .buildbison
 flex-$(FLEX_VERSION).tar.gz:
 	$(call download_pkg,$(FLEX_URL),flex)
 
+.getflex: flex-$(FLEX_VERSION).tar.gz
 flex: flex-$(FLEX_VERSION).tar.gz
 	$(UNPACK)
 	$(MOVE)
 
 .buildflex: flex
-	(cd $<; ./configure --prefix=$(PREFIX) && $(MAKE) && $(MAKE) install)
+	cd $<; ./configure --prefix=$(PREFIX)
+	+$(MAKE) -C $<
+	+$(MAKE) -C $< install
 	touch $@
 
 CLEAN_PKG += flex
 DISTCLEAN_PKG += flex-$(FLEX_VERSION).tar.gz
 CLEAN_FILE += .buildflex
+
+
+
+#
+# GNU gettext
+#
+
+GETTEXT_CONF = \
+	--disable-relocatable \
+	--disable-java \
+	--disable-native-java \
+	--disable-csharp \
+	--disable-d \
+	--disable-go \
+	--disable-modula2 \
+	--disable-openmp \
+	--without-emacs \
+	--without-included-libxml \
+	--without-git \
+	--without-cvs
+
+gettext-$(GETTEXT_VERSION).tar.gz:
+	$(call download_pkg,$(GETTEXT_URL),gettext)
+
+.getgettext: gettext-$(GETTEXT_VERSION).tar.gz
+gettext: gettext-$(GETTEXT_VERSION).tar.gz
+	$(UNPACK)
+	$(APPLY) $(TOOLS)/gettext-no-iconv.patch
+	$(MOVE)
+
+.buildgettext: gettext
+	cd $<; ./configure --prefix=$(PREFIX) $(GETTEXT_CONF)
+	+$(MAKE) -C $< EXAMPLESFILES= EXAMPLESDIRS= TESTS=
+	+$(MAKE) -C $< EXAMPLESFILES= EXAMPLESDIRS= TESTS= install
+	touch $@
+
+CLEAN_PKG += gettext
+DISTCLEAN_PKG += gettext-$(GETTEXT_VERSION).tar.gz
+CLEAN_FILE += .buildgettext
 
 #
 # meson build
@@ -386,11 +465,13 @@ CLEAN_FILE += .buildflex
 meson-$(MESON_VERSION).tar.gz:
 	$(call download_pkg,$(MESON_URL),meson)
 
+.getmeson: meson-$(MESON_VERSION).tar.gz
 meson: meson-$(MESON_VERSION).tar.gz
 	$(UNPACK)
 	$(MOVE)
 
 .buildmeson: meson
+	mkdir -p $(PREFIX)/bin
 	printf "#!/bin/sh\n\npython3 $(abspath .)/meson/meson.py \"\$$@\"\n" > $(PREFIX)/bin/meson
 	chmod +x $(PREFIX)/bin/meson
 	touch $@
@@ -403,19 +484,24 @@ CLEAN_FILE += .buildmeson
 # ninja build
 #
 
-ninja-$(NINJA_VERSION).tar.gz:
+ninja-$(NINJA_BUILD_NAME).tar.gz:
 	$(call download_pkg,$(NINJA_URL),ninja)
 
-ninja: ninja-$(NINJA_VERSION).tar.gz
+ninja: .cmake
+ninja: UNPACK_DIR=ninja-$(NINJA_BUILD_NAME)
+.getninja: ninja-$(NINJA_BUILD_NAME).tar.gz
+ninja: ninja-$(NINJA_BUILD_NAME).tar.gz
 	$(UNPACK)
 	$(MOVE)
 
 .buildninja: ninja
-	(cd $<; ./configure.py --bootstrap && mv ninja $(PREFIX)/bin/)
+	cmake -S $< -B $</vlc_build -DCMAKE_INSTALL_PREFIX:STRING=$(PREFIX) -DBUILD_TESTING=OFF
+	+cmake --build $</vlc_build
+	+cmake --install $</vlc_build
 	touch $@
 
 CLEAN_PKG += ninja
-DISTCLEAN_PKG += ninja-$(NINJA_VERSION).tar.gz
+DISTCLEAN_PKG += ninja-$(NINJA_BUILD_NAME).tar.gz
 CLEAN_FILE += .buildninja
 
 #

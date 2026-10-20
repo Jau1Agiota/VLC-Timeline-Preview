@@ -310,6 +310,7 @@ static int Activate( vlc_object_t *p_this )
             if( asprintf( &psz_backward_compat_host, "//%s", psz_host ) < 0 )
             {
                 free( psz_host );
+                free( psz_unix_path );
                 return VLC_EGENERIC;
             }
             free( psz_host );
@@ -326,6 +327,7 @@ static int Activate( vlc_object_t *p_this )
                       url.psz_host, url.i_port );
             vlc_UrlClean( &url );
             free( psz_host );
+            free( psz_unix_path );
             return VLC_EGENERIC;
         }
 
@@ -984,7 +986,7 @@ static int Input( vlc_object_t *p_this, char const *psz_cmd,
         }
         else
         {
-            mtime_t t = atoi( newval.psz_string );
+            vlc_tick_t t = atoi( newval.psz_string );
             var_SetInteger( p_input, "time", CLOCK_FREQ * t );
         }
         i_error = VLC_SUCCESS;
@@ -1823,7 +1825,7 @@ static bool ReadWin32( intf_thread_t *p_intf, unsigned char *p_buffer, int *pi_s
                         nbBytes++;
                     }
                     assert( clz( (unsigned char)~(p_buffer[*pi_size]) ) == nbBytes + 1 );
-                    // The first utf8 byte will be overriden by a \0
+                    // The first utf8 byte will be overridden by a \0
                 }
                 else
                     (*pi_size)--;

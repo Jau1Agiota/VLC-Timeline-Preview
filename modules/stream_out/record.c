@@ -99,17 +99,17 @@ struct sout_stream_sys_t
 
     sout_stream_t *p_out;
 
-    mtime_t     i_date_start;
+    vlc_tick_t  i_date_start;
     size_t      i_size;
 
-    mtime_t     i_max_wait;
+    vlc_tick_t  i_max_wait;
     size_t      i_max_size;
 
     bool        b_drop;
 
     int              i_id;
     sout_stream_id_sys_t **id;
-    mtime_t     i_dts_start;
+    vlc_tick_t  i_dts_start;
 };
 
 static void OutputStart( sout_stream_t *p_stream );
@@ -265,7 +265,7 @@ typedef struct
  * Do not do non native and non standard association !
  * Muxer will be probe if no entry found */
 static const muxer_properties_t p_muxers[] = {
-    M( "raw", "mp3", 1,         VLC_CODEC_MPGA ),
+    M( "raw", "mp3", 1,         VLC_CODEC_MPGA, VLC_CODEC_MP2, VLC_CODEC_MP3 ),
     M( "raw", "a52", 1,         VLC_CODEC_A52 ),
     M( "raw", "dts", 1,         VLC_CODEC_DTS ),
     M( "raw", "mpc", 1,         VLC_CODEC_MUSEPACK7, VLC_CODEC_MUSEPACK8 ),
@@ -287,7 +287,7 @@ static const muxer_properties_t p_muxers[] = {
                                 VLC_CODEC_SUBT ),
 
     M( "ps", "mpg", 16/* FIXME*/,VLC_CODEC_MPGV,
-                                VLC_CODEC_MPGA, VLC_CODEC_DVD_LPCM, VLC_CODEC_A52,
+                                VLC_CODEC_MPGA, VLC_CODEC_MP2, VLC_CODEC_MP3, VLC_CODEC_DVD_LPCM, VLC_CODEC_A52,
                                 VLC_CODEC_DTS,
                                 VLC_CODEC_SPU ),
 
@@ -298,7 +298,7 @@ static const muxer_properties_t p_muxers[] = {
 
     M( "ts", "ts", 8000,        VLC_CODEC_MPGV,
                                 VLC_CODEC_H264, VLC_CODEC_HEVC,
-                                VLC_CODEC_MPGA, VLC_CODEC_DVD_LPCM, VLC_CODEC_A52,
+                                VLC_CODEC_MPGA, VLC_CODEC_MP2, VLC_CODEC_MP3, VLC_CODEC_DVD_LPCM, VLC_CODEC_A52,
                                 VLC_CODEC_DTS,  VLC_CODEC_MP4A,
                                 VLC_CODEC_DVBS, VLC_CODEC_TELETEXT ),
 
@@ -372,7 +372,7 @@ error:
 
 }
 
-static mtime_t BlockTick( const block_t *p_block )
+static vlc_tick_t BlockTick( const block_t *p_block )
 {
     if( unlikely(!p_block) )
         return 0;
@@ -514,7 +514,7 @@ static void OutputStart( sout_stream_t *p_stream )
 
     /* Compute highest timestamp of first I over all streams */
     p_sys->i_dts_start = 0;
-    mtime_t i_highest_head_dts = 0;
+    vlc_tick_t i_highest_head_dts = 0;
     for( int i = 0; i < p_sys->i_id; i++ )
     {
         sout_stream_id_sys_t *id = p_sys->id[i];
@@ -523,7 +523,7 @@ static void OutputStart( sout_stream_t *p_stream )
             continue;
 
         const block_t *p_block = id->p_first;
-        mtime_t i_dts = BlockTick( p_block );
+        vlc_tick_t i_dts = BlockTick( p_block );
 
         if( i_dts > i_highest_head_dts &&
            ( id->fmt.i_cat == AUDIO_ES || id->fmt.i_cat == VIDEO_ES ) )
@@ -548,7 +548,7 @@ static void OutputStart( sout_stream_t *p_stream )
         p_sys->i_dts_start = i_highest_head_dts;
 
     sout_stream_id_sys_t *p_cand;
-    mtime_t canddts;
+    vlc_tick_t canddts;
     do
     {
         /* dequeue candidate */
@@ -564,7 +564,7 @@ static void OutputStart( sout_stream_t *p_stream )
                 continue;
 
             block_t *p_id_block;
-            mtime_t id_dts = 0;
+            vlc_tick_t id_dts = 0;
             for( p_id_block = id->p_first; p_id_block; p_id_block = p_id_block->p_next )
             {
                 id_dts = BlockTick( p_id_block );
@@ -610,7 +610,7 @@ static void OutputSend( sout_stream_t *p_stream, sout_stream_id_sys_t *id, block
     if( id->id )
     {
         /* We wait until the first key frame (if needed) and
-         * to be beyong i_dts_start (for stream without key frame) */
+         * to be beyond i_dts_start (for stream without key frame) */
         if( unlikely( id->b_wait_key ) )
         {
             if( p_block->i_flags & BLOCK_FLAG_TYPE_I )

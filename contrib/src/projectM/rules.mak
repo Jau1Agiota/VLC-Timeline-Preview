@@ -13,6 +13,8 @@ ifeq ($(call need_pkg,"libprojectM"),)
 PKGS_FOUND += projectM
 endif
 
+DEPS_projectM = glew $(DEPS_glew)
+
 $(TARBALLS)/projectM-$(PROJECTM_VERSION)-Source.tar.gz:
 	$(call download_pkg,$(PROJECTM_URL),projectM)
 
@@ -28,19 +30,23 @@ ifdef HAVE_WIN32
 endif
 	$(APPLY) $(SRC)/projectM/gcc6.patch
 	$(APPLY) $(SRC)/projectM/clang6.patch
+	$(APPLY) $(SRC)/projectM/missing-includes.patch
+	$(APPLY) $(SRC)/projectM/projectm-cmake-install.patch
+	$(APPLY) $(SRC)/projectM/win32-math-include.patch
+	# remove enforced CMP0005 incompatible with recent CMake
+	sed -i.orig 's,cmake_policy(,# cmake_policy(,' "$(UNPACK_DIR)/CMakeLists.txt"
 	$(MOVE)
 
-DEPS_projectM = glew $(DEPS_glew)
-
-.projectM: projectM toolchain.cmake
-	cd $< && rm -f CMakeCache.txt
-	cd $< && $(HOSTVARS) $(CMAKE) \
-		-DINCLUDE-PROJECTM-LIBVISUAL:BOOL=OFF \
+PROJECTM_CONF := \
+		-DCMAKE_CXX_STANDARD=98 \
 		-DDISABLE_NATIVE_PRESETS:BOOL=ON \
 		-DUSE_FTGL:BOOL=OFF \
-		-DINCLUDE-PROJECTM-PULSEAUDIO:BOOL=OFF \
-		-DINCLUDE-PROJECTM-QT:BOOL=OFF \
-		-DBUILD_PROJECTM_STATIC:BOOL=ON .
-	cd $< && $(CMAKEBUILD) . --target install
-	-cd $<; cp Renderer/libRenderer.a MilkdropPresetFactory/libMilkdropPresetFactory.a $(PREFIX)/lib
+		-DBUILD_PROJECTM_STATIC:BOOL=ON \
+		-DCMAKE_POLICY_VERSION_MINIMUM=3.5
+
+.projectM: projectM toolchain.cmake
+	$(CMAKECLEAN)
+	$(HOSTVARS_CMAKE) $(CMAKE) $(PROJECTM_CONF)
+	+$(CMAKEBUILD)
+	$(CMAKEINSTALL)
 	touch $@

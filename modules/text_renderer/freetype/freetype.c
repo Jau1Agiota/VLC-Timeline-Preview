@@ -273,20 +273,22 @@ static FT_Vector GetAlignedOffset( const line_desc_t *p_line,
                                    int i_align )
 {
     FT_Vector offsets = { 0, 0 };
+
+    /* aligns left to textbbox's min first */
+    offsets.x = p_textbbox->xMin - p_line->bbox.xMin;
+
     const int i_text_width = p_textbbox->xMax - p_textbbox->xMin;
     if ( p_line->i_width < i_text_width &&
         (i_align & SUBPICTURE_ALIGN_LEFT) == 0 )
     {
         /* Left offset to take into account alignment */
         if( i_align & SUBPICTURE_ALIGN_RIGHT )
-            offsets.x = ( i_text_width - p_line->i_width );
+            offsets.x += ( i_text_width - p_line->i_width );
         else /* center */
-            offsets.x = ( i_text_width - p_line->i_width ) / 2;
+            offsets.x += ( i_text_width - p_line->i_width ) / 2;
     }
-    else
-    {
-        offsets.x = p_textbbox->xMin - p_line->bbox.xMin;
-    }
+    /* else already left aligned */
+
     return offsets;
 }
 
@@ -1049,6 +1051,40 @@ static void FreeStylesArray( text_style_t **pp_styles, size_t i_styles )
     free( pp_styles );
 }
 
+#ifdef __OS2__
+static void *ToUCS4( const char *in, size_t *outsize )
+{
+    uint16_t *psz_ucs2;
+    uint32_t *psz_ucs4;
+    size_t i_bytes;
+
+    psz_ucs2 = ToCharset("UCS-2LE", in, &i_bytes );
+    if( unlikely( !psz_ucs2 ) )
+        return NULL;
+
+    i_bytes <<= 1;
+    /* Realloc including NULL-terminator */
+    psz_ucs4 = realloc( psz_ucs2, i_bytes + sizeof( *psz_ucs4 ));
+    if( unlikely( !psz_ucs4 ) )
+    {
+        free( psz_ucs2 );
+
+        return NULL;
+    }
+
+    psz_ucs2 = ( uint16_t * )psz_ucs4;
+    /* Copy including NULL-terminator */
+    for( int i = i_bytes / sizeof( *psz_ucs4 ); i >= 0; --i )
+        psz_ucs4[ i ] = psz_ucs2[ i ];
+
+    *outsize = i_bytes;
+
+    return psz_ucs4;
+}
+#else
+# define ToUCS4( in, outsize ) ToCharset( FREETYPE_TO_UCS, ( in ), ( outsize ))
+#endif
+
 static uni_char_t* SegmentsToTextAndStyles( filter_t *p_filter, const text_segment_t *p_segment, size_t *pi_string_length,
                                             text_style_t ***ppp_styles, size_t *pi_styles )
 {
@@ -1062,7 +1098,7 @@ static uni_char_t* SegmentsToTextAndStyles( filter_t *p_filter, const text_segme
         if( !s->psz_text || !s->psz_text[0] )
             continue;
         size_t i_string_bytes = 0;
-        uni_char_t *psz_tmp = ToCharset( FREETYPE_TO_UCS, s->psz_text, &i_string_bytes );
+        uni_char_t *psz_tmp = ToUCS4( s->psz_text, &i_string_bytes );
         if( !psz_tmp )
         {
             free( psz_uni );
@@ -1190,7 +1226,7 @@ static int Render( filter_t *p_filter, subpicture_region_t *p_region_out,
     if( (unsigned)i_margin * 2 >= i_max_width || (unsigned)i_margin * 2 >= i_max_height )
         i_margin = 0;
 
-    /* Don't attempt to render text that couldn't be layed out
+    /* Don't attempt to render text that couldn't be laid out
      * properly. */
     if( !rv && i_text_length > 0 && bbox.xMin < bbox.xMax && bbox.yMin < bbox.yMax )
     {
@@ -1367,7 +1403,7 @@ static int Create( vlc_object_t *p_this )
 
     p_sys->i_scale = 100;
 
-    /* default style to apply to uncomplete segmeents styles */
+    /* default style to apply to incomplete segments styles */
     p_sys->p_default_style = text_style_Create( STYLE_FULLY_SET );
     if(unlikely(!p_sys->p_default_style))
         goto error;

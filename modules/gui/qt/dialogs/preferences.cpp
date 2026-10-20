@@ -72,7 +72,7 @@ PrefsDialog::PrefsDialog( QWidget *parent, intf_thread_t *_p_intf )
     types = new QGroupBox( qtr("Show settings") );
     types->setAlignment( Qt::AlignHCenter );
     QHBoxLayout *types_l = new QHBoxLayout;
-    types_l->setSpacing( 3 ); types_l->setMargin( 3 );
+    types_l->setSpacing( 3 ); types_l->setContentsMargins(3, 3, 3, 3);
     simple = new QRadioButton( qtr( "Simple" ), types );
     simple->setToolTip( qtr( "Switch to simple preferences view" ) );
     types_l->addWidget( simple );
@@ -112,7 +112,7 @@ PrefsDialog::PrefsDialog( QWidget *parent, intf_thread_t *_p_intf )
 
     simple_split_widget->layout()->addWidget( simple_tree_panel );
     simple_split_widget->layout()->addWidget( simple_panels_stack );
-    simple_split_widget->layout()->setMargin( 0 );
+    simple_split_widget->layout()->setContentsMargins(0, 0, 0, 0);
 
     advanced_split_widget->addWidget( advanced_tree_panel );
     advanced_split_widget->addWidget( advanced_panels_stack );
@@ -122,11 +122,11 @@ PrefsDialog::PrefsDialog( QWidget *parent, intf_thread_t *_p_intf )
     main_layout->addWidget( types, 3, 0, 2, 1 );
     main_layout->addWidget( buttonsBox, 4, 2, 1 ,1 );
     main_layout->setRowStretch( 2, 4 );
-    main_layout->setMargin( 9 );
+    main_layout->setContentsMargins(9, 9, 9, 9);
     setLayout( main_layout );
 
     /* Margins */
-    simple_tree_panel->layout()->setMargin( 1 );
+    simple_tree_panel->layout()->setContentsMargins( 1, 1, 1, 1 );
     simple_panels_stack->layout()->setContentsMargins( 6, 0, 0, 3 );
 
     for( int i = 0; i < SPrefsMax ; i++ ) simple_panels[i] = NULL;
@@ -137,12 +137,12 @@ PrefsDialog::PrefsDialog( QWidget *parent, intf_thread_t *_p_intf )
     else
         setSimple();
 
-    BUTTONACT( save, save() );
-    BUTTONACT( cancel, cancel() );
-    BUTTONACT( reset, reset() );
+    BUTTONACT( save, save );
+    BUTTONACT( cancel, cancel );
+    BUTTONACT( reset, reset );
 
-    BUTTONACT( simple, setSimple() );
-    BUTTONACT( all, setAdvanced() );
+    BUTTONACT( simple, setSimple );
+    BUTTONACT( all, setAdvanced );
 
     QVLCTools::restoreWidgetPosition( p_intf, "Preferences", this, QSize( 800 , 700 ) );
 }
@@ -159,20 +159,20 @@ void PrefsDialog::setAdvanced()
         tree_filter = new SearchLineEdit( simple_tree_panel );
         tree_filter->setMinimumHeight( 26 );
 
-        CONNECT( tree_filter, textChanged( const QString &  ),
-                this, advancedTreeFilterChanged( const QString & ) );
+        connect( tree_filter, &SearchLineEdit::textChanged,
+                this, &PrefsDialog::advancedTreeFilterChanged );
 
         advanced_tree_panel->layout()->addWidget( tree_filter );
 
         current_filter = new QCheckBox( qtr("Only show current") );
         current_filter->setToolTip(
                     qtr("Only show modules related to current playback") );
-        CONNECT( current_filter, stateChanged(int),
-                 this, onlyLoadedToggled() );
+        connect( current_filter, &QCheckBox::stateChanged,
+                 this, &PrefsDialog::onlyLoadedToggled );
         advanced_tree_panel->layout()->addWidget( current_filter );
 
         QShortcut *search = new QShortcut( QKeySequence( QKeySequence::Find ), tree_filter );
-        CONNECT( search, activated(), tree_filter, setFocus() );
+        connect( search, &QShortcut::activated, tree_filter, QOverload<>::of(&SearchLineEdit::setFocus) );
     }
 
     /* If don't have already and advanced TREE, then create it */
@@ -182,9 +182,9 @@ void PrefsDialog::setAdvanced()
         p_list = module_list_get( &count );
         advanced_tree = new PrefsTree( p_intf, simple_tree_panel, p_list, count );
         /* and connections */
-        CONNECT( advanced_tree,
-                 currentItemChanged( QTreeWidgetItem *, QTreeWidgetItem * ),
-                 this, changeAdvPanel( QTreeWidgetItem * ) );
+        connect( advanced_tree,
+                 &PrefsTree::currentItemChanged,
+                 this, &PrefsDialog::changeAdvPanel );
         advanced_tree_panel->layout()->addWidget( advanced_tree );
         advanced_tree_panel->setSizePolicy( QSizePolicy::Maximum, QSizePolicy::Preferred );
     }
@@ -212,9 +212,9 @@ void PrefsDialog::setSimple()
     if( !simple_tree )
     {
          simple_tree = new SPrefsCatList( p_intf, simple_tree_panel );
-         CONNECT( simple_tree,
-                  currentItemChanged( int ),
-                  this,  changeSimplePanel( int ) );
+         connect( simple_tree,
+                  &SPrefsCatList::currentItemChanged,
+                  this,  &PrefsDialog::changeSimplePanel );
         simple_tree_panel->layout()->addWidget( simple_tree );
         simple_tree_panel->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Preferred );
     }

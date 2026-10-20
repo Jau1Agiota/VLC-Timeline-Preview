@@ -22,8 +22,11 @@
 #endif
 
 #include "HLSStreams.hpp"
+#include "../adaptive/tools/Conversions.hpp"
 #include <vlc_demux.h>
 #include <vlc_meta.h>
+#include <limits>
+#include <new>
 
 extern "C"
 {
@@ -36,7 +39,6 @@ using namespace hls;
 HLSStream::HLSStream(demux_t *demux)
     : AbstractStream(demux)
 {
-    b_id3_timestamps_offset_set = false;
     p_meta = vlc_meta_New();
     b_meta_updated = false;
 }
@@ -47,27 +49,36 @@ HLSStream::~HLSStream()
         vlc_meta_Delete(p_meta);
 }
 
-void HLSStream::setMetadataTimeOffset(mtime_t i_offset)
+void HLSStream::setMetadataTimeOffset(vlc_tick_t i_offset)
 {
     if(i_offset >= 0)
-    {
-        if(!b_id3_timestamps_offset_set)
-            fakeEsOut()->setAssociatedTimestamp(i_offset);
-        b_id3_timestamps_offset_set = true;
-    }
+        fakeEsOut()->setAssociatedTimestamp(i_offset);
     else
-    {
         fakeEsOut()->setAssociatedTimestamp(-1);
-        b_id3_timestamps_offset_set = false;
-    }
 }
 
-bool HLSStream::setPosition(mtime_t ts , bool b)
+void HLSStream::setMetadataTimeMapping(vlc_tick_t mpegts, vlc_tick_t muxed)
 {
-    bool ok = AbstractStream::setPosition(ts ,b);
-    if(b && ok)
-        b_id3_timestamps_offset_set = false;
-    return ok;
+    fakeEsOut()->setAssociatedTimestamp(mpegts, muxed);
+}
+
+void HLSStream::trackerEvent(const TrackerEvent &e)
+{
+    AbstractStream::trackerEvent(e);
+
+    if(e.getType() == TrackerEvent::Type::FormatChange)
+    {
+        if(format == StreamFormat::Type::WebVTT)
+        {
+            contiguous = false;
+        }
+        else if(format == StreamFormat::Type::Unknown)
+        {
+            const Role r = segmentTracker->getStreamRole();
+            contiguous = !(r == Role::Value::Caption || r == Role::Value::Subtitle);
+        }
+        else contiguous = true;
+    }
 }
 
 int HLSStream::ParseID3PrivTag(const uint8_t *p_payload, size_t i_payload)
@@ -97,25 +108,61 @@ int HLSStream::ID3TAG_Parse_Handler(uint32_t i_tag, const uint8_t *p_payload, si
 
 block_t * HLSStream::checkBlock(block_t *p_block, bool b_first)
 {
-    if(b_first && p_block &&
-       p_block->i_buffer >= 10 && ID3TAG_IsTag(p_block->p_buffer, false))
+    if(b_first && p_block)
     {
-        while( p_block->i_buffer )
+        while(p_block->i_buffer >= 10 && ID3TAG_IsTag(p_block->p_buffer, false))
         {
             size_t i_size = ID3TAG_Parse( p_block->p_buffer, p_block->i_buffer,
                                           ID3TAG_Parse_Handler, static_cast<void *>(this) );
+            if(i_size >= p_block->i_buffer || i_size == 0)
+                break;
             /* Skip ID3 for demuxer */
             p_block->p_buffer += i_size;
             p_block->i_buffer -= i_size;
-            if( i_size == 0 )
-                break;
+        }
+    }
+
+    if(b_first && p_block && format == StreamFormat::Type::WebVTT && p_block->i_buffer > 7)
+    {
+        /* "WEBVTT\n"
+           "X-TIMESTAMP-MAP=LOCAL:00:00:00.000,MPEGTS:2147483647\n" */
+        const char *p = (const char *) p_block->p_buffer;
+        const char *end = p + p_block->i_buffer;
+        p = strnstr(p + 7, "X-TIMESTAMP-MAP=", p_block->i_buffer - 7);
+        if(p)
+        {
+            const char *eol = (const char *) memchr(p, '\n', end - p);
+            if(eol)
+            {
+                uint64_t mpegts = std::numeric_limits<uint64_t>::max();
+                vlc_tick_t local = std::numeric_limits<mtime_t>::max();
+                std::string str(p + 16, eol - p - 16);
+
+                std::string::size_type pos = str.find("LOCAL:");
+                if(pos != std::string::npos && str.length() - pos >= 12+6)
+                    local = UTCTime("T" + str.substr(pos + 6, 12)).mtime();
+
+                pos = str.find("MPEGTS:");
+                if(pos != std::string::npos && str.size() - pos > 7)
+                {
+                    pos += 7;
+                    std::string::size_type tail = str.find_last_not_of("0123456789", pos);
+                    mpegts = Integer<uint64_t>(str.substr(pos, (tail != std::string::npos) ? tail - pos : tail));
+                }
+
+                if(mpegts != std::numeric_limits<uint64_t>::max() &&
+                   local != std::numeric_limits<mtime_t>::max())
+                {
+                    setMetadataTimeMapping(VLC_TICK_0 + mpegts * 100/9, VLC_TICK_0 + local);
+                }
+            }
         }
     }
 
     if( b_meta_updated )
     {
         b_meta_updated = false;
-        AbstractCommand *command = fakeEsOut()->commandsQueue()->factory()->createEsOutMetaCommand( -1, p_meta );
+        AbstractCommand *command = fakeEsOut()->commandsFactory()->createEsOutMetaCommand( fakeesout, -1, p_meta );
         if( command )
             fakeEsOut()->commandsQueue()->Schedule( command );
     }
@@ -126,50 +173,53 @@ block_t * HLSStream::checkBlock(block_t *p_block, bool b_first)
 AbstractDemuxer *HLSStream::newDemux(vlc_object_t *p_obj, const StreamFormat &format,
                                      es_out_t *out, AbstractSourceStream *source) const
 {
-    AbstractDemuxer *ret = NULL;
-    switch((unsigned)format)
+    AbstractDemuxer *ret = nullptr;
+    switch(format)
     {
-        case StreamFormat::PACKEDAAC:
-            ret = new Demuxer(p_obj, "aac", out, source);
+        case StreamFormat::Type::PackedAAC:
+            ret = new Demuxer(p_obj, "aac", out, source); /* "es" demuxer cannot probe AAC, need to force */
+            break;
+        case StreamFormat::Type::PackedMP3: /* MPGA / MP3, needs "es" to probe: do not force */
+        case StreamFormat::Type::PackedAC3: /* AC3 / E-AC3, needs "es" to probe: do not force */
+            ret = new Demuxer(p_obj, "es", out, source);
             break;
 
-        case StreamFormat::MPEG2TS:
+        case StreamFormat::Type::MPEG2TS:
             ret = new Demuxer(p_obj, "ts", out, source);
             if(ret)
                 ret->setBitstreamSwitchCompatible(false); /* HLS and unique PAT/PMT versions */
             break;
 
-        case StreamFormat::MP4:
+        case StreamFormat::Type::MP4:
             ret = AbstractStream::newDemux(p_obj, format, out, source);
             break;
 
-/* Disabled until we can handle empty segments/cue and absolute time
-        case StreamFormat::WEBVTT:
+        case StreamFormat::Type::Ogg:
+            ret = new Demuxer(p_obj, "ogg", out, source);
+            break;
+
+        case StreamFormat::Type::WebVTT:
             ret = new Demuxer(p_obj, "webvttstream", out, source);
             if(ret)
                 ret->setRestartsOnEachSegment(true);
             break;
-*/
-
-        case StreamFormat::UNKNOWN:
-            ret = new MimeDemuxer(p_obj, this, out, source);
-            break;
 
         default:
-        case StreamFormat::UNSUPPORTED:
+        case StreamFormat::Type::Unknown:
+        case StreamFormat::Type::Unsupported:
             break;
     }
     return ret;
 }
 
 AbstractStream * HLSStreamFactory::create(demux_t *realdemux, const StreamFormat &format,
-                               SegmentTracker *tracker, AbstractConnectionManager *manager) const
+                               SegmentTracker *tracker) const
 {
     HLSStream *stream = new (std::nothrow) HLSStream(realdemux);
-    if(stream && !stream->init(format, tracker, manager))
+    if(stream && !stream->init(format, tracker))
     {
         delete stream;
-        return NULL;
+        return nullptr;
     }
     return stream;
 }

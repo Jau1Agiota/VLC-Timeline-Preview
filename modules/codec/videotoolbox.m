@@ -105,6 +105,7 @@ enum vtsession_status
     VTSESSION_STATUS_RESTART,
     VTSESSION_STATUS_RESTART_CHROMA,
     VTSESSION_STATUS_ABORT,
+    VTSESSION_STATUS_VOUT_FAILURE,
 };
 
 static int ConfigureVout(decoder_t *);
@@ -868,7 +869,7 @@ static picture_t * RemoveOneFrameFromDPB(decoder_sys_t *p_sys)
         picture_t *p_field = p_info->p_picture;
 
         /* Compute time if missing */
-        if (p_field->date == VLC_TS_INVALID)
+        if (p_field->date == VLC_TICK_INVALID)
             p_field->date = date_Get(&p_sys->pts);
         else
             date_Set(&p_sys->pts, p_field->date);
@@ -951,7 +952,7 @@ static frame_info_t * CreateReorderInfo(decoder_t *p_dec, const block_t *p_block
     /* required for still pictures/menus */
     p_info->b_forced = (p_block->i_flags & BLOCK_FLAG_END_OF_SEQUENCE);
 
-    if (date_Get(&p_sys->pts) == VLC_TS_INVALID)
+    if (date_Get(&p_sys->pts) == VLC_TICK_INVALID)
         date_Set(&p_sys->pts, p_block->i_dts);
 
     return p_info;
@@ -977,7 +978,7 @@ static void OnDecodedFrame(decoder_t *p_dec, frame_info_t *p_info)
                 break;
             }
             else if (!p_sys->b_poc_based_reorder &&
-                     p_info->p_picture->date > VLC_TS_INVALID &&
+                     p_info->p_picture->date > VLC_TICK_INVALID &&
                      p_sys->p_pic_reorder->p_picture->date > p_info->p_picture->date)
             {
                 p_sys->b_invalid_pic_reorder_max = true;
@@ -1023,11 +1024,6 @@ static CMVideoCodecType CodecPrecheck(decoder_t *p_dec)
 
         case VLC_CODEC_MP4V:
         {
-            if (p_dec->fmt_in.i_original_fourcc == VLC_FOURCC( 'X','V','I','D' )) {
-                msg_Warn(p_dec, "XVID decoding not implemented, fallback on software");
-                return -1;
-            }
-
             msg_Dbg(p_dec, "Will decode MP4V with original FourCC '%4.4s'", (char *)&p_dec->fmt_in.i_original_fourcc);
             return kCMVideoCodecType_MPEG4Video;
         }
@@ -1688,7 +1684,7 @@ static CMSampleBufferRef VTSampleBufferCreate(decoder_t *p_dec,
     CMBlockBufferRef  block_buf = NULL;
     CMSampleBufferRef sample_buf = NULL;
     CMTime pts;
-    if(!p_dec->p_sys->b_poc_based_reorder && p_block->i_pts == VLC_TS_INVALID)
+    if(!p_dec->p_sys->b_poc_based_reorder && p_block->i_pts == VLC_TICK_INVALID)
         pts = CMTimeMake(p_block->i_dts, CLOCK_FREQ);
     else
         pts = CMTimeMake(p_block->i_pts, CLOCK_FREQ);
@@ -1734,6 +1730,15 @@ static CMSampleBufferRef VTSampleBufferCreate(decoder_t *p_dec,
     return sample_buf;
 }
 
+// Error enum values introduced in macOS 12 / iOS 15 SDKs
+#if ((TARGET_OS_OSX && __MAC_OS_X_VERSION_MAX_ALLOWED < 120000) || \
+     (TARGET_OS_TV && __TV_OS_VERSION_MAX_ALLOWED < 150000) || \
+     (TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 150000))
+enum {
+    kVTVideoDecoderReferenceMissingErr      = -17694
+};
+#endif
+
 static int HandleVTStatus(decoder_t *p_dec, OSStatus status,
                           enum vtsession_status * p_vtsession_status)
 {
@@ -1776,6 +1781,7 @@ static int HandleVTStatus(decoder_t *p_dec, OSStatus status,
         VTERRCASE(kVTFrameSiloInvalidTimeRangeErr)
         VTERRCASE(kVTCouldNotFindTemporalFilterErr)
         VTERRCASE(kVTPixelTransferNotPermittedErr)
+        VTERRCASE(kVTVideoDecoderReferenceMissingErr)
         case -12219:
             msg_Warn(p_dec, "vt session error: "
                      "'kVTColorCorrectionImageRotationFailedErr'");
@@ -1796,6 +1802,7 @@ static int HandleVTStatus(decoder_t *p_dec, OSStatus status,
             case -8960 /* codecErr */:
             case kVTVideoDecoderMalfunctionErr:
             case kVTInvalidSessionErr:
+            case kVTVideoDecoderReferenceMissingErr:
                 *p_vtsession_status = VTSESSION_STATUS_RESTART;
                 break;
             case -8969 /* codecBadDataErr */:
@@ -1936,6 +1943,11 @@ static int DecodeBlock(decoder_t *p_dec, block_t *p_block)
         /* Add an empty variable so that videotoolbox won't be loaded again for
          * this ES */
         var_Create(p_dec, "videotoolbox-failed", VLC_VAR_VOID);
+        return VLCDEC_RELOAD;
+    }
+    else if (p_sys->vtsession_status == VTSESSION_STATUS_VOUT_FAILURE)
+    {
+        vlc_mutex_unlock(&p_sys->lock);
         return VLCDEC_RELOAD;
     }
     vlc_mutex_unlock(&p_sys->lock);
@@ -2107,7 +2119,7 @@ static int UpdateVideoFormat(decoder_t *p_dec, CVPixelBufferRef imageBuffer)
     p_dec->fmt_out.video.i_chroma = p_dec->fmt_out.i_codec;
     if (decoder_UpdateVideoFormat(p_dec) != 0)
     {
-        p_dec->p_sys->vtsession_status = VTSESSION_STATUS_ABORT;
+        p_dec->p_sys->vtsession_status = VTSESSION_STATUS_VOUT_FAILURE;
         return -1;
     }
     return 0;
@@ -2155,7 +2167,7 @@ static int pic_holder_wait(struct pic_holder *pic_holder, const picture_t *pic)
      * output pictures (will they be rendered immediately ?), so don't wait
      * infinitely. The output will be paced anyway by the vlc_cond_timedwait()
      * call. */
-    mtime_t deadline = mdate() + INT64_C(200000);
+    vlc_tick_t deadline = mdate() + INT64_C(200000);
     int ret = 0;
     while (ret == 0 && pic_holder->field_reorder_max != 0
         && pic_holder->nb_field_out >= pic_holder->field_reorder_max + reserved_fields)

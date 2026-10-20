@@ -271,9 +271,9 @@ static int GenericOpen( demux_t *p_demux, const char *psz_module,
     if( vlc_stream_Peek( p_demux->s, &p_peek, H26X_MIN_PEEK ) == H26X_MIN_PEEK &&
        !memcmp( p_peek, annexb_startcode, 4 ) )
     {
-        size_t i_peek = H26X_MIN_PEEK;
+        ssize_t i_peek = H26X_MIN_PEEK;
         size_t i_peek_target = H26X_MIN_PEEK;
-        size_t i_probe_offset = 4;
+        ssize_t i_probe_offset = 4;
         const uint8_t *p_probe = p_peek;
         bool b_synced = true;
         unsigned i_bitflow = 0;
@@ -304,7 +304,7 @@ static int GenericOpen( demux_t *p_demux, const char *psz_module,
             if( b_synced )
             {
                 p_probe = &p_peek[i_probe_offset];
-                i_ret = pf_probe( p_probe, i_peek - i_probe_offset, p_ctx );
+                i_ret = pf_probe( p_probe, (size_t)(i_peek - i_probe_offset), p_ctx );
             }
 
             if( i_ret != 0 )
@@ -351,7 +351,7 @@ static int GenericOpen( demux_t *p_demux, const char *psz_module,
     }
     else
         date_Init( &p_sys->feed_dts, 25000, 1000 );
-    date_Set( &p_sys->feed_dts, VLC_TS_0 );
+    date_Set( &p_sys->feed_dts, VLC_TICK_0 );
     p_sys->output_dts = p_sys->feed_dts;
 
     /* Load the mpegvideo packetizer */
@@ -448,21 +448,21 @@ static int Demux( demux_t *p_demux)
             }
 
             /* we only want to use the pts-dts offset and length from packetizer */
-            mtime_t dtsdiff = p_block_out->i_pts > p_block_out->i_dts
+            vlc_tick_t dtsdiff = p_block_out->i_pts > p_block_out->i_dts
                             ? p_block_out->i_pts - p_block_out->i_dts
                             : 0;
             /* Always start frame N=1 so we get PCR on N=0 */
             date_t dtsdate = p_sys->output_dts;
-            mtime_t dts = date_Increment( &dtsdate, 2 );
+            vlc_tick_t dts = date_Increment( &dtsdate, 2 );
 
             p_block_out->i_dts = dts;
-            if( p_block_out->i_pts != VLC_TS_INVALID )
+            if( p_block_out->i_pts != VLC_TICK_INVALID )
                 p_block_out->i_pts = dts + dtsdiff;
 
             if( p_block_in )
             {
                 p_block_in->i_dts = date_Get( &p_sys->feed_dts );
-                p_block_in->i_pts = VLC_TS_INVALID;
+                p_block_in->i_pts = VLC_TICK_INVALID;
             }
 
             if( p_sys->p_es == NULL )
@@ -478,15 +478,15 @@ static int Demux( demux_t *p_demux)
 
             /* h264 packetizer does merge multiple NAL into AU, but slice flag persists */
             bool frame = p_block_out->i_flags & BLOCK_FLAG_TYPE_MASK;
-            const mtime_t i_frame_length = p_block_out->i_length;
+            const vlc_tick_t i_frame_length = p_block_out->i_length;
 
             /* first output */
-            if( date_Get( &p_sys->output_dts ) == VLC_TS_0 )
+            if( date_Get( &p_sys->output_dts ) == VLC_TICK_0 )
                 es_out_SetPCR( p_demux->out, date_Get( &p_sys->output_dts ) );
 
             es_out_Send( p_demux->out, p_sys->p_es, p_block_out );
 
-            mtime_t pcr = b_eof ? dts : date_Get( &p_sys->output_dts );
+            vlc_tick_t pcr = b_eof ? dts : date_Get( &p_sys->output_dts );
 
             if( frame )
             {
@@ -525,4 +525,3 @@ static int Control( demux_t *p_demux, int i_query, va_list args )
                                        0, -1,
                                        0, 1, i_query, args );
 }
-

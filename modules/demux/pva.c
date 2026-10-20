@@ -32,6 +32,7 @@
 #include <vlc_common.h>
 #include <vlc_plugin.h>
 #include <vlc_demux.h>
+#include "mpeg/timestamps.h"
 
 /*****************************************************************************
  * Module descriptor
@@ -215,15 +216,20 @@ static int Demux( demux_t *p_demux )
                 if( ( p_frame = p_sys->p_es ) )
                 {
 
-                    if( p_frame->i_pts > VLC_TS_INVALID && !p_sys->b_pcr_audio )
+                    if( p_frame->i_pts > VLC_TICK_INVALID && !p_sys->b_pcr_audio )
                     {
                         es_out_SetPCR( p_demux->out, p_frame->i_pts);
                     }
 
                     p_frame = block_ChainGather( p_frame );
-                    if( unlikely(p_frame == NULL) )
-                        abort();
-                    es_out_Send( p_demux->out, p_sys->p_video, p_frame );
+
+                    if( likely(p_frame) )
+                    {
+                        if( likely(p_sys->p_video) )
+                            es_out_Send( p_demux->out, p_sys->p_video, p_frame );
+                        else
+                            block_Release( p_frame );
+                    }
 
                     p_sys->p_es = NULL;
                 }
@@ -234,7 +240,7 @@ static int Demux( demux_t *p_demux )
                 p_frame->p_buffer += i_skip;
                 p_frame->i_buffer -= i_skip;
                 if( i_pts >= 0 )
-                    p_frame->i_pts = VLC_TS_0 + i_pts * 100 / 9;
+                    p_frame->i_pts = VLC_TICK_0 + i_pts * 100 / 9;
                 block_ChainAppend( &p_sys->p_es, p_frame );
             }
             break;
@@ -390,19 +396,19 @@ static void ParsePES( demux_t *p_demux )
 {
     demux_sys_t *p_sys = p_demux->p_sys;
     block_t     *p_pes = p_sys->p_pes;
-    uint8_t     hdr[30];
+    uint8_t     hdr[20];
 
     unsigned    i_skip;
-    mtime_t     i_dts = -1;
-    mtime_t     i_pts = -1;
+    ts_90khz_t  i_dts;
+    ts_90khz_t  i_pts;
 
     p_sys->p_pes = NULL;
 
     /* FIXME find real max size */
-    block_ChainExtract( p_pes, hdr, 30 );
+    size_t hdr_read = block_ChainExtract( p_pes, hdr, ARRAY_SIZE(hdr) );
 
     /* See §2.4.3.6 of ISO 13818-1 */
-    if( hdr[0] != 0 || hdr[1] != 0 || hdr[2] != 1 )
+    if( hdr_read < 9 || hdr[0] != 0 || hdr[1] != 0 || hdr[2] != 1 )
     {
         msg_Warn( p_demux, "invalid hdr [0x%2.2x:%2.2x:%2.2x:%2.2x]",
                   hdr[0], hdr[1],hdr[2],hdr[3] );
@@ -414,23 +420,6 @@ static void ParsePES( demux_t *p_demux )
 
     /* we assume mpeg2 PES */
     i_skip = hdr[8] + 9;
-    if( hdr[7]&0x80 )    /* has pts */
-    {
-        i_pts = ((mtime_t)(hdr[ 9]&0x0e ) << 29)|
-                 (mtime_t)(hdr[10] << 22)|
-                ((mtime_t)(hdr[11]&0xfe) << 14)|
-                 (mtime_t)(hdr[12] << 7)|
-                 (mtime_t)(hdr[12] >> 1);
-
-        if( hdr[7]&0x40 )    /* has dts */
-        {
-             i_dts = ((mtime_t)(hdr[14]&0x0e ) << 29)|
-                     (mtime_t)(hdr[15] << 22)|
-                    ((mtime_t)(hdr[16]&0xfe) << 14)|
-                     (mtime_t)(hdr[17] << 7)|
-                     (mtime_t)(hdr[18] >> 1);
-        }
-    }
 
     p_pes = block_ChainGather( p_pes );
     if( unlikely(p_pes == NULL) )
@@ -444,10 +433,25 @@ static void ParsePES( demux_t *p_demux )
     p_pes->i_buffer -= i_skip;
     p_pes->p_buffer += i_skip;
 
-    if( i_dts >= 0 )
-        p_pes->i_dts = VLC_TS_0 + i_dts * 100 / 9;
-    if( i_pts >= 0 )
-        p_pes->i_pts = VLC_TS_0 + i_pts * 100 / 9;
+    if( hdr[7]&0x80 && hdr_read >= (9+1+5) )    /* has pts */
+    {
+        i_pts = ((ts_90khz_t)(hdr[ 9]&0x0e ) << 29)|
+                 (ts_90khz_t)(hdr[10] << 22)|
+                ((ts_90khz_t)(hdr[11]&0xfe) << 14)|
+                 (ts_90khz_t)(hdr[12] << 7)|
+                 (ts_90khz_t)(hdr[13] >> 1);
+        p_pes->i_pts = FROM_SCALE(i_pts);
+
+        if( hdr[7]&0x40 && hdr_read >= (14+1+5) )    /* has dts */
+        {
+             i_dts = ((ts_90khz_t)(hdr[14]&0x0e ) << 29)|
+                     (ts_90khz_t)(hdr[15] << 22)|
+                    ((ts_90khz_t)(hdr[16]&0xfe) << 14)|
+                     (ts_90khz_t)(hdr[17] << 7)|
+                     (ts_90khz_t)(hdr[18] >> 1);
+            p_pes->i_dts = FROM_SCALE(i_dts);
+        }
+    }
 
     /* Set PCR */
     if( p_pes->i_pts > 0 )
@@ -455,6 +459,9 @@ static void ParsePES( demux_t *p_demux )
         es_out_SetPCR( p_demux->out, p_pes->i_pts);
         p_sys->b_pcr_audio = true;
     }
-    es_out_Send( p_demux->out, p_sys->p_audio, p_pes );
+    if( likely(p_sys->p_audio) )
+        es_out_Send( p_demux->out, p_sys->p_audio, p_pes );
+    else
+        block_Release( p_pes );
 }
 

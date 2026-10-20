@@ -58,12 +58,15 @@ overlay_t *OverlayCreate( void )
                         0, 0, 1, 1 );
     p_ovl->p_fontstyle = text_style_Create( STYLE_NO_DEFAULTS );
     p_ovl->data.p_text = NULL;
+    p_ovl->data.p_pic = NULL;
 
     return p_ovl;
 }
 
 int OverlayDestroy( overlay_t *p_ovl )
 {
+    if( p_ovl->data.p_pic != NULL )
+        picture_Release( p_ovl->data.p_pic );
     free( p_ovl->data.p_text );
     text_style_Delete( p_ovl->p_fontstyle );
 
@@ -231,8 +234,12 @@ static int parser_SetTextAlpha( char *psz_command, char *psz_end,
     skip_space( &psz_command );
     if( isdigit( (unsigned char)*psz_command ) )
     {
-        if( parse_digit( &psz_command, &p_params->fontstyle.i_font_alpha ) == VLC_EGENERIC )
+        int32_t value;
+
+        if( parse_digit( &psz_command, &value ) == VLC_EGENERIC )
             return VLC_EGENERIC;
+
+        p_params->fontstyle.i_font_alpha = value;
     }
     return VLC_SUCCESS;
 }
@@ -481,6 +488,9 @@ static int exec_DataSharedMem( filter_t *p_filter,
     {
         uint8_t *p_data, *p_in;
         size_t i_neededsize = 0;
+
+        if( p_ovl->data.p_pic != NULL )
+            picture_Release( p_ovl->data.p_pic );
 
         p_ovl->data.p_pic = picture_New( p_params->fourcc,
                                          p_params->i_width, p_params->i_height,
@@ -893,12 +903,11 @@ static const commanddesc_static_t p_commands[] =
 void RegisterCommand( filter_t *p_filter )
 {
     filter_sys_t *p_sys = (filter_sys_t*) p_filter->p_sys;
-    size_t i_index = 0;
 
     p_sys->i_commands = ARRAY_SIZE(p_commands);
     p_sys->pp_commands = (commanddesc_t **) calloc( p_sys->i_commands, sizeof(commanddesc_t*) );
     if( !p_sys->pp_commands ) return;
-    for( i_index = 0; i_index < p_sys->i_commands; i_index ++ )
+    for( size_t i_index = 0; i_index < p_sys->i_commands; i_index ++ )
     {
         p_sys->pp_commands[i_index] = (commanddesc_t *) malloc( sizeof(commanddesc_t) );
         if( !p_sys->pp_commands[i_index] ) return;

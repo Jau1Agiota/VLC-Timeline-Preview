@@ -681,7 +681,7 @@ vlc_module_begin ()
         change_integer_range( 0, 1000 )
 
     add_integer( SOUT_CFG_PREFIX "deadzone-inter", 21, DEADZONE_INTER_TEXT,
-                 DEADZONE_INTRA_LONGTEXT, true )
+                 DEADZONE_INTER_LONGTEXT, true )
         change_integer_range( 0, 32 )
 
     add_integer( SOUT_CFG_PREFIX "deadzone-intra", 11, DEADZONE_INTRA_TEXT,
@@ -762,7 +762,7 @@ struct encoder_sys_t
     x264_t          *h;
     x264_param_t    param;
 
-    mtime_t         i_initial_delay;
+    vlc_tick_t      i_initial_delay;
 
     char            *psz_stat_name;
     int             i_sei_size;

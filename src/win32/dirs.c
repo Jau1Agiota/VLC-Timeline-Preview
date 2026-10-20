@@ -49,8 +49,40 @@
 
 #if VLC_WINSTORE_APP
 #include <winstring.h>
+#define WIDL_using_Windows_Storage
 #include <windows.storage.h>
 #include <roapi.h>
+
+#ifndef IStorageItem_get_Path
+typedef __x_ABI_CWindows_CStorage_CIStorageFolder IStorageFolder;
+typedef __x_ABI_CWindows_CStorage_CIStorageItem   IStorageItem;
+typedef __x_ABI_CWindows_CStorage_CIKnownFoldersStatics IKnownFoldersStatics;
+typedef __x_ABI_CWindows_CStorage_CIApplicationDataStatics IApplicationDataStatics;
+typedef __x_ABI_CWindows_CStorage_CIApplicationData IApplicationData;
+typedef __x_ABI_CWindows_CStorage_CIApplicationData2 IApplicationData2;
+
+#define IID_IStorageItem IID___x_ABI_CWindows_CStorage_CIStorageItem
+#define IID_IKnownFoldersStatics IID___x_ABI_CWindows_CStorage_CIKnownFoldersStatics
+#define IID_IApplicationDataStatics IID___x_ABI_CWindows_CStorage_CIApplicationDataStatics
+#define IID_IApplicationData2 IID___x_ABI_CWindows_CStorage_CIApplicationData2
+
+#define IKnownFoldersStatics_get_DocumentsLibrary(a,f) __x_ABI_CWindows_CStorage_CIKnownFoldersStatics_get_DocumentsLibrary(a,f)
+#define IKnownFoldersStatics_get_MusicLibrary(a,f) __x_ABI_CWindows_CStorage_CIKnownFoldersStatics_get_MusicLibrary(a,f)
+#define IKnownFoldersStatics_get_PicturesLibrary(a,f) __x_ABI_CWindows_CStorage_CIKnownFoldersStatics_get_PicturesLibrary(a,f)
+#define IKnownFoldersStatics_get_VideosLibrary(a,f) __x_ABI_CWindows_CStorage_CIKnownFoldersStatics_get_VideosLibrary(a,f)
+#define IStorageItem_get_Path(a,f) __x_ABI_CWindows_CStorage_CIStorageItem_get_Path(a,f)
+#define IStorageItem_Release(a) __x_ABI_CWindows_CStorage_CIStorageItem_Release(a)
+#define IStorageFolder_Release(a) __x_ABI_CWindows_CStorage_CIStorageFolder_Release(a)
+#define IStorageFolder_QueryInterface(a,i,v) __x_ABI_CWindows_CStorage_CIStorageFolder_QueryInterface(a,i,v)
+#define IKnownFoldersStatics_Release(a) __x_ABI_CWindows_CStorage_CIKnownFoldersStatics_Release(a)
+#define IApplicationDataStatics_get_Current(a,f) __x_ABI_CWindows_CStorage_CIApplicationDataStatics_get_Current(a,f)
+#define IApplicationData_get_LocalFolder(a,f) __x_ABI_CWindows_CStorage_CIApplicationData_get_LocalFolder(a,f)
+#define IApplicationDataStatics_Release(a) __x_ABI_CWindows_CStorage_CIApplicationDataStatics_Release(a)
+#define IApplicationData_Release(a) __x_ABI_CWindows_CStorage_CIApplicationData_Release(a)
+#define IApplicationData_QueryInterface(a,i,v) __x_ABI_CWindows_CStorage_CIApplicationData_QueryInterface(a,i,v)
+#define IApplicationData2_get_LocalCacheFolder(a,f) __x_ABI_CWindows_CStorage_CIApplicationData2_get_LocalCacheFolder(a,f)
+#define IApplicationData2_Release(a) __x_ABI_CWindows_CStorage_CIApplicationData2_Release(a)
+#endif
 
 #ifndef CSIDL_LOCAL_APPDATA
 # define CSIDL_LOCAL_APPDATA 0x001C
@@ -216,7 +248,7 @@ static char *config_GetShellDir (int csidl)
 {
     wchar_t wdir[MAX_PATH];
 
-    if (SHGetFolderPathW (NULL, csidl | CSIDL_FLAG_CREATE,
+    if (SHGetFolderPathW (NULL, csidl,
                           NULL, SHGFP_TYPE_CURRENT, wdir ) == S_OK)
         return FromWide (wdir);
     return NULL;
@@ -226,17 +258,22 @@ static char *config_GetAppDir (void)
 {
 #if !VLC_WINSTORE_APP
     /* if portable directory exists, use it */
-    TCHAR path[MAX_PATH];
-    if (GetModuleFileName (NULL, path, MAX_PATH))
+    WCHAR path[MAX_PATH];
+    if (GetModuleFileNameW (NULL, path, MAX_PATH))
     {
-        TCHAR *lastDir = _tcsrchr (path, '\\');
+        WCHAR *lastDir = wcsrchr (path, L'\\');
         if (lastDir)
         {
-            _tcscpy (lastDir + 1, TEXT("portable"));
-            DWORD attrib = GetFileAttributes (path);
-            if (attrib != INVALID_FILE_ATTRIBUTES &&
-                    (attrib & FILE_ATTRIBUTE_DIRECTORY))
-                return FromT (path);
+            *lastDir = L'\0';
+            size_t pathlen = wcslen(path);
+            if ( pathlen + 1 + wcslen(L"\\portable" ) <= MAX_PATH )
+            {
+                wcscpy( &path[pathlen], L"\\portable" );
+                DWORD attrib = GetFileAttributesW (path);
+                if (attrib != INVALID_FILE_ATTRIBUTES &&
+                        (attrib & FILE_ATTRIBUTE_DIRECTORY))
+                    return FromWide (path);
+            }
         }
     }
 #endif

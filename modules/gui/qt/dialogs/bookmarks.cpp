@@ -80,27 +80,27 @@ BookmarksDialog::BookmarksDialog( intf_thread_t *_p_intf ):QVLCFrame( _p_intf )
     layout->addWidget( buttonsBox );
     layout->addWidget( bookmarksList );
 
-    CONNECT( THEMIM->getIM(), bookmarksChanged(),
-             this, update() );
+    connect( THEMIM->getIM(), &InputManager::bookmarksChanged,
+             this, &BookmarksDialog::update );
 
-    CONNECT( bookmarksList, activated( QModelIndex ), this,
-             activateItem( QModelIndex ) );
-    CONNECT( bookmarksList, itemChanged( QTreeWidgetItem*, int ),
-             this, edit( QTreeWidgetItem*, int ) );
-    CONNECT( bookmarksList->model(), rowsInserted( const QModelIndex &, int, int ),
-             this, updateButtons() );
-    CONNECT( bookmarksList->model(), rowsRemoved( const QModelIndex &, int, int ),
-             this, updateButtons() );
-    CONNECT( bookmarksList->selectionModel(), selectionChanged( const QItemSelection &, const QItemSelection & ),
-             this, updateButtons() );
-    BUTTONACT( addButton, add() );
-    BUTTONACT( delButton, del() );
-    BUTTONACT( clearButton, clear() );
+    connect( bookmarksList, &QTreeWidget::activated, this,
+             &BookmarksDialog::activateItem );
+    connect( bookmarksList, &QTreeWidget::itemChanged,
+             this, &BookmarksDialog::edit );
+    connect( bookmarksList->model(), &QAbstractItemModel::rowsInserted,
+             this, &BookmarksDialog::updateButtons );
+    connect( bookmarksList->model(), &QAbstractItemModel::rowsRemoved,
+             this, &BookmarksDialog::updateButtons );
+    connect( bookmarksList->selectionModel(), &QItemSelectionModel::selectionChanged,
+             this, &BookmarksDialog::updateButtons );
+    BUTTONACT( addButton, add );
+    BUTTONACT( delButton, del );
+    BUTTONACT( clearButton, clear );
 
 #if 0
-    BUTTONACT( extractButton, extract() );
+    BUTTONACT( extractButton, extract );
 #endif
-    CONNECT( buttonsBox, rejected(), this, close() );
+    connect( buttonsBox, &QDialogButtonBox::rejected, this, &BookmarksDialog::close );
     updateButtons();
 
     restoreWidgetPosition( "Bookmarks", QSize( 435, 280 ) );
@@ -138,7 +138,7 @@ void BookmarksDialog::update()
 
     for( int i = 0; i < i_bookmarks; i++ )
     {
-        mtime_t total = pp_bookmarks[i]->i_time_offset;
+        vlc_tick_t total = pp_bookmarks[i]->i_time_offset;
         unsigned hours   = ( total / ( CLOCK_FREQ * 3600 ) );
         unsigned minutes = ( total % ( CLOCK_FREQ * 3600 ) ) / ( CLOCK_FREQ * 60 );
         float    seconds = ( total % ( CLOCK_FREQ * 60 ) ) / ( CLOCK_FREQ * 1. );
@@ -146,7 +146,7 @@ void BookmarksDialog::update()
         QStringList row;
         row << QString( qfu( pp_bookmarks[i]->psz_name ) );
         row << qfu("-");
-        row << QString().sprintf( "%02u:%02u:%06.3f", hours, minutes, seconds );
+        row << QString( "%1:%2:%3" ).arg( hours, 2, 10, QChar('0')).arg( minutes, 2, 10, QChar('0')).arg(seconds, 10, 'f', 3, QChar('0'));
 
         QTreeWidgetItem *item = new QTreeWidgetItem( bookmarksList, row );
         item->setFlags( Qt::ItemIsSelectable | Qt::ItemIsEditable |
@@ -186,7 +186,7 @@ void BookmarksDialog::del()
         b_ignore_updates = true;
         /* Sort needed to make sure that selected elements are deleted in descending
            order, otherwise the indexes might change and wrong bookmarks are deleted. */
-        qSort( selected.begin(), selected.end() );
+        std::sort( selected.begin(), selected.end() );
         QModelIndexList::Iterator it = selected.end();
         for( --it; it != selected.begin(); it-- )
         {
@@ -242,7 +242,13 @@ void BookmarksDialog::edit( QTreeWidgetItem *item, int column )
     }
     else if( column == 2 )
     {
-        fields = item->text( column ).split( ":", QString::SkipEmptyParts );
+        fields = item->text( column ).split( ":",
+                                      #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+                                        Qt::SkipEmptyParts
+                                      #else
+                                        QString::SkipEmptyParts
+                                      #endif
+                                    );
         if( fields.count() == 1 )
             p_seekpoint->i_time_offset = 1000000 * ( fields[0].toFloat() );
         else if( fields.count() == 2 )

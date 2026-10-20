@@ -28,7 +28,7 @@
 # include "config.h"
 #endif
 
-#include <assert.h>
+#include <cassert>
 
 #include <vlc_common.h>
 #include <vlc_plugin.h>
@@ -42,6 +42,23 @@
 
 #include <spatialaudio/Ambisonics.h>
 #include <spatialaudio/SpeakersBinauralizer.h>
+
+#ifdef HAVE_SPATIALAUDIOVERSION_H
+#  include <spatialaudio/SpatialaudioVersion.h>
+#else
+#  define SPATIALAUDIO_API_VERSION_MAJOR 0
+#endif
+
+#if SPATIALAUDIO_API_VERSION_MAJOR >= 2
+    using namespace spaudio;
+    using CAmbisonicBinauralizer = spaudio::AmbisonicBinauralizer;
+    using CAmbisonicDecoder = spaudio::AmbisonicDecoder;
+    using CAmbisonicProcessor = spaudio::AmbisonicProcessor;
+    using CAmbisonicZoomer = spaudio::AmbisonicZoomer;
+    using CAmbisonicSpeaker = spaudio::AmbisonicSpeaker;
+    using CBFormat = spaudio::BFormat;
+    #define kAmblib_CustomSpeakerSetUp Amblib_SpeakerSetUps::kAmblib_CustomSpeakerSetUp
+#endif
 
 #define CFG_PREFIX "spatialaudio-"
 
@@ -121,8 +138,8 @@ struct filter_spatialaudio
     CAmbisonicSpeaker *speakers;
 
     std::vector<float> inputSamples;
-    mtime_t i_inputPTS;
-    mtime_t i_last_input_pts;
+    vlc_tick_t i_inputPTS;
+    vlc_tick_t i_last_input_pts;
     unsigned i_order;
 
     float** inBuf;
@@ -168,7 +185,7 @@ static block_t *Mix( filter_t *p_filter, block_t *p_buf )
     filter_spatialaudio *p_sys = reinterpret_cast<filter_spatialaudio *>(p_filter->p_sys);
 
     /* Detect discontinuity due to a pause */
-    static const mtime_t rounding_error = 10;
+    static const vlc_tick_t rounding_error = 10;
     if( p_sys->i_inputPTS != 0
      && p_buf->i_pts - p_sys->i_last_input_pts > rounding_error )
         Flush( p_filter );
@@ -460,10 +477,18 @@ static int Open(vlc_object_t *p_this)
         p_sys->mode = filter_spatialaudio::AMBISONICS_DECODER;
 
         unsigned i_nbChannels = aout_FormatNbChannels(&p_filter->fmt_out.audio);
-        if (i_nbChannels == 1
-         || !p_sys->speakerDecoder.Configure(p_sys->i_order, true,
-                                             kAmblib_CustomSpeakerSetUp,
-                                             i_nbChannels))
+        bool ok = false;
+        if (i_nbChannels > 1) {
+#if SPATIALAUDIO_API_VERSION_MAJOR >= 2
+            ok = p_sys->speakerDecoder.Configure(p_sys->i_order, true,
+                AMB_BLOCK_TIME_LEN, p_filter->fmt_in.audio.i_rate,
+                kAmblib_CustomSpeakerSetUp, i_nbChannels);
+#else
+            ok = p_sys->speakerDecoder.Configure(p_sys->i_order, true,
+                kAmblib_CustomSpeakerSetUp, i_nbChannels);
+#endif
+        }
+        if (!ok)
         {
             msg_Err(p_filter, "Error creating the Ambisonics decoder.");
             delete p_sys;
@@ -509,7 +534,13 @@ static int Open(vlc_object_t *p_this)
         return VLC_EGENERIC;
     }
 
+#if SPATIALAUDIO_API_VERSION_MAJOR >= 2
+    if (!p_sys->zoomer.Configure(p_sys->i_order, true,
+                                 AMB_BLOCK_TIME_LEN,
+                                 p_filter->fmt_in.audio.i_rate))
+#else
     if (!p_sys->zoomer.Configure(p_sys->i_order, true, 0))
+#endif
     {
         msg_Err(p_filter, "Error creating the ambisonic zoomer.");
         delete p_sys;

@@ -34,19 +34,19 @@
 #include "dialogs/fingerprintdialog.hpp"
 #include "adapters/chromaprint.hpp"
 
-#include <assert.h>
+#include <cassert>
 #include <vlc_url.h>
 #include <vlc_meta.h>
 
 #include <QTreeWidget>
 #include <QTableWidget>
 #include <QHeaderView>
-#include <QList>
 #include <QStringList>
 #include <QGridLayout>
 #include <QLineEdit>
 #include <QLabel>
 #include <QTextEdit>
+#include <QRegularExpression>
 
 /************************************************************************
  * Single panels
@@ -77,7 +77,7 @@ MetaPanel::MetaPanel( QWidget *parent,
     metaLayout->addWidget( label, line++, col, 1, colspan );              \
     widget = new QLineEdit;                                               \
     metaLayout->addWidget( widget, line, col, 1, colspan );               \
-    CONNECT( widget, textEdited( QString ), this, enterEditMode() );      \
+    connect( widget, &QLineEdit::textEdited, this, &MetaPanel::enterEditMode ); \
 }
 
     /* Title, artist and album*/
@@ -133,7 +133,7 @@ MetaPanel::MetaPanel( QWidget *parent,
     fingerprintButton->setToolTip( qtr( "Find meta data using audio fingerprinting" ) );
     fingerprintButton->setVisible( false );
     metaLayout->addWidget( fingerprintButton, line, 7 , 3, -1 );
-    CONNECT( fingerprintButton, clicked(), this, fingerprint() );
+    connect( fingerprintButton, &QPushButton::clicked, this, &MetaPanel::fingerprint );
 
     line++;
 
@@ -157,7 +157,7 @@ MetaPanel::MetaPanel( QWidget *parent,
     description_text = new QTextEdit;
     description_text->setAcceptRichText( false );
     metaLayout->addWidget( description_text, line, 0, 1, 7 );
-    CONNECT( description_text, textChanged(), this, enterEditMode() );
+    connect( description_text, &QTextEdit::textChanged, this, &MetaPanel::enterEditMode );
     line++;
 
     /* VLC_META_SETTING: Useless */
@@ -169,11 +169,11 @@ MetaPanel::MetaPanel( QWidget *parent,
     metaLayout->setRowStretch( line, 10 );
 #undef ADD_META
 
-    CONNECT( seqnum_text, textEdited( QString ), this, enterEditMode() );
-    CONNECT( seqtot_text, textEdited( QString ), this, enterEditMode() );
+    connect( seqnum_text, &QLineEdit::textEdited, this, &MetaPanel::enterEditMode );
+    connect( seqtot_text, &QLineEdit::textEdited, this, &MetaPanel::enterEditMode );
 
-    CONNECT( date_text, textEdited( QString ), this, enterEditMode() );
-//    CONNECT( THEMIM->getIM(), artChanged( QString ), this, enterEditMode() );
+    connect( date_text, &QLineEdit::textEdited, this, &MetaPanel::enterEditMode );
+//    connect( THEMIM->getIM(), &InputManager::artChanged, this, &MetaPanel::enterEditMode );
 
     /* We are not yet in Edit Mode */
     b_inEditMode = false;
@@ -228,10 +228,10 @@ void MetaPanel::update( input_item_t *p_item )
     UPDATE_META( Genre, genre_text );
     UPDATE_META( Copyright, copyright_text );
     UPDATE_META( Album, collection_text );
-    disconnect( description_text, SIGNAL(textChanged()), this,
-                SLOT(enterEditMode()) );
+    disconnect( description_text, &QTextEdit::textChanged, this,
+                &MetaPanel::enterEditMode );
     UPDATE_META( Description, description_text );
-    CONNECT( description_text, textChanged(), this, enterEditMode() );
+    connect( description_text, &QTextEdit::textChanged, this, &MetaPanel::enterEditMode );
     UPDATE_META( Language, language_text );
     UPDATE_META( Publisher, publisher_text );
     UPDATE_META( EncodedBy, encodedby_text );
@@ -255,7 +255,7 @@ void MetaPanel::update( input_item_t *p_item )
         {
             currentURL = newURL;
             lblURL->setText( "<a href='" + currentURL + "'>" +
-                             currentURL.remove( QRegExp( ".*://") ) + "</a>" );
+                             currentURL.remove( QRegularExpression( ".*://") ) + "</a>" );
         }
     }
     free( psz_meta );
@@ -336,10 +336,10 @@ void MetaPanel::clear()
     collection_text->clear();
     seqnum_text->clear();
     seqtot_text->clear();
-    disconnect( description_text, SIGNAL(textChanged()), this,
-                SLOT(enterEditMode()) );
+    disconnect( description_text, &QTextEdit::textChanged, this,
+                &MetaPanel::enterEditMode );
     description_text->clear();
-    CONNECT( description_text, textChanged(), this, enterEditMode() );
+    connect( description_text, &QTextEdit::textChanged, this, &MetaPanel::enterEditMode );
     date_text->clear();
     language_text->clear();
     nowplaying_text->clear();
@@ -355,7 +355,7 @@ void MetaPanel::clear()
 void MetaPanel::fingerprint()
 {
     FingerprintDialog *dialog = new FingerprintDialog( this, p_intf, p_input );
-    CONNECT( dialog, metaApplied( input_item_t * ), this, fingerprintUpdate( input_item_t * ) );
+    connect( dialog, &FingerprintDialog::metaApplied, this, &MetaPanel::fingerprintUpdate );
     dialog->setAttribute( Qt::WA_DeleteOnClose, true );
     dialog->show();
 }
@@ -516,7 +516,7 @@ void InfoPanel::update( input_item_t *p_item)
 
             current_item->addChild(child_item);
         }
-        InfoTree->setItemExpanded( current_item, true);
+        current_item->setExpanded(true);
     }
 }
 
@@ -548,7 +548,7 @@ InputStatsPanel::InputStatsPanel( QWidget *parent ): QWidget( parent )
      QLabel *topLabel = new QLabel( qtr( "Current"
                  " media / stream " "statistics") );
      topLabel->setWordWrap( true );
-     layout->addWidget( topLabel, 0, 0 );
+     layout->addWidget( topLabel, 0 );
 
      StatsTree = new QTreeWidget(this);
      StatsTree->setColumnCount( 3 );
@@ -611,7 +611,7 @@ InputStatsPanel::InputStatsPanel( QWidget *parent ): QWidget( parent )
     StatsTree->resizeColumnToContents( 0 );
     StatsTree->setColumnWidth( 1 , 200 );
 
-    layout->addWidget(StatsTree, 4, 0 );
+    layout->addWidget(StatsTree, 4 );
 
     statsView = new VLCStatsView( this );
     statsView->setFrameStyle( QFrame::NoFrame );
@@ -648,13 +648,13 @@ void InputStatsPanel::update( input_item_t *p_item )
 #define UPDATE_INT( widget, calc... ) \
     { widget->setText( 1, QString::number( (qulonglong)calc ) ); }
 
-#define UPDATE_FLOAT( widget, format, calc... ) \
-    { QString str; widget->setText( 1 , str.sprintf( format, ## calc ) );  }
+#define UPDATE_FLOAT( widget, calc ) \
+    widget->setText( 1 , QString().setNum(calc, 'f', 0).leftJustified(6) )
 
     UPDATE_INT( read_media_stat, (p_item->p_stats->i_read_bytes / 1024 ) );
-    UPDATE_FLOAT( input_bitrate_stat,  "%6.0f", (float)(p_item->p_stats->f_input_bitrate *  8000 ));
+    UPDATE_FLOAT( input_bitrate_stat,  (float)(p_item->p_stats->f_input_bitrate *  8000 ));
     UPDATE_INT( demuxed_stat,    (p_item->p_stats->i_demux_read_bytes / 1024 ) );
-    UPDATE_FLOAT( stream_bitrate_stat, "%6.0f", (float)(p_item->p_stats->f_demux_bitrate *  8000 ));
+    UPDATE_FLOAT( stream_bitrate_stat, (float)(p_item->p_stats->f_demux_bitrate *  8000 ));
     UPDATE_INT( corrupted_stat,      p_item->p_stats->i_demux_corrupted );
     UPDATE_INT( discontinuity_stat,  p_item->p_stats->i_demux_discontinuity );
 

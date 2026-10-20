@@ -38,7 +38,9 @@ enum
     ES_OUT_PRIVATE_COMMAND_DEL,
     ES_OUT_PRIVATE_COMMAND_DESTROY,
     ES_OUT_PRIVATE_COMMAND_SEND,
-    ES_OUT_PRIVATE_COMMAND_DISCONTINUITY
+    ES_OUT_PRIVATE_COMMAND_DISCONTINUITY,
+    ES_OUT_PRIVATE_COMMAND_MILESTONE,
+    ES_OUT_PRIVATE_COMMAND_PROGRESS,
 };
 
 AbstractCommand::AbstractCommand( int type_ )
@@ -51,9 +53,9 @@ AbstractCommand::~AbstractCommand()
 
 }
 
-mtime_t AbstractCommand::getTime() const
+const Times & AbstractCommand::getTimes() const
 {
-    return VLC_TS_INVALID;
+    return times;
 }
 
 int AbstractCommand::getType() const
@@ -61,16 +63,23 @@ int AbstractCommand::getType() const
     return type;
 }
 
-AbstractFakeEsCommand::AbstractFakeEsCommand( int type, FakeESOutID *p_es ) :
+AbstractFakeEsCommand::AbstractFakeEsCommand( int type, AbstractFakeESOutID *p_es ) :
     AbstractCommand( type )
 {
     p_fakeid = p_es;
 }
 
-EsOutSendCommand::EsOutSendCommand( FakeESOutID *p_es, block_t *p_block_ ) :
+const void * AbstractFakeEsCommand::esIdentifier() const
+{
+    return static_cast<const void *>(p_fakeid);
+}
+
+EsOutSendCommand::EsOutSendCommand( AbstractFakeESOutID *p_es,
+                                    const SegmentTimes &t, block_t *p_block_ ) :
     AbstractFakeEsCommand( ES_OUT_PRIVATE_COMMAND_SEND, p_es )
 {
     p_block = p_block_;
+    times = Times(t, p_block_->i_dts );
 }
 
 EsOutSendCommand::~EsOutSendCommand()
@@ -79,40 +88,23 @@ EsOutSendCommand::~EsOutSendCommand()
         block_Release( p_block );
 }
 
-void EsOutSendCommand::Execute( es_out_t *out )
+void EsOutSendCommand::Execute()
 {
-    /* Be sure to notify Data before Sending, because UI would still not pick new ES */
-    p_fakeid->notifyData();
-    if( p_fakeid->realESID() &&
-            es_out_Send( out, p_fakeid->realESID(), p_block ) == VLC_SUCCESS )
-        p_block = NULL;
-    p_fakeid->notifyData();
+    p_fakeid->sendData( p_block );
+    p_block = nullptr;
 }
 
-mtime_t EsOutSendCommand::getTime() const
-{
-    if( likely(p_block) )
-        return p_block->i_dts;
-    else
-        return AbstractCommand::getTime();
-}
-
-const void * EsOutSendCommand::esIdentifier() const
-{
-    return static_cast<const void *>(p_fakeid);
-}
-
-EsOutDelCommand::EsOutDelCommand( FakeESOutID *p_es ) :
+EsOutDelCommand::EsOutDelCommand( AbstractFakeESOutID *p_es ) :
     AbstractFakeEsCommand( ES_OUT_PRIVATE_COMMAND_DEL, p_es )
 {
 }
 
-void EsOutDelCommand::Execute( es_out_t * )
+void EsOutDelCommand::Execute( )
 {
     p_fakeid->release();
 }
 
-EsOutAddCommand::EsOutAddCommand( FakeESOutID *p_es ) :
+EsOutAddCommand::EsOutAddCommand( AbstractFakeESOutID *p_es ) :
     AbstractFakeEsCommand( ES_OUT_PRIVATE_COMMAND_ADD, p_es )
 {
 }
@@ -121,28 +113,24 @@ EsOutAddCommand::~EsOutAddCommand()
 {
 }
 
-void EsOutAddCommand::Execute( es_out_t * )
+void EsOutAddCommand::Execute( )
 {
     /* Create the real ES on the adaptive demux */
     p_fakeid->create();
 }
 
-EsOutControlPCRCommand::EsOutControlPCRCommand( int group_, mtime_t pcr_ ) :
-    AbstractCommand( ES_OUT_SET_GROUP_PCR )
+EsOutControlPCRCommand::EsOutControlPCRCommand( int group_,
+                                                const SegmentTimes &t, vlc_tick_t pcr )
+    : AbstractCommand( ES_OUT_SET_GROUP_PCR )
 {
     group = group_;
-    pcr = pcr_;
+    times = Times( t, pcr );
     type = ES_OUT_SET_GROUP_PCR;
 }
 
-void EsOutControlPCRCommand::Execute( es_out_t * )
+void EsOutControlPCRCommand::Execute( )
 {
     // do nothing here
-}
-
-mtime_t EsOutControlPCRCommand::getTime() const
-{
-    return pcr;
 }
 
 EsOutDestroyCommand::EsOutDestroyCommand() :
@@ -150,7 +138,7 @@ EsOutDestroyCommand::EsOutDestroyCommand() :
 {
 }
 
-void EsOutDestroyCommand::Execute( es_out_t * )
+void EsOutDestroyCommand::Execute( )
 {
 }
 
@@ -159,14 +147,16 @@ EsOutControlResetPCRCommand::EsOutControlResetPCRCommand() :
 {
 }
 
-void EsOutControlResetPCRCommand::Execute( es_out_t * )
+void EsOutControlResetPCRCommand::Execute( )
 {
 }
 
-EsOutMetaCommand::EsOutMetaCommand( int i_group, vlc_meta_t *p_meta ) :
+EsOutMetaCommand::EsOutMetaCommand( AbstractFakeEsOut *out,
+                                    int i_group, vlc_meta_t *p_meta ) :
     AbstractCommand( ES_OUT_SET_GROUP_META )
 {
     group = i_group;
+    this->out = out;
     this->p_meta = p_meta;
 }
 
@@ -176,33 +166,59 @@ EsOutMetaCommand::~EsOutMetaCommand()
         vlc_meta_Delete( p_meta );
 }
 
-void EsOutMetaCommand::Execute( es_out_t *out )
+void EsOutMetaCommand::Execute()
 {
-    es_out_Control( out, ES_OUT_SET_GROUP_META, group, p_meta );
+    out->sendMeta( group, p_meta );
+}
+
+EsOutMilestoneCommand::EsOutMilestoneCommand( AbstractFakeEsOut *out )
+    : AbstractCommand( ES_OUT_PRIVATE_COMMAND_MILESTONE )
+{
+    this->out = out;
+}
+
+void EsOutMilestoneCommand::Execute()
+{
+    out->milestoneReached();
+}
+
+EsOutMediaProgressCommand::EsOutMediaProgressCommand(const SegmentTimes &t)
+    : AbstractCommand( ES_OUT_PRIVATE_COMMAND_PROGRESS )
+{
+    times = Times(t, VLC_TICK_INVALID);
+}
+
+void EsOutMediaProgressCommand::Execute()
+{
+
 }
 
 /*
  * Commands Default Factory
  */
 
-EsOutSendCommand * CommandsFactory::createEsOutSendCommand( FakeESOutID *id, block_t *p_block ) const
+EsOutSendCommand * CommandsFactory::createEsOutSendCommand( AbstractFakeESOutID *id,
+                                                            const SegmentTimes &t,
+                                                            block_t *p_block ) const
 {
-    return new (std::nothrow) EsOutSendCommand( id, p_block );
+    return new (std::nothrow) EsOutSendCommand( id, t, p_block );
 }
 
-EsOutDelCommand * CommandsFactory::createEsOutDelCommand( FakeESOutID *id ) const
+EsOutDelCommand * CommandsFactory::createEsOutDelCommand( AbstractFakeESOutID *id ) const
 {
     return new (std::nothrow) EsOutDelCommand( id );
 }
 
-EsOutAddCommand * CommandsFactory::createEsOutAddCommand( FakeESOutID *id ) const
+EsOutAddCommand * CommandsFactory::createEsOutAddCommand( AbstractFakeESOutID *id ) const
 {
     return new (std::nothrow) EsOutAddCommand( id );
 }
 
-EsOutControlPCRCommand * CommandsFactory::createEsOutControlPCRCommand( int group, mtime_t pcr ) const
+EsOutControlPCRCommand * CommandsFactory::createEsOutControlPCRCommand( int group,
+                                                                        const SegmentTimes &t,
+                                                                        vlc_tick_t pcr ) const
 {
-    return new (std::nothrow) EsOutControlPCRCommand( group, pcr );
+    return new (std::nothrow) EsOutControlPCRCommand( group, t, pcr );
 }
 
 EsOutDestroyCommand * CommandsFactory::createEsOutDestroyCommand() const
@@ -215,86 +231,168 @@ EsOutControlResetPCRCommand * CommandsFactory::creatEsOutControlResetPCRCommand(
     return new (std::nothrow) EsOutControlResetPCRCommand();
 }
 
-EsOutMetaCommand * CommandsFactory::createEsOutMetaCommand( int group, const vlc_meta_t *p_meta ) const
+EsOutMetaCommand * CommandsFactory::createEsOutMetaCommand( AbstractFakeEsOut *out, int group,
+                                                            const vlc_meta_t *p_meta ) const
 {
     vlc_meta_t *p_dup = vlc_meta_New();
     if( p_dup )
     {
         vlc_meta_Merge( p_dup, p_meta );
-        return new (std::nothrow) EsOutMetaCommand( group, p_dup );
+        return new (std::nothrow) EsOutMetaCommand( out, group, p_dup );
     }
-    return NULL;
+    return nullptr;
+}
+
+EsOutMilestoneCommand * CommandsFactory::createEsOutMilestoneCommand( AbstractFakeEsOut *out ) const
+{
+    return new (std::nothrow) EsOutMilestoneCommand( out );
+}
+
+EsOutMediaProgressCommand * CommandsFactory::createEsOutMediaProgressCommand( const SegmentTimes &t ) const
+{
+    try {
+        return new EsOutMediaProgressCommand( t );
+    } catch(...) { return nullptr; }
 }
 
 /*
  * Commands Queue management
  */
-CommandsQueue::CommandsQueue( CommandsFactory *f )
+#if 0
+/* For queue printing/debugging */
+std::ostream& operator<<(std::ostream& ostr, const std::list<AbstractCommand *>& list)
 {
-    bufferinglevel = VLC_TS_INVALID;
-    pcr = VLC_TS_INVALID;
+    for (auto &i : list) {
+<<<<<<< HEAD
+        ostr << "[" << i->getType() << "]" << (i->getTime() / CLOCK_FREQ) << " ";
+=======
+        ostr << "[" << i->getType() << "]" << SEC_FROM_VLC_TICK(i->getTimes().continuous) << " ";
+>>>>>>> 7f9221f31f (demux: adaptive: propagate and interpolate asynchronous times)
+    }
+    return ostr;
+}
+#endif
+
+AbstractCommandsQueue::AbstractCommandsQueue()
+{
     b_drop = false;
     b_draining = false;
     b_eof = false;
-    commandsFactory = f;
+}
+
+void AbstractCommandsQueue::setDrop( bool b )
+{
+    b_drop = b;
+}
+
+void AbstractCommandsQueue::setDraining()
+{
+    b_draining = true;
+}
+
+bool AbstractCommandsQueue::isDraining() const
+{
+    return b_draining;
+}
+
+void AbstractCommandsQueue::setEOF( bool b )
+{
+    b_eof = b;
+    if( b_eof )
+        setDraining();
+    else
+        b_draining = false;
+}
+
+bool AbstractCommandsQueue::isEOF() const
+{
+    return b_eof;
+}
+
+CommandsQueue::CommandsQueue()
+    : AbstractCommandsQueue()
+{
+    bufferinglevel = Times();
+    nextsequence = 0;
 }
 
 CommandsQueue::~CommandsQueue()
 {
     Abort( false );
-    delete commandsFactory;
 }
 
-static bool compareCommands( AbstractCommand *a, AbstractCommand *b )
+static bool compareCommands( const Queueentry &a, const Queueentry &b )
 {
-    return (a->getTime() < b->getTime() && a->getTime() != VLC_TS_INVALID);
+    if(a.second->getTimes().continuous == b.second->getTimes().continuous)
+    {
+        /* Reorder the initial clock PCR setting PCR0 DTS0 PCR0 DTS1 PCR1
+           so it appears after the block, avoiding it not being output */
+        if(a.second->getType() == ES_OUT_SET_GROUP_PCR &&
+           b.second->getType() == ES_OUT_PRIVATE_COMMAND_SEND &&
+           a.first < b.first)
+            return false;
+
+        return a.first < b.first;
+    }
+    else if (a.second->getTimes().continuous == VLC_TICK_INVALID ||
+             b.second->getTimes().continuous == VLC_TICK_INVALID)
+    {
+        return a.first < b.first;
+    }
+    else
+    {
+        return a.second->getTimes().continuous < b.second->getTimes().continuous;
+    }
 }
 
-void CommandsQueue::Schedule( AbstractCommand *command )
+void CommandsQueue::Schedule( AbstractCommand *command, EsType )
 {
     if( b_drop )
     {
         delete command;
     }
+    else if( command->getType() == ES_OUT_PRIVATE_COMMAND_PROGRESS )
+    {
+        const Times &times = command->getTimes();
+        bufferinglevel_media = times.segment;
+        delete command;
+    }
     else if( command->getType() == ES_OUT_SET_GROUP_PCR )
     {
-        bufferinglevel = command->getTime();
+        if(command->getTimes().continuous != VLC_TICK_INVALID)
+            bufferinglevel = command->getTimes();
         LockedCommit();
-        commands.push_back( command );
+        commands.push_back( Queueentry(nextsequence++, command) );
     }
     else
     {
-        incoming.push_back( command );
+        incoming.push_back( Queueentry(nextsequence++, command) );
     }
 }
 
-const CommandsFactory * CommandsQueue::factory() const
+Times CommandsQueue::Process( Times barrier )
 {
-    return commandsFactory;
-}
-
-mtime_t CommandsQueue::Process( es_out_t *out, mtime_t barrier )
-{
-    mtime_t lastdts = barrier;
+    Times lastdts = barrier;
     std::set<const void *> disabled_esids;
     bool b_datasent = false;
 
     /* We need to filter the current commands list
        We need to return on discontinuity or reset events if data was sent
        We must lookup every packet until end or PCR matching barrier,
-       because packets of multiple stream can arrive delayed (with intermidiate pcr)
+       because packets of multiple stream can arrive delayed (with intermediate pcr)
        ex: for a target time of 2, you must dequeue <= 2 until >= PCR2
        A0,A1,A2,B0,PCR0,B1,B2,PCR2,B3,A3,PCR3
     */
-    std::list<AbstractCommand *> output;
-    std::list<AbstractCommand *> in;
+    std::list<Queueentry> output;
+    std::list<Queueentry> in;
 
 
     in.splice( in.end(), commands );
 
     while( !in.empty() )
     {
-        AbstractCommand *command = in.front();
+        Queueentry entry = in.front();
+        AbstractCommand *command = entry.second;
 
         if( command->getType() == ES_OUT_PRIVATE_COMMAND_DEL && b_datasent )
             break;
@@ -302,7 +400,7 @@ mtime_t CommandsQueue::Process( es_out_t *out, mtime_t barrier )
         if( command->getType() == ES_OUT_PRIVATE_COMMAND_DISCONTINUITY && b_datasent )
             break;
 
-        if(command->getType() == ES_OUT_SET_GROUP_PCR && command->getTime() > barrier )
+        if(command->getType() == ES_OUT_SET_GROUP_PCR && command->getTimes().continuous > barrier.continuous )
             break;
 
         in.pop_front();
@@ -315,26 +413,26 @@ mtime_t CommandsQueue::Process( es_out_t *out, mtime_t barrier )
             const void *id = (sendcommand) ? sendcommand->esIdentifier() : 0;
 
             /* Not for now */
-            if( command->getTime() > barrier ) /* Not for now */
+            if( command->getTimes().continuous > barrier.continuous ) /* Not for now */
             {
                 /* ensure no more non dated for that ES is sent
                  * since we're sure that data is above barrier */
                 disabled_esids.insert( id );
-                commands.push_back( command );
+                commands.push_back( entry );
             }
-            else if( command->getTime() == VLC_TS_INVALID )
+            else if( command->getTimes().continuous == VLC_TICK_INVALID )
             {
                 if( disabled_esids.find( id ) == disabled_esids.end() )
-                    output.push_back( command );
+                    output.push_back( entry );
                 else
-                    commands.push_back( command );
+                    commands.push_back( entry );
             }
             else /* Falls below barrier, send */
             {
-                output.push_back( command );
+                output.push_back( entry );
             }
         }
-        else output.push_back( command ); /* will discard below */
+        else output.push_back( entry ); /* will discard below */
     }
 
     /* push remaining ones if broke above */
@@ -346,17 +444,17 @@ mtime_t CommandsQueue::Process( es_out_t *out, mtime_t barrier )
     /* Now execute our selected commands */
     while( !output.empty() )
     {
-        AbstractCommand *command = output.front();
+        AbstractCommand *command = output.front().second;
         output.pop_front();
 
         if( command->getType() == ES_OUT_PRIVATE_COMMAND_SEND )
         {
-            mtime_t dts = command->getTime();
-            if( dts != VLC_TS_INVALID )
-                lastdts = dts;
+            Times times = command->getTimes();
+            if( times.continuous != VLC_TICK_INVALID )
+                lastdts = times;
         }
 
-        command->Execute( out );
+        command->Execute();
         delete command;
     }
     pcr = lastdts; /* Warn! no PCR update/lock release until execution */
@@ -382,14 +480,15 @@ void CommandsQueue::Abort( bool b_reset )
     commands.splice( commands.end(), incoming );
     while( !commands.empty() )
     {
-        delete commands.front();
+        delete commands.front().second;
         commands.pop_front();
     }
 
     if( b_reset )
     {
-        bufferinglevel = VLC_TS_INVALID;
-        pcr = VLC_TS_INVALID;
+        bufferinglevel = Times();
+        bufferinglevel_media = SegmentTimes();
+        pcr = Times();
         b_draining = false;
         b_eof = false;
     }
@@ -397,13 +496,7 @@ void CommandsQueue::Abort( bool b_reset )
 
 bool CommandsQueue::isEmpty() const
 {
-    bool b_empty = commands.empty() && incoming.empty();
-    return b_empty;
-}
-
-void CommandsQueue::setDrop( bool b )
-{
-    b_drop = b;
+    return commands.empty() && incoming.empty();
 }
 
 void CommandsQueue::setDraining()
@@ -411,59 +504,51 @@ void CommandsQueue::setDraining()
     LockedSetDraining();
 }
 
-bool CommandsQueue::isDraining() const
+Times CommandsQueue::getDemuxedAmount(Times from) const
 {
-    bool b = b_draining;
-    return b;
+    Times bufferingstart = getFirstTimes();
+    if( bufferinglevel.continuous == VLC_TICK_INVALID ||
+        bufferingstart.continuous == VLC_TICK_INVALID ||
+        from.continuous == VLC_TICK_INVALID ||
+        from.continuous > bufferinglevel.continuous )
+        return Times(SegmentTimes(0,0),0); /* durations */
+
+    Times t = bufferinglevel;
+    t.offsetBy( - from.continuous );
+    return t;
 }
 
-void CommandsQueue::setEOF( bool b )
+Times CommandsQueue::getDemuxedMediaAmount(const Times &from) const
 {
-    b_eof = b;
-    if( b_eof )
-        LockedSetDraining();
-    else
-        b_draining = false;
+    if(from.continuous == VLC_TICK_INVALID ||
+       bufferinglevel_media.media == VLC_TICK_INVALID ||
+       from.segment.media > bufferinglevel_media.media)
+        return Times(SegmentTimes(0,0),0);  /* durations */
+    Times t = from;
+    t.offsetBy( bufferinglevel_media.media - from.segment.media - from.segment.media );
+    return t;
 }
 
-bool CommandsQueue::isEOF() const
+Times CommandsQueue::getBufferingLevel() const
 {
-    bool b = b_eof;
-    return b;
+    return bufferinglevel;
 }
 
-mtime_t CommandsQueue::getDemuxedAmount(mtime_t from) const
+Times CommandsQueue::getFirstTimes() const
 {
-    if( from > bufferinglevel )
-        return 0;
-    if( from > getFirstDTS() )
-        return bufferinglevel - from;
-    else
-        return bufferinglevel - getFirstDTS();
-}
-
-mtime_t CommandsQueue::getBufferingLevel() const
-{
-    mtime_t i_buffer;
-    i_buffer = bufferinglevel;
-    return i_buffer;
-}
-
-mtime_t CommandsQueue::getFirstDTS() const
-{
-    std::list<AbstractCommand *>::const_iterator it;
-    mtime_t i_firstdts = pcr;
+    Times first = pcr;
+    std::list<Queueentry>::const_iterator it;
     for( it = commands.begin(); it != commands.end(); ++it )
     {
-        const mtime_t i_dts = (*it)->getTime();
-        if( i_dts > VLC_TS_INVALID )
+        const Times times = (*it).second->getTimes();
+        if( times.continuous != VLC_TICK_INVALID )
         {
-            if( i_dts < i_firstdts || i_firstdts == VLC_TS_INVALID )
-                i_firstdts = i_dts;
+            if( times.continuous < first.continuous || first.continuous == VLC_TICK_INVALID )
+                first = times;
             break;
         }
     }
-    return i_firstdts;
+    return first;
 }
 
 void CommandsQueue::LockedSetDraining()
@@ -472,8 +557,8 @@ void CommandsQueue::LockedSetDraining()
     b_draining = !commands.empty();
 }
 
-mtime_t CommandsQueue::getPCR() const
+Times CommandsQueue::getPCR() const
 {
-    mtime_t i_pcr = pcr;
-    return i_pcr;
+    return pcr;
 }
+

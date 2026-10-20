@@ -28,8 +28,8 @@
 #include "HTTPConnectionManager.h"
 #include "HTTPConnection.hpp"
 #include "ConnectionParams.hpp"
-#include "Transport.hpp"
 #include "Downloader.hpp"
+#include "tools/Debug.hpp"
 #include <vlc_url.h>
 #include <vlc_http.h>
 
@@ -39,7 +39,7 @@ AbstractConnectionManager::AbstractConnectionManager(vlc_object_t *p_object_)
     : IDownloadRateObserver()
 {
     p_object = p_object_;
-    rateObserver = NULL;
+    rateObserver = nullptr;
 }
 
 AbstractConnectionManager::~AbstractConnectionManager()
@@ -47,10 +47,17 @@ AbstractConnectionManager::~AbstractConnectionManager()
 
 }
 
-void AbstractConnectionManager::updateDownloadRate(const adaptive::ID &sourceid, size_t size, mtime_t time)
+void AbstractConnectionManager::updateDownloadRate(const adaptive::ID &sourceid, size_t size,
+                                                   vlc_tick_t time, vlc_tick_t latency)
 {
     if(rateObserver)
-        rateObserver->updateDownloadRate(sourceid, size, time);
+    {
+        BwDebug(msg_Dbg(p_object,
+                "%" PRId64 "Kbps downloaded %zuKBytes in %" PRId64 "ms latency %" PRId64 "ms [%s]",
+                1000 * size * 8 / (time ? time : 1), size / 1024, time / 1000,
+                latency / 1000, sourceid.str().c_str()));
+        rateObserver->updateDownloadRate(sourceid, size, time, latency);
+    }
 }
 
 void AbstractConnectionManager::setDownloadRateObserver(IDownloadRateObserver *obs)
@@ -58,22 +65,34 @@ void AbstractConnectionManager::setDownloadRateObserver(IDownloadRateObserver *o
     rateObserver = obs;
 }
 
+void AbstractConnectionManager::deleteSource(AbstractChunkSource *source)
+{
+    delete source;
+}
 
-HTTPConnectionManager::HTTPConnectionManager    (vlc_object_t *p_object_, AuthStorage *storage)
+HTTPConnectionManager::HTTPConnectionManager    (vlc_object_t *p_object_)
     : AbstractConnectionManager( p_object_ ),
       localAllowed(false)
 {
     vlc_mutex_init(&lock);
-    downloader = new (std::nothrow) Downloader();
+    downloader = new Downloader();
+    downloaderhp = new Downloader();
     downloader->start();
-    factory = new ConnectionFactory(storage);
+    downloaderhp->start();
+    cache_total = 0;
+    cache_max = 1 << 19;
 }
 
 HTTPConnectionManager::~HTTPConnectionManager   ()
 {
     delete downloader;
-    delete factory;
+    delete downloaderhp;
     this->closeAllConnections();
+    while(!factories.empty())
+    {
+        delete factories.front();
+        factories.pop_front();
+    }
     vlc_mutex_destroy(&lock);
 }
 
@@ -101,31 +120,31 @@ AbstractConnection * HTTPConnectionManager::reuseConnection(ConnectionParams &pa
         if(conn->canReuse(params))
             return conn;
     }
-    return NULL;
+    return nullptr;
 }
 
 AbstractConnection * HTTPConnectionManager::getConnection(ConnectionParams &params)
 {
-    if(unlikely(!factory || !downloader))
-        return NULL;
+    if(unlikely(factories.empty() || !downloader || !downloaderhp))
+        return nullptr;
 
     if(params.isLocal())
     {
         if(!localAllowed)
-            return NULL;
-        /* Only access can read local files */
-        params.setUseAccess(true);
+            return nullptr;
     }
 
     vlc_mutex_lock(&lock);
     AbstractConnection *conn = reuseConnection(params);
     if(!conn)
     {
-        conn = factory->createConnection(p_object, params);
+        for(auto it = factories.begin(); it != factories.end() && !conn; ++it)
+            conn = (*it)->createConnection(p_object, params);
+
         if(!conn)
         {
             vlc_mutex_unlock(&lock);
-            return NULL;
+            return nullptr;
         }
 
         connectionPool.push_back(conn);
@@ -133,7 +152,7 @@ AbstractConnection * HTTPConnectionManager::getConnection(ConnectionParams &para
         if (!conn->prepare(params))
         {
             vlc_mutex_unlock(&lock);
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -142,21 +161,109 @@ AbstractConnection * HTTPConnectionManager::getConnection(ConnectionParams &para
     return conn;
 }
 
+AbstractChunkSource *HTTPConnectionManager::makeSource(const std::string &url,
+                                                       const ID &id, ChunkType type,
+                                                       const BytesRange &range)
+{
+    StorageID storageid = HTTPChunkSource::makeStorageID(url, range);
+    switch(type)
+    {
+        case ChunkType::Init:
+        case ChunkType::Index:
+            for(HTTPChunkBufferedSource *s : cache)
+            {
+                if(s->getStorageID() == storageid)
+                {
+                    cache.remove(s);
+                    cache_total -= s->contentLength;
+                    CacheDebug(msg_Dbg(p_object, "Cache GET '%s' usage %zu bytes",
+                                       storageid.c_str(), cache_total));
+                    return s;
+                }
+            }
+            // fallthrough
+        case ChunkType::Segment:
+        case ChunkType::Key:
+        case ChunkType::Playlist:
+        default:
+            return new HTTPChunkBufferedSource(url, this, id, type, range);
+    }
+}
+
+void HTTPConnectionManager::recycleSource(AbstractChunkSource *source)
+{
+    bool b_cacheable;
+    switch(source->getChunkType())
+    {
+        case ChunkType::Index:
+        case ChunkType::Init:
+            b_cacheable = true;
+            break;
+        case ChunkType::Key:
+        case ChunkType::Playlist:
+        case ChunkType::Segment:
+        default:
+            b_cacheable = false;
+            break;
+    }
+
+    HTTPChunkBufferedSource *buf = dynamic_cast<HTTPChunkBufferedSource *>(source);
+    if(buf && b_cacheable && !buf->getStorageID().empty() &&
+       buf->contentLength && buf->contentLength < cache_max)
+    {
+        while(cache_max < cache_total + buf->contentLength)
+        {
+            HTTPChunkBufferedSource *purged = cache.back();
+            cache.pop_back();
+            cache_total -= purged->contentLength;
+            CacheDebug(msg_Dbg(p_object, "Cache DEL '%s' usage %zu bytes",
+                               purged->getStorageID().c_str(), cache_total));
+            deleteSource(purged);
+        }
+        cache.push_front(buf);
+        cache_total += buf->contentLength;
+        CacheDebug(msg_Dbg(p_object, "Cache PUT '%s' usage %zu bytes",
+                           buf->getStorageID().c_str(), cache_total));
+    }
+    else
+        deleteSource(source);
+}
+
+Downloader * HTTPConnectionManager::getDownloadQueue(const AbstractChunkSource *source) const
+{
+    switch(source->getChunkType())
+    {
+        case ChunkType::Init:
+        case ChunkType::Index:
+        case ChunkType::Segment:
+            return downloader;
+        case ChunkType::Key:
+        case ChunkType::Playlist:
+        default:
+            return downloaderhp;
+    }
+}
+
 void HTTPConnectionManager::start(AbstractChunkSource *source)
 {
     HTTPChunkBufferedSource *src = dynamic_cast<HTTPChunkBufferedSource *>(source);
-    if(src)
-        downloader->schedule(src);
+    if(src && !src->isDone())
+        getDownloadQueue(src)->schedule(src);
 }
 
 void HTTPConnectionManager::cancel(AbstractChunkSource *source)
 {
     HTTPChunkBufferedSource *src = dynamic_cast<HTTPChunkBufferedSource *>(source);
     if(src)
-        downloader->cancel(src);
+        getDownloadQueue(src)->cancel(src);
 }
 
 void HTTPConnectionManager::setLocalConnectionsAllowed()
 {
     localAllowed = true;
+}
+
+void HTTPConnectionManager::addFactory(AbstractConnectionFactory *factory)
+{
+    factories.push_back(factory);
 }

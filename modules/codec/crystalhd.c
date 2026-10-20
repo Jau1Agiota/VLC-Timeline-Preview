@@ -387,13 +387,18 @@ error:
     free( p_sys );
 }
 
+#if defined(__KERNEL__) || defined(__LINUX_USER__)
 static BC_STATUS ourCallback(void *shnd, uint32_t width, uint32_t height, uint32_t stride, void *pOut)
 {
+    BC_DTS_PROC_OUT *proc_in  = (BC_DTS_PROC_OUT*)pOut;
+#else
+static BC_STATUS ourCallback(void *shnd, uint32_t width, uint32_t height, uint32_t stride, BC_DTS_PROC_OUT *proc_in)
+{
+#endif
     VLC_UNUSED(width); VLC_UNUSED(height); VLC_UNUSED(stride);
 
     decoder_t *p_dec          = (decoder_t *)shnd;
     BC_DTS_PROC_OUT *proc_out = p_dec->p_sys->proc_out;
-    BC_DTS_PROC_OUT *proc_in  = (BC_DTS_PROC_OUT*)pOut;
 
     /* Direct Rendering */
     /* Do not allocate for the second-field in the pair, in interlaced */
@@ -452,7 +457,7 @@ static int DecodeBlock( decoder_t *p_dec, block_t *p_block )
             BC_STATUS status = BC_FUNC_PSYS(DtsProcInput)( p_sys->bcm_handle,
                                             p_block->p_buffer,
                                             p_block->i_buffer,
-                                            p_block->i_pts >= VLC_TS_INVALID ? TO_BC_PTS(p_block->i_pts) : 0, false );
+                                            p_block->i_pts >= VLC_TICK_INVALID ? TO_BC_PTS(p_block->i_pts) : 0, false );
 
             block_Release( p_block );
 
@@ -509,7 +514,7 @@ static int DecodeBlock( decoder_t *p_dec, block_t *p_block )
 
             //  crystal_CopyPicture( p_pic, &proc_out );
             p_pic->date = proc_out.PicInfo.timeStamp > 0 ?
-                          FROM_BC_PTS(proc_out.PicInfo.timeStamp) : VLC_TS_INVALID;
+                          FROM_BC_PTS(proc_out.PicInfo.timeStamp) : VLC_TICK_INVALID;
             //p_pic->date += 100 * 1000;
 #ifdef DEBUG_CRYSTALHD
             msg_Dbg( p_dec, "TS Output is %"PRIu64, p_pic->date);

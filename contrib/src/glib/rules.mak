@@ -20,6 +20,8 @@ glib: glib-$(GLIB_MINOR_VERSION).tar.xz .sum-glib
 
 .glib: glib
 	$(RECONF)
-	cd $< && $(HOSTVARS) ./configure $(HOSTCONF)
-	cd $< && $(MAKE) install
+	$(MAKEBUILDDIR)
+	$(MAKECONFIGURE)
+	+$(MAKEBUILD)
+	+$(MAKEBUILD) install
 	touch $@

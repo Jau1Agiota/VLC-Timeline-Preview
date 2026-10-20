@@ -30,7 +30,7 @@
 
 #include "MPD.h"
 #include "ProgramInformation.h"
-#include "Period.h"
+#include "../../adaptive/playlist/BasePeriod.h"
 
 #include <vlc_common.h>
 #include <vlc_stream.h>
@@ -38,23 +38,23 @@
 using namespace dash::mpd;
 
 MPD::MPD (vlc_object_t *p_object, Profile profile_) :
-    AbstractPlaylist(p_object),
+    BasePlaylist(p_object),
     profile( profile_ )
 {
-    programInfo.Set( NULL );
+    programInfo = nullptr;
     lowLatency = false;
 }
 
 MPD::~MPD()
 {
-    delete(programInfo.Get());
+    delete programInfo;
 }
 
 bool MPD::isLive() const
 {
     if(type.empty())
     {
-        Profile live(Profile::ISOLive);
+        Profile live(Profile::Name::ISOLive);
         return profile == live;
     }
     else
@@ -76,16 +76,14 @@ Profile MPD::getProfile() const
     return profile;
 }
 
-void MPD::debug()
+void MPD::debug() const
 {
     msg_Dbg(p_object, "MPD profile=%s mediaPresentationDuration=%" PRId64
             " minBufferTime=%" PRId64,
             static_cast<std::string>(getProfile()).c_str(),
-            duration.Get() / CLOCK_FREQ,
+            duration / CLOCK_FREQ,
             minBufferTime / CLOCK_FREQ);
     msg_Dbg(p_object, "BaseUrl=%s", getUrlSegment().toString().c_str());
 
-    std::vector<BasePeriod *>::const_iterator i;
-    for(i = periods.begin(); i != periods.end(); ++i)
-        (*i)->debug(VLC_OBJECT(p_object));
+    BasePlaylist::debug();
 }

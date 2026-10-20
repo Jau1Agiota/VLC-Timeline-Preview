@@ -81,7 +81,7 @@ ConvertDialog::ConvertDialog( QWidget *parent, intf_thread_t *_p_intf,
     {
         QPushButton *fileSelectButton = new QPushButton( qtr( "Browse" ) );
         destLayout->addWidget( fileSelectButton, 0, 2);
-        BUTTONACT( fileSelectButton, fileBrowse() );
+        BUTTONACT( fileSelectButton, fileBrowse );
     }
 
     // but multiple files follow a naming convention
@@ -143,20 +143,20 @@ ConvertDialog::ConvertDialog( QWidget *parent, intf_thread_t *_p_intf,
 
     mainLayout->addWidget( buttonBox, 5, 3 );
 
-    BUTTONACT(okButton,close());
-    BUTTONACT(cancelButton,cancel());
+    BUTTONACT(okButton,close);
+    BUTTONACT(cancelButton,cancel);
 
-    CONNECT( convertRadio, toggled(bool), convertPanel, setEnabled(bool) );
-    CONNECT(profile, optionsChanged(), this, setDestinationFileExtension());
-    CONNECT(fileLine, editingFinished(), this, setDestinationFileExtension());
-    CONNECT(fileLine, textChanged(const QString&), this, validate());
+    connect( convertRadio, &QRadioButton::toggled, convertPanel, &QWidget::setEnabled );
+    connect(profile, &VLCProfileSelector::optionsChanged, this, &ConvertDialog::setDestinationFileExtension);
+    connect(fileLine, &QLineEdit::editingFinished, this, &ConvertDialog::setDestinationFileExtension);
+    connect(fileLine, &QLineEdit::textChanged, this, &ConvertDialog::validate);
 
     validate();
 }
 
 void ConvertDialog::fileBrowse()
 {
-    QString fileExtension = ( ! profile->isEnabled() ) ? ".*" : "." + profile->getMux();
+    QString fileExtension = ( ! profile->isEnabled() ) ? QStringLiteral(".*") : QStringLiteral(".") + profile->getMux();
 
     outgoingMRL = QFileDialog::getSaveFileUrl( this, qtr( "Save file..." ),
         p_intf->p_sys->filepath,
@@ -208,7 +208,7 @@ void ConvertDialog::close()
             // Multiple, use the convention.
             else
             {
-                QString fileExtension = ( ! profile->isEnabled() ) ? ".*" : "." + profile->getMux();
+                QString fileExtension = ( ! profile->isEnabled() ) ? QStringLiteral(".*") : QStringLiteral(".") + profile->getMux();
 
                 newFileName = incomingMRLs->at(i);
 

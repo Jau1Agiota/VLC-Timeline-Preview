@@ -1,6 +1,6 @@
 # freetype2
 
-FREETYPE2_VERSION := 2.10.4
+FREETYPE2_VERSION := 2.14.3
 FREETYPE2_URL := $(SF)/freetype/freetype2/$(FREETYPE2_VERSION)/freetype-$(FREETYPE2_VERSION).tar.xz
 
 PKGS += freetype2
@@ -15,17 +15,20 @@ $(TARBALLS)/freetype-$(FREETYPE2_VERSION).tar.xz:
 
 freetype: freetype-$(FREETYPE2_VERSION).tar.xz .sum-freetype2
 	$(UNPACK)
-	$(call pkg_static, "builds/unix/freetype2.in")
+	# detect UWP builds using winapifamily
+	sed -i.orig 's,#ifdef _WINRT_DLL,#if !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP),' $(UNPACK_DIR)/builds/windows/ftsystem.c
 	$(MOVE)
 
 DEPS_freetype2 = zlib $(DEPS_zlib)
 
-.freetype2: freetype
+FREETYPE_CONF := -Dpng=disabled -Dbzip2=disabled -Dharfbuzz=disabled \
+                 -Dbrotli=disabled
+
+.freetype2: freetype crossfile.meson
 ifndef AD_CLAUSES
 	$(REQUIRE_GPL)
 endif
-	cd $< && cp builds/unix/install-sh .
-	sed -i.orig s/-ansi// $</builds/unix/configure
-	cd $< && GNUMAKE=$(MAKE) $(HOSTVARS) ./configure --with-harfbuzz=no --with-zlib=yes --without-png --with-bzip2=no $(HOSTCONF)
-	cd $< && $(MAKE) && $(MAKE) install
+	$(MESONCLEAN)
+	$(MESON) $(FREETYPE_CONF)
+	+$(MESONBUILD)
 	touch $@

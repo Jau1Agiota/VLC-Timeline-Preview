@@ -59,8 +59,17 @@
 #include <AS_DCP.h>
 
 #include <vector>
+#include <new>
 
 #include "dcpparser.h"
+
+#if defined(ASDCPLIB_FACTORY) && ASDCPLIB_FACTORY
+# define MAYBE_FACTORY  p_dcp->factory
+# define END_FACTORY    , MAYBE_FACTORY
+#else
+# define MAYBE_FACTORY
+# define END_FACTORY
+#endif
 
 using namespace ASDCP;
 
@@ -76,11 +85,11 @@ static void Close( vlc_object_t * );
 vlc_module_begin()
     set_shortname( N_( "DCP" ) )
     add_shortcut( "dcp" )
-    add_loadfile( "kdm", "", KDM_HELP_TEXT, KDM_HELP_LONG_TEXT, false )
     set_description( N_( "Digital Cinema Package module" ) )
     set_capability( "access_demux", 0 )
     set_category( CAT_INPUT )
     set_subcategory( SUBCAT_INPUT_ACCESS )
+    add_loadfile( "kdm", "", KDM_HELP_TEXT, KDM_HELP_LONG_TEXT, false )
     set_callbacks( Open, Close )
 vlc_module_end()
 
@@ -162,7 +171,7 @@ class demux_sys_t
     uint8_t pi_chan_table[AOUT_CHAN_MAX];
     uint8_t i_channels;
 
-    mtime_t i_pts;
+    vlc_tick_t i_pts;
 
     demux_sys_t():
         PictureEssType ( ESS_UNKNOWN ),
@@ -332,7 +341,7 @@ static int Open( vlc_object_t *obj )
     EssenceType_t essInter;
     for ( size_t i = 0; i < ( p_sys->p_dcp->video_reels.size() ); i++ )
     {
-        EssenceType( p_sys->p_dcp->video_reels[i].filename.c_str(), essInter );
+        EssenceType( p_sys->p_dcp->video_reels[i].filename.c_str(), essInter END_FACTORY );
         if ( i == 0 )
         {
             p_sys->PictureEssType = essInter;
@@ -358,7 +367,7 @@ static int Open( vlc_object_t *obj )
             case ESS_JPEG_2000_S: {
                 JP2K::PictureDescriptor PicDesc;
                 if (p_sys->PictureEssType == ESS_JPEG_2000_S) {     /* 3D JPEG2000 */
-                    JP2K::MXFSReader * p_PicMXFSReader = new ( nothrow ) JP2K::MXFSReader();
+                    JP2K::MXFSReader * p_PicMXFSReader = new ( nothrow ) JP2K::MXFSReader(MAYBE_FACTORY);
 
                     if( !p_PicMXFSReader) {
                         retval = VLC_ENOMEM;
@@ -376,7 +385,7 @@ static int Open( vlc_object_t *obj )
                     videoReader.p_PicMXFSReader = p_PicMXFSReader;
                     p_sys->v_videoReader.push_back(videoReader);
                 } else {                                            /* 2D JPEG2000 */
-                    JP2K::MXFReader *p_PicMXFReader = new ( nothrow ) JP2K::MXFReader();
+                    JP2K::MXFReader *p_PicMXFReader = new ( nothrow ) JP2K::MXFReader(MAYBE_FACTORY);
                     if( !p_PicMXFReader ) {
                         retval = VLC_ENOMEM;
                         goto error;
@@ -419,7 +428,7 @@ static int Open( vlc_object_t *obj )
             }
             case ESS_MPEG2_VES: {
 
-                MPEG2::MXFReader *p_VideoMXFReader = new ( nothrow ) MPEG2::MXFReader();
+                MPEG2::MXFReader *p_VideoMXFReader = new ( nothrow ) MPEG2::MXFReader(MAYBE_FACTORY);
 
                 videoReader_t videoReader;
                 videoReader.p_VideoMXFReader = p_VideoMXFReader;
@@ -489,7 +498,7 @@ static int Open( vlc_object_t *obj )
 
     if( !p_sys->p_dcp->audio_reels.empty() )
     {
-        EssenceType( p_sys->p_dcp->audio_reels[0].filename.c_str(), AudioEssType );
+        EssenceType( p_sys->p_dcp->audio_reels[0].filename.c_str(), AudioEssType END_FACTORY );
 
         if ( (AudioEssType == ESS_PCM_24b_48k) || (AudioEssType == ESS_PCM_24b_96k) ) {
             PCM::AudioDescriptor AudioDesc;
@@ -498,7 +507,7 @@ static int Open( vlc_object_t *obj )
             {
                 if ( i != 0 )
                 {
-                    EssenceType( p_sys->p_dcp->audio_reels[i].filename.c_str(), AudioEssTypeCompare );
+                    EssenceType( p_sys->p_dcp->audio_reels[i].filename.c_str(), AudioEssTypeCompare END_FACTORY );
                     if ( AudioEssTypeCompare != AudioEssType )
                     {
                         msg_Err( p_demux, "Integrity check failed : different audio essence types in %s",
@@ -507,7 +516,7 @@ static int Open( vlc_object_t *obj )
                         goto error;
                     }
                 }
-                PCM::MXFReader *p_AudioMXFReader = new ( nothrow ) PCM::MXFReader();
+                PCM::MXFReader *p_AudioMXFReader = new ( nothrow ) PCM::MXFReader(MAYBE_FACTORY);
 
                 if( !p_AudioMXFReader ) {
                     retval = VLC_ENOMEM;
@@ -609,7 +618,7 @@ static int Demux( demux_t *p_demux )
     PCM::FrameBuffer   AudioFrameBuff( p_sys->i_audio_buffer);
     AESDecContext video_aes_ctx, audio_aes_ctx;
 
-    /* swaping video reels */
+    /* swapping video reels */
     if  ( p_sys->frame_no == p_sys->p_dcp->video_reels[p_sys->i_video_reel].i_absolute_end )
     {
         if ( p_sys->i_video_reel + 1 == p_sys->v_videoReader.size() )
@@ -622,7 +631,7 @@ static int Demux( demux_t *p_demux )
         }
     }
 
-    /* swaping audio reels */
+    /* swapping audio reels */
     if  ( !p_sys->p_dcp->audio_reels.empty() && p_sys->frame_no == p_sys->p_dcp->audio_reels[p_sys->i_audio_reel].i_absolute_end )
      {
          if ( p_sys->i_audio_reel + 1 == p_sys->v_audioReader.size() )
@@ -733,7 +742,7 @@ static int Demux( demux_t *p_demux )
 
         if( p_sys->i_chans_to_reorder )
             aout_ChannelReorder( p_audio_frame->p_buffer, p_audio_frame->i_buffer,
-                    p_sys->i_channels,
+                    p_sys->i_chans_to_reorder,
                     p_sys->pi_chan_table, VLC_CODEC_S24L );
 
         p_audio_frame->i_buffer = AudioFrameBuff.Size();
@@ -826,7 +835,7 @@ static int Control( demux_t *p_demux, int query, va_list args )
             p_sys->frame_no = i64 * p_sys->frame_rate_num / ( CLOCK_FREQ * p_sys->frame_rate_denom );
             p_sys->i_pts= i64;
             es_out_SetPCR(p_demux->out, p_sys->i_pts);
-            es_out_Control( p_demux->out, ES_OUT_SET_NEXT_DISPLAY_TIME, ( mtime_t ) i64 );
+            es_out_Control( p_demux->out, ES_OUT_SET_NEXT_DISPLAY_TIME, ( vlc_tick_t ) i64 );
             break;
         case DEMUX_GET_PTS_DELAY:
             pi64 = va_arg( args, int64_t * );

@@ -31,12 +31,13 @@
 #include "searchlineedit.hpp"
 #include "customwidgets.hpp"
 
-#include "qt.hpp" /*needed for qtr and CONNECT, but not necessary */
+#include "qt.hpp" /*needed for qtr but not necessary */
 
 #include <QPainter>
 #include <QRect>
 #include <QStyle>
 #include <QStyleOption>
+#include <QApplication>
 
 #include <vlc_intf_strings.h>
 
@@ -49,26 +50,34 @@ SearchLineEdit::SearchLineEdit( QWidget *parent ) : QLineEdit( parent )
     clearButton->setToolTip( qfu(vlc_pgettext("Tooltip|Clear", "Clear")) );
     clearButton->hide();
 
-    CONNECT( clearButton, clicked(), this, clear() );
+    connect( clearButton, &QFramelessButton::clicked, this, &SearchLineEdit::clear );
 
-    int frameWidth = style()->pixelMetric( QStyle::PM_DefaultFrameWidth, 0, this );
-
-    QFontMetrics metrics( font() );
-    QString styleSheet = QString( "min-height: %1px; "
-                                  "padding-top: 1px; "
-                                  "padding-bottom: 1px; "
-                                  "padding-right: %2px;" )
-                                  .arg( metrics.height() + ( 2 * frameWidth ) )
-                                  .arg( clearButton->sizeHint().width() + 6 );
-    setStyleSheet( styleSheet );
+    auto updateStyle = [=]() {
+        int frameWidth = style()->pixelMetric( QStyle::PM_DefaultFrameWidth, 0, this );
+        QFontMetrics metrics( font() );
+        QString styleSheet = QString( "min-height: %1px; "
+                                     "padding-top: 1px; "
+                                     "padding-bottom: 1px; "
+                                     "padding-right: %2px;" )
+                                 .arg( metrics.height() + ( 2 * frameWidth ) )
+                                 .arg( clearButton->sizeHint().width() + 6 );
+        setStyleSheet( styleSheet );
+    };
+    updateStyle();
+//same as Qt::AA_UseStyleSheetPropagationInWidgetStyles
+#if !HAS_QT57
+    connect(qApp, &QApplication::paletteChanged, this, [updateStyle](){
+        updateStyle();
+    });
+#endif
 
     setMessageVisible( true );
 
-    CONNECT( this, textEdited( const QString& ),
-             this, updateText( const QString& ) );
+    connect( this, &SearchLineEdit::textEdited,
+             this, &SearchLineEdit::updateText );
 
-    CONNECT( this, editingFinished(),
-             this, searchEditingFinished() );
+    connect( this, &SearchLineEdit::editingFinished,
+             this, &SearchLineEdit::searchEditingFinished );
 
 }
 

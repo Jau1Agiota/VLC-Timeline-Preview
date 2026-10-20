@@ -1,6 +1,6 @@
 # ncurses
 
-NCURSES_VERSION := 6.2
+NCURSES_VERSION := 6.3
 NCURSES_URL := $(GNU)/ncurses/ncurses-$(NCURSES_VERSION).tar.gz
 
 ifdef HAVE_MACOSX
@@ -18,6 +18,7 @@ $(TARBALLS)/ncurses-$(NCURSES_VERSION).tar.gz:
 
 ncurses: ncurses-$(NCURSES_VERSION).tar.gz .sum-ncurses
 	$(UNPACK)
+	$(UPDATE_AUTOCONFIG)
 	$(MOVE)
 
 .ncurses: ncurses

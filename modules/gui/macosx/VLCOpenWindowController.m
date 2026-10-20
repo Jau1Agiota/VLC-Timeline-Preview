@@ -323,7 +323,8 @@ static NSString *kCaptureTabViewId  = @"capture";
     if (!newMRL)
         newMRL = @"";
 
-    _MRL = newMRL;
+    NSString * const trimmedMRL = [newMRL stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    _MRL = trimmedMRL;
     [self.mrlTextField performSelectorOnMainThread:@selector(setStringValue:) withObject:_MRL waitUntilDone:NO];
     if ([_MRL length] > 0)
         [_okButton setEnabled: YES];
@@ -1040,8 +1041,19 @@ static NSString *kCaptureTabViewId  = @"capture";
                 [mrlString stringByAppendingFormat: @":%i", iPort];
             }
         }
-    } else
-        mrlString = [_netHTTPURLTextField stringValue];
+    } else {
+        mrlString = [_netHTTPURLTextField.stringValue stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+
+        // Fixup the user-provided URI
+        const char *orig_uri = [mrlString UTF8String];
+        if (orig_uri == NULL)
+            return;
+        char *fixed_uri = vlc_uri_fixup(orig_uri);
+        if (fixed_uri) {
+            mrlString = [[NSString alloc] initWithUTF8String:fixed_uri];
+            free(fixed_uri);
+        }
+    }
 
     [self setMRL: mrlString];
 }

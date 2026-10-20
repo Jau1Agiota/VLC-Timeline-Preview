@@ -1,7 +1,7 @@
 # JACK
 
 JACK_VERSION := 0.121.3
-JACK_URL := https://github.com/jackaudio/jack1/archive/$(JACK_VERSION).tar.gz
+JACK_URL := $(GITHUB)/jackaudio/jack1/archive/$(JACK_VERSION).tar.gz
 
 # disabled by default for now
 #PKGS += jack
@@ -19,11 +19,11 @@ jack: jack1-$(JACK_VERSION).tar.gz .sum-jack
 ifdef HAVE_MACOSX
 	$(APPLY) $(SRC)/jack/config-osx.patch
 endif
-	$(UPDATE_AUTOCONFIG)
 	$(MOVE)
 
 .jack: jack
-	$(RECONF)
-	cd $< && $(HOSTVARS) ./configure $(HOSTCONF)
-	cd $< && $(MAKE) install
+	$(MAKEBUILDDIR)
+	$(MAKECONFIGURE)
+	+$(MAKEBUILD)
+	+$(MAKEBUILD) install
 	touch $@

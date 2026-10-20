@@ -54,7 +54,7 @@ typedef struct ogg_skeleton_t ogg_skeleton_t;
 typedef struct backup_queue
 {
     block_t *p_block;
-    mtime_t i_duration;
+    vlc_tick_t i_duration;
 } backup_queue_t;
 
 typedef struct logical_stream_s
@@ -81,8 +81,8 @@ typedef struct logical_stream_s
 
     /* program clock reference (in units of 90kHz) derived from the previous
      * granulepos */
-    mtime_t          i_pcr;
-    mtime_t          i_previous_pcr;
+    vlc_tick_t       i_pcr;
+    vlc_tick_t       i_previous_pcr;
     bool             b_interpolation_failed;    /* Don't use dts, it was not interpolated */
 
     /* Misc */
@@ -95,7 +95,7 @@ typedef struct logical_stream_s
     /* Opus has a starting offset in the headers. */
     int i_pre_skip;
     /* Vorbis and Opus can trim the end of a stream using granule positions. */
-    mtime_t i_end_length;
+    vlc_tick_t i_end_length;
 
     /* offset of first keyframe for theora; can be 0 or 1 depending on version number */
     int8_t i_keyframe_offset;
@@ -174,7 +174,8 @@ struct demux_sys_t
 {
     ogg_sync_state oy;        /* sync and verify incoming physical bitstream */
 
-    int i_streams;                           /* number of logical bitstreams */
+    int i_declared_streams;   /* total number of streams, including unsupported ones */
+    int i_streams;            /* effectively created logical_steams_t with ES. <= i_declared_streams */
     logical_stream_t **pp_stream;  /* pointer to an array of logical streams */
     logical_stream_t *p_skelstream; /* pointer to skeleton stream if any */
 
@@ -182,10 +183,10 @@ struct demux_sys_t
 
     /* program clock reference (in units of 90kHz) derived from the pcr of
      * the sub-streams */
-    mtime_t i_pcr;
-    mtime_t i_nzpcr_offset;
+    vlc_tick_t i_pcr;
+    vlc_tick_t i_nzpcr_offset;
     /* informative only */
-    mtime_t i_pcr_jitter;
+    vlc_tick_t i_pcr_jitter;
     int64_t i_access_delay;
 
     /* new stream or starting from a chain */
@@ -202,7 +203,7 @@ struct demux_sys_t
     int64_t i_total_frames;
 
     /* length of file in bytes */
-    int64_t i_total_length;
+    int64_t i_total_bytes;
 
     /* offset position in file (for reading) */
     int64_t i_input_position;
@@ -230,7 +231,7 @@ struct demux_sys_t
     bool b_preparsing_done;
     bool b_es_created;
 
-    /* Length, if available. */
+    /* Time length, if available. 0 otherwise. */
     int64_t i_length;
 
     bool b_slave;

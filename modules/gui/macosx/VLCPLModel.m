@@ -425,6 +425,22 @@ static int VolumeUpdated(vlc_object_t *p_this, const char *psz_var,
 #pragma mark -
 #pragma mark Sorting / Searching
 
+- (void)sortPlaylistBy:(int)mode withOrder:(int)order
+{
+    PL_LOCK;
+    playlist_item_t *p_root = playlist_ItemGetById(p_playlist, [_rootItem plItemId]);
+    if (!p_root) {
+        PL_UNLOCK;
+        return;
+    }
+
+    playlist_RecursiveNodeSort(p_playlist, p_root, mode, order);
+
+    [self rebuildVLCPLItem:_rootItem];
+    [_outlineView reloadData];
+    PL_UNLOCK;
+}
+
 - (void)sortForColumn:(NSString *)o_column withMode:(int)i_mode
 {
     int i_column = 0;
@@ -447,18 +463,7 @@ static int VolumeUpdated(vlc_object_t *p_this, const char *psz_var,
     else
         return;
 
-    PL_LOCK;
-    playlist_item_t *p_root = playlist_ItemGetById(p_playlist, [_rootItem plItemId]);
-    if (!p_root) {
-        PL_UNLOCK;
-        return;
-    }
-
-    playlist_RecursiveNodeSort(p_playlist, p_root, i_column, i_mode);
-
-    [self rebuildVLCPLItem:_rootItem];
-    [_outlineView reloadData];
-    PL_UNLOCK;
+    [self sortPlaylistBy:i_column withOrder:i_mode];
 }
 
 - (void)searchUpdate:(NSString *)o_search
@@ -525,7 +530,7 @@ static int VolumeUpdated(vlc_object_t *p_this, const char *psz_var,
 
     } else if ([o_identifier isEqualToString:DURATION_COLUMN]) {
         char psz_duration[MSTRTIME_MAX_SIZE];
-        mtime_t dur = input_item_GetDuration(p_input);
+        vlc_tick_t dur = input_item_GetDuration(p_input);
         if (dur != -1) {
             secstotimestr(psz_duration, dur/1000000);
             o_value = toNSStr(psz_duration);

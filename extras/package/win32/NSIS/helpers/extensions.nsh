@@ -152,7 +152,6 @@ FunctionEnd
   !insertmacro ${_action} Audio ".it"
   !insertmacro ${_action} Audio ".m4a"
   !insertmacro ${_action} Audio ".m4p"
-  !insertmacro ${_action} Audio ".mid"
   !insertmacro ${_action} Audio ".mka"
   !insertmacro ${_action} Audio ".mlp"
   !insertmacro ${_action} Audio ".mod"
@@ -190,6 +189,7 @@ FunctionEnd
   !insertmacro ${_action} Video ".asf"
   !insertmacro ${_action} Video ".avi"
   !insertmacro ${_action} Video ".bik"
+  !insertmacro ${_action} Video ".dav"
   !insertmacro ${_action} Video ".divx"
   !insertmacro ${_action} Video ".drc"
   !insertmacro ${_action} Video ".dv"
@@ -262,6 +262,7 @@ FunctionEnd
 
 !macro MacroUnassociatedExtensions _action
   !insertmacro ${_action} Other ".iso"
+  !insertmacro ${_action} Audio ".mid"
   !insertmacro ${_action} Other ".zip"
   !insertmacro ${_action} Other ".rar"
 !macroend

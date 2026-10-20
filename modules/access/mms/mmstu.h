@@ -67,7 +67,7 @@ struct access_sys_t
     int         i_packet_seq_num;
 
     uint8_t     *p_cmd;     /* latest command read */
-    size_t      i_cmd;      /* allocated at the begining */
+    size_t      i_cmd;      /* allocated at the beginning */
 
     uint8_t     *p_header;  /* allocated by mms_ReadPacket */
     size_t      i_header;
@@ -78,12 +78,6 @@ struct access_sys_t
 
     /* extracted information */
     int         i_command;
-
-    /* from 0x01 answer (not yet set) */
-    char        *psz_server_version;
-    char        *psz_tool_version;
-    char        *psz_update_player_url;
-    char        *psz_encryption_type;
 
     /* from 0x06 answer */
     uint32_t    i_flags_broadcast;

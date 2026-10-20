@@ -1,6 +1,6 @@
 # gettext
-GETTEXT_VERSION := 0.19.8.1
-GETTEXT_URL := $(GNU)/gettext/gettext-$(GETTEXT_VERSION).tar.gz
+GETTEXT_VERSION := 0.26
+GETTEXT_URL := $(GNU)/gettext/gettext-$(GETTEXT_VERSION).tar.xz
 
 PKGS += gettext
 ifneq ($(filter gnu%,$(subst -, ,$(HOST))),)
@@ -8,43 +8,66 @@ ifneq ($(filter gnu%,$(subst -, ,$(HOST))),)
 PKGS_FOUND += gettext
 endif
 
-$(TARBALLS)/gettext-$(GETTEXT_VERSION).tar.gz:
+$(TARBALLS)/gettext-$(GETTEXT_VERSION).tar.xz:
 	$(call download_pkg,$(GETTEXT_URL),gettext)
 
-.sum-gettext: gettext-$(GETTEXT_VERSION).tar.gz
+.sum-gettext: gettext-$(GETTEXT_VERSION).tar.xz
 
-gettext: gettext-$(GETTEXT_VERSION).tar.gz .sum-gettext
+gettext: gettext-$(GETTEXT_VERSION).tar.xz .sum-gettext
 	$(UNPACK)
-	$(APPLY) $(SRC)/gettext/0001-libasprintf-On-mingw-really-use-our-vasprintf-functi.patch
-	$(APPLY) $(SRC)/gettext/0002-libasprintf-Avoid-compilation-error-on-mingw-with-D_.patch
+	$(UPDATE_AUTOCONFIG) && cd $(UNPACK_DIR) && mv config.guess config.sub build-aux
+	$(call update_autoconfig,libtextstyle/build-aux)
+	# disable useless gettext-runtime targets
+	sed -i.orig -e 's,doc ,,g' $(UNPACK_DIR)/gettext-runtime/Makefile.in
+	sed -i.orig -e 's,intl-java intl-csharp intl-d intl-modula2 ,,g' $(UNPACK_DIR)/gettext-runtime/Makefile.in
+	sed -i.orig -e 's, tests,,g' $(UNPACK_DIR)/gettext-runtime/Makefile.in
+	# disable useless gettext-tools configure
+	sed -i.orig -e 's,gettext-runtime libtextstyle gettext-tools,gettext-runtime libtextstyle,g' $(UNPACK_DIR)/configure
 	$(MOVE)
 
 DEPS_gettext = iconv $(DEPS_iconv) libxml2 $(DEPS_libxml2)
 
-GETTEXT_CFLAGS := $(CFLAGS)
 GETTEXT_CONF = \
 	--disable-relocatable \
 	--disable-java \
 	--disable-native-java \
+	--disable-csharp \
+	--disable-d \
+	--disable-go \
+	--disable-modula2 \
+	--disable-openmp \
 	--without-emacs \
-	--without-included-libxml
+	--without-included-libxml \
+	--without-git \
+	--without-cvs
+
 ifdef HAVE_WIN32
 GETTEXT_CONF += --disable-threads
-GETTEXT_CFLAGS += -DLIBXML_STATIC
+endif
+ifdef HAVE_LINUX
+GETTEXT_CONF += --disable-libasprintf
+endif
+ifdef HAVE_MINGW_W64
+GETTEXT_CONF += --disable-libasprintf
+endif
+
+ifeq ($(findstring libxml2,$(PKGS_FOUND)),)
+GETTEXT_CONF += --with-libxml2-prefix=$(PREFIX)
+endif
+ifdef HAVE_MACOSX
+# Mark functions as missing. Gettext/gnulib checks for functions without
+# using headers (which would make them unavailable with
+# -Werror=partial-availability), so we need to manually mark them unavailable.
+# These are unavailable in macOS 10.7.
+
+# macOS 10.10
+GETTEXT_CONF += ac_cv_func_faccessat=no
+
 endif
 
 .gettext: gettext
-	cd $< && $(HOSTVARS) ./configure $(HOSTCONF) CFLAGS="$(GETTEXT_CFLAGS)" $(GETTEXT_CONF)
-ifndef HAVE_ANDROID
-	cd $< && $(MAKE) install
-else
-	cd $< && $(MAKE) -C gettext-runtime install
-	cd $< && $(MAKE) -C gettext-tools/intl
-	cd $< && $(MAKE) -C gettext-tools/misc install
-	cd $< && $(MAKE) -C gettext-tools/m4 install
-endif
-ifdef HAVE_MACOSX
-	# detect libintl correctly in configure for static library
-	sed -i.orig  's/$$LIBS $$LIBINTL/$$LIBS $$LIBINTL $$INTL_MACOSX_LIBS/' "$(PREFIX)"/share/aclocal/gettext.m4
-endif
+	$(MAKEBUILDDIR)
+	$(MAKECONFIGURE) $(GETTEXT_CONF)
+	+$(MAKEBUILD) -C gettext-runtime bin_PROGRAMS=
+	+$(MAKEBUILD) -C gettext-runtime bin_PROGRAMS= install
 	touch $@

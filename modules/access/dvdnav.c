@@ -67,6 +67,11 @@ dvdnav_status_t dvdnav_jump_to_sector_by_time(dvdnav_t *, uint64_t, int32_t);
 
 #include "disc_helper.h"
 
+#ifndef DVDREAD_VERSION_CODE /* defined de facto in 6.0 */
+# define DVDREAD_VERSION_CODE(major, minor, micro) (((major) * 10000) + ((minor) * 100) +  ((micro) * 1))
+# define DVDREAD_VERSION DVDREAD_VERSION_CODE(5,0,3)
+#endif
+
 /*****************************************************************************
  * Module descriptor
  *****************************************************************************/
@@ -165,7 +170,7 @@ struct demux_sys_t
     int           cur_seekpoint;
 
     /* length of program group chain */
-    mtime_t     i_pgc_length;
+    vlc_tick_t  i_pgc_length;
     int         i_vobu_index;
     int         i_vobu_flush;
 };
@@ -371,7 +376,14 @@ static int AccessDemuxOpen ( vlc_object_t *p_this )
         goto bailout;
 
     /* Open dvdnav */
+#if DVDREAD_VERSION < DVDREAD_VERSION_CODE(6, 1, 2)
+    /* In libdvdread prior to 6.1.2, UTF8 is not supported for windows and
+     * requires a prior conversion.
+     * For non win32/os2 platforms, this is just a no-op */
     psz_path = ToLocale( psz_file );
+#else
+    psz_path = psz_file;
+#endif
 #if DVDNAV_VERSION >= 60100
     dvdnav_logger_cb cbs;
     cbs.pf_log = DvdNavLog;
@@ -390,8 +402,10 @@ static int AccessDemuxOpen ( vlc_object_t *p_this )
 
 bailout:
     free( psz_file );
+#if DVDREAD_VERSION < DVDREAD_VERSION_CODE(6, 1, 2)
     if( psz_path )
         LocaleFree( psz_path );
+#endif
     return i_ret;
 }
 
@@ -598,7 +612,7 @@ static int Control( demux_t *p_demux, int i_query, va_list args )
         case DEMUX_GET_TIME:
             if( p_sys->i_pgc_length > 0 )
             {
-                *va_arg( args, mtime_t * ) =
+                *va_arg( args, vlc_tick_t * ) =
                         dvdnav_get_current_time( p_sys->dvdnav ) * 100 / 9;
                 return VLC_SUCCESS;
             }
@@ -606,7 +620,7 @@ static int Control( demux_t *p_demux, int i_query, va_list args )
 
         case DEMUX_SET_TIME:
         {
-            mtime_t i_time = va_arg( args, mtime_t );
+            vlc_tick_t i_time = va_arg( args, vlc_tick_t );
             if( dvdnav_jump_to_sector_by_time( p_sys->dvdnav,
                                                i_time * 9 / 100,
                                                SEEK_SET ) == DVDNAV_STATUS_OK )
@@ -884,7 +898,7 @@ static int Demux( demux_t *p_demux )
 
             if( event->length != 0xff && p_sys->still.b_created )
             {
-                mtime_t delay = event->length * CLOCK_FREQ;
+                vlc_tick_t delay = event->length * CLOCK_FREQ;
                 vlc_timer_schedule( p_sys->still.timer, false, delay, 0 );
             }
 
@@ -975,7 +989,7 @@ static int Demux( demux_t *p_demux )
             if( tk->b_configured )
             {
                 es_format_Clean( &tk->fmt );
-                if( tk->es ) 
+                if( tk->es )
                 {
                     es_out_Del( p_demux->out, tk->es );
                     tk->es = NULL;
@@ -1429,7 +1443,7 @@ static int DemuxBlock( demux_t *p_demux, const uint8_t *p, int len )
         }
         default:
         {
-            int i_id = ps_pkt_id( p_pkt );
+            int i_id = ps_pkt_id( p_pkt, PS_SOURCE_VOB );
             if( i_id >= 0xc0 )
             {
                 ps_track_t *tk = &p_sys->tk[ps_id_to_tk(i_id)];
@@ -1446,7 +1460,7 @@ static int DemuxBlock( demux_t *p_demux, const uint8_t *p, int len )
                     tk->i_next_block_flags = 0;
                     if( i_next_block_flags & BLOCK_FLAG_CELL_DISCONTINUITY )
                     {
-                        if( p_pkt->i_dts >= VLC_TS_INVALID )
+                        if( p_pkt->i_dts >= VLC_TICK_INVALID )
                         {
                             i_next_block_flags &= ~BLOCK_FLAG_CELL_DISCONTINUITY;
                             i_next_block_flags |= BLOCK_FLAG_DISCONTINUITY;
@@ -1504,7 +1518,7 @@ static void ESNew( demux_t *p_demux, int i_id )
 
     if( tk->b_configured ) return;
 
-    if( ps_track_fill( tk, 0, i_id, NULL, true ) )
+    if( ps_track_fill( tk, NULL, i_id, NULL, true ) )
     {
         msg_Warn( p_demux, "unknown codec for id=0x%x", i_id );
         return;

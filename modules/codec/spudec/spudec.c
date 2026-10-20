@@ -80,6 +80,9 @@ static int DecoderOpen( vlc_object_t *p_this )
     decoder_t     *p_dec = (decoder_t*)p_this;
     decoder_sys_t *p_sys;
 
+    if( p_dec->fmt_in.i_cat != SPU_ES )
+        return VLC_EGENERIC;
+
     if( p_dec->fmt_in.i_codec != VLC_CODEC_SPU )
         return VLC_EGENERIC;
 
@@ -88,6 +91,8 @@ static int DecoderOpen( vlc_object_t *p_this )
     p_sys->b_packetizer = false;
     p_sys->b_disabletrans = var_InheritBool( p_dec, "dvdsub-transparency" );
     p_sys->i_spu_size = 0;
+    p_sys->buffer     = NULL;
+    p_sys->buffer_size = 0;
     p_sys->i_spu      = 0;
     p_sys->p_block    = NULL;
 
@@ -134,6 +139,7 @@ static void Close( vlc_object_t *p_this )
         block_ChainRelease( p_sys->p_block );
     }
 
+    free( p_sys->buffer );
     free( p_sys );
 }
 
@@ -154,8 +160,19 @@ static int Decode( decoder_t *p_dec, block_t *p_block )
         return VLCDEC_SUCCESS;
     }
 
-    /* FIXME: what the, we shouldn’t need to allocate 64k of buffer --sam. */
-    p_sys->i_spu = block_ChainExtract( p_spu_block, p_sys->buffer, 65536 );
+    size_t block_size;
+    block_ChainProperties( p_spu_block, NULL, &block_size, NULL );
+    if ( p_sys->buffer_size < block_size )
+    {
+        void *bigger = realloc( p_sys->buffer, block_size );
+        if ( unlikely(bigger == NULL) )
+        {
+            return VLCDEC_ECRITICAL;
+        }
+        p_sys->buffer = bigger;
+        p_sys->buffer_size = block_size;
+    }
+    p_sys->i_spu = block_ChainExtract( p_spu_block, p_sys->buffer, block_size );
     p_sys->i_pts = p_spu_block->i_pts;
     block_ChainRelease( p_spu_block );
 
@@ -216,7 +233,7 @@ static block_t *Reassemble( decoder_t *p_dec, block_t *p_block )
     }
 
     if( p_sys->i_spu_size <= 0 &&
-        ( p_block->i_pts <= VLC_TS_INVALID || p_block->i_buffer < 4 ) )
+        ( p_block->i_pts <= VLC_TICK_INVALID || p_block->i_buffer < 4 ) )
     {
         msg_Dbg( p_dec, "invalid starting packet (size < 4 or pts <=0)" );
         msg_Dbg( p_dec, "spu size: %d, i_pts: %"PRId64" i_buffer: %zu",

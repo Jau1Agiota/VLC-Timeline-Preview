@@ -1,13 +1,17 @@
 /*****************************************************************************
  * upnp.cpp :  UPnP discovery module (libupnp)
  *****************************************************************************
- * Copyright (C) 2004-2016 VLC authors and VideoLAN
- * $Id$
+ * Copyright (C) 2004-2021 VLC authors and VideoLAN
  *
  * Authors: Rémi Denis-Courmont (original plugin)
  *          Christian Henz <henz # c-lab.de>
  *          Mirsal Ennaime <mirsal dot ennaime at gmail dot com>
  *          Hugo Beauzée-Luyssen <hugo@beauzee.fr>
+ *          Shaleen Jain <shaleen@jain.sh>
+ *          William Ung <william1.ung@epitech.eu>
+ *          Felix Paul Kühne <fkuehne # videolan.org>
+ *          Bastien Penavayre <swac31@gmail.com>
+ *          Andreas Krug <akrug@arcor.de>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by
@@ -26,13 +30,18 @@
 
 #include "upnp.hpp"
 
+#ifdef UPNP_HAVE_TOOLS
+#include <upnp/upnptools.h>
+#endif
+
 #include <vlc_access.h>
 #include <vlc_plugin.h>
 #include <vlc_interrupt.h>
 #include <vlc_services_discovery.h>
 #include <vlc_charset.h>
+#include <vlc_url.h>
 
-#include <assert.h>
+#include <cassert>
 #include <limits.h>
 #include <algorithm>
 #include <set>
@@ -69,14 +78,7 @@ const char* MEDIA_SERVER_DEVICE_TYPE = "urn:schemas-upnp-org:device:MediaServer:
 const char* CONTENT_DIRECTORY_SERVICE_TYPE = "urn:schemas-upnp-org:service:ContentDirectory:1";
 const char* SATIP_SERVER_DEVICE_TYPE = "urn:ses-com:device:SatIPServer:1";
 
-#define SATIP_CHANNEL_LIST N_("SAT>IP channel list")
 #define SATIP_CHANNEL_LIST_URL N_("Custom SAT>IP channel list URL")
-static const char *const ppsz_satip_channel_lists[] = {
-    "Auto", "ASTRA_19_2E", "ASTRA_28_2E", "ASTRA_23_5E", "MasterList", "ServerList", "CustomList"
-};
-static const char *const ppsz_readible_satip_channel_lists[] = {
-    N_("Auto"), "Astra 19.2°E", "Astra 28.2°E", "Astra 23.5°E", N_("Master List"), N_("Server List"), N_("Custom List")
-};
 
 /*
  * VLC handle
@@ -124,9 +126,7 @@ vlc_module_begin()
     set_capability( "services_discovery", 0 );
     set_callbacks( SD::Open, SD::Close );
 
-    add_string( "satip-channelist", "auto", SATIP_CHANNEL_LIST,
-                SATIP_CHANNEL_LIST, false )
-    change_string_list( ppsz_satip_channel_lists, ppsz_readible_satip_channel_lists )
+    add_obsolete_string( "satip-channelist" ) /* since 3.0.22 */
     add_string( "satip-channellist-url", NULL, SATIP_CHANNEL_LIST_URL,
                 SATIP_CHANNEL_LIST_URL, false )
 
@@ -135,6 +135,7 @@ vlc_module_begin()
         set_subcategory( SUBCAT_INPUT_ACCESS )
         set_callbacks( Access::Open, Access::Close )
         set_capability( "access", 0 )
+        add_shortcut( "upnp", "upnps" )
 
     VLC_SD_PROBE_SUBMODULE
 vlc_module_end()
@@ -182,7 +183,7 @@ IXML_Document* parseBrowseResult( IXML_Document* p_doc )
     IXML_Document* p_result_doc = ixmlParseBuffer( psz_raw_didl );
     if( !p_result_doc ) {
         /* Missing namespaces confuse the ixml parser. This is a very ugly
-         * hack but it is needeed until devices start sending valid XML.
+         * hack but it is needed until devices start sending valid XML.
          *
          * It works that way:
          *
@@ -346,17 +347,31 @@ bool MediaServerList::addServer( MediaServerDesc* desc )
             free( psz_playlist_option );
         }
     } else {
-        char* psz_mrl;
-        // We might already have some options specified in the location.
-        char opt_delim = desc->location.find( '?' ) == 0 ? '?' : '&';
-        if( asprintf( &psz_mrl, "upnp://%s%cObjectID=0", desc->location.c_str(), opt_delim ) < 0 )
-            return false;
+        const auto loc_starts_with = [desc](const char *s) {
+            return desc->location.compare(0, strlen(s), s) == 0;
+        };
 
-        p_input_item = input_item_NewDirectory( psz_mrl,
+        if ( !loc_starts_with("http://") && !loc_starts_with("https://") )
+        {
+            msg_Warn( m_sd, "Unexpected underlying protocol, the UPNP module "
+                      "fully supports HTTP and has partial support for HTTPS" );
+            return false;
+        }
+
+        std::string mrl = desc->location;
+
+        // Replace the scheme to trigger the directory access.
+        mrl.replace( 0, 4, "upnp" );
+
+        // Forge a root object ID in the MRL, this is used in the dir access.
+        if ( desc->location.find( '?' ) == std::string::npos )
+            mrl += "?ObjectID=0";
+        else
+            mrl += "&ObjectID=0";
+
+        p_input_item = input_item_NewDirectory( mrl.c_str(),
                                                 desc->friendlyName.c_str(),
                                                 ITEM_NET );
-        free( psz_mrl );
-
         if ( !p_input_item )
             return false;
 
@@ -587,113 +602,60 @@ MediaServerList::parseSatipServer( IXML_Element* p_device_element, const char *p
 {
     SD::MediaServerDesc* p_server = NULL;
 
-    char *psz_satip_channellist = config_GetPsz(m_sd, "satip-channelist");
-    if( !psz_satip_channellist ) {
-        psz_satip_channellist = strdup("Auto");
-    }
-
-    if( unlikely( !psz_satip_channellist ) )
-        return;
-
     vlc_url_t url;
     vlc_UrlParse( &url, psz_base_url );
 
     /* Part 1: a user may have provided a custom playlist url */
-    if (strncmp(psz_satip_channellist, "CustomList", 10) == 0) {
-        char *psz_satip_playlist_url = config_GetPsz(m_sd, "satip-channellist-url" );
-        if ( psz_satip_playlist_url ) {
-            p_server = new(std::nothrow) SD::MediaServerDesc( psz_udn, psz_friendly_name, psz_satip_playlist_url, iconUrl );
+    char *psz_satip_playlist_url = var_InheritString( m_sd, "satip-channellist-url" );
+    if ( psz_satip_playlist_url ) {
+        p_server = new(std::nothrow) SD::MediaServerDesc( psz_udn, psz_friendly_name, psz_satip_playlist_url, iconUrl );
 
-            if( likely( p_server ) ) {
-                p_server->satIpHost = url.psz_host;
-                p_server->isSatIp = true;
-                if( !addServer( p_server ) ) {
-                    delete p_server;
-                }
+        if ( likely( p_server ) ) {
+            p_server->satIpHost = url.psz_host;
+            p_server->isSatIp = true;
+            if( !addServer( p_server ) ) {
+                delete p_server;
             }
-
-            /* to comply with the SAT>IP specification, we don't fall back on another channel list if this path failed */
-            free( psz_satip_channellist );
-            free( psz_satip_playlist_url );
-            vlc_UrlClean( &url );
-            return;
         }
+
+        /* to comply with the SAT>IP specification, we don't fall back on another channel list if this path failed */
+        free( psz_satip_playlist_url );
+        vlc_UrlClean( &url );
+        return;
     }
 
     /* Part 2: device playlist
      * In Automatic mode, or if requested by the user, check for a SAT>IP m3u list on the device */
-    if (strncmp(psz_satip_channellist, "ServerList", 10) == 0 ||
-        strncmp(psz_satip_channellist, "Auto", strlen ("Auto")) == 0 ) {
-        const char* psz_m3u_url = xml_getChildElementValue( p_device_element, "satip:X_SATIPM3U" );
-        if ( psz_m3u_url ) {
-            if ( strncmp( "http", psz_m3u_url, 4) )
+    const char* psz_m3u_url = xml_getChildElementValue( p_device_element, "satip:X_SATIPM3U" );
+    if ( psz_m3u_url ) {
+        if ( strncmp( "http", psz_m3u_url, 4) )
+        {
+            char* psz_url = NULL;
+            if ( UpnpResolveURL2( psz_base_url, psz_m3u_url, &psz_url ) == UPNP_E_SUCCESS )
             {
-                char* psz_url = NULL;
-                if ( UpnpResolveURL2( psz_base_url, psz_m3u_url, &psz_url ) == UPNP_E_SUCCESS )
-                {
-                    p_server = new(std::nothrow) SD::MediaServerDesc( psz_udn, psz_friendly_name, psz_url, iconUrl );
-                    free(psz_url);
-                }
-            } else {
-                p_server = new(std::nothrow) SD::MediaServerDesc( psz_udn, psz_friendly_name, psz_m3u_url, iconUrl );
+                p_server = new(std::nothrow) SD::MediaServerDesc( psz_udn, psz_friendly_name, psz_url, iconUrl );
+                free(psz_url);
             }
-
-            if ( unlikely( !p_server ) )
-            {
-                free( psz_satip_channellist );
-                vlc_UrlClean( &url );
-                return;
-            }
-
-            p_server->satIpHost = url.psz_host;
-            p_server->isSatIp = true;
-            if ( !addServer( p_server ) )
-                delete p_server;
         } else {
-            msg_Dbg( m_sd, "SAT>IP server '%s' did not provide a playlist", url.psz_host);
+            p_server = new(std::nothrow) SD::MediaServerDesc( psz_udn, psz_friendly_name, psz_m3u_url, iconUrl );
         }
 
-        if(strncmp(psz_satip_channellist, "ServerList", 10) == 0) {
-            /* to comply with the SAT>IP specifications, we don't fallback on another channel list if this path failed,
-             * but in Automatic mode, we continue */
-            free(psz_satip_channellist);
+        if ( unlikely( !p_server ) ) {
             vlc_UrlClean( &url );
             return;
         }
-    }
 
-    /* Part 3: satip.info playlist
-     * In the normal case, fetch a playlist from the satip website,
-     * which will be processed by a lua script a bit later, to make it work sanely
-     * MasterList is a list of usual Satellites */
-
-    /* In Auto mode, default to MasterList list from satip.info */
-    if( strncmp(psz_satip_channellist, "Auto", strlen ("Auto")) == 0 ) {
-        free(psz_satip_channellist);
-        psz_satip_channellist = strdup( "MasterList" );
-    }
-
-    char *psz_url;
-    if (asprintf( &psz_url, "http://www.satip.info/Playlists/%s.m3u",
-                psz_satip_channellist ) < 0 ) {
-        vlc_UrlClean( &url );
-        free( psz_satip_channellist );
-        return;
-    }
-
-    p_server = new(std::nothrow) SD::MediaServerDesc( psz_udn,
-            psz_friendly_name, psz_url, iconUrl );
-
-    if( likely( p_server ) ) {
         p_server->satIpHost = url.psz_host;
         p_server->isSatIp = true;
-        if( !addServer( p_server ) ) {
+        if ( !addServer( p_server ) ) {
             delete p_server;
+        } else {
+            msg_Err( m_sd, "SAT>IP server '%s' did not provide a playlist", url.psz_host);
         }
+
+        /* to comply with the SAT>IP specifications, we don't fallback on another channel list if this path failed */
+        vlc_UrlClean( &url );
     }
-    free( psz_url );
-    free( psz_satip_channellist );
-    vlc_UrlClean( &url );
 }
 
 void MediaServerList::removeServer( const std::string& udn )
@@ -927,7 +889,7 @@ namespace
 
         input_item_t *createNewItem(IXML_Element *p_resource)
         {
-            mtime_t i_duration = -1;
+            vlc_tick_t i_duration = -1;
             const char* psz_resource_url = xml_getChildElementValue( p_resource, "res" );
             if( !psz_resource_url )
                 return NULL;
@@ -948,8 +910,17 @@ namespace
             if ( objectID == NULL || title == NULL )
                 return NULL;
 
+            char *encoded_id = vlc_uri_encode( objectID );
+            if ( unlikely(encoded_id == NULL) )
+                return NULL;
+
+            const char opt_delim = strrchr( psz_root, '?' ) == NULL ? '?' : '&';
+
             char* psz_url;
-            if( asprintf( &psz_url, "upnp://%s?ObjectID=%s", psz_root, objectID ) < 0 )
+            const int ret = asprintf( &psz_url, "%s%cObjectID=%s", psz_root,
+                                      opt_delim, encoded_id );
+            free( encoded_id );
+            if( ret < 0 )
                 return NULL;
 
             input_item_t* p_item = input_item_NewDirectory( psz_url, title, ITEM_NET );
@@ -1019,15 +990,17 @@ MediaServer::MediaServer( stream_t *p_access, input_item_node_t *node )
     , m_node( node )
 
 {
-    m_psz_root = strdup( p_access->psz_location );
+    m_psz_root = strdup( p_access->psz_url );
     char* psz_objectid = strstr( m_psz_root, "ObjectID=" );
     if ( psz_objectid != NULL )
     {
         // Remove this parameter from the URL, since it might cause some servers to fail
         // Keep in mind that we added a '&' or a '?' to the URL, so remove it as well
         *( psz_objectid - 1) = 0;
-        m_psz_objectId = &psz_objectid[strlen( "ObjectID=" )];
+        m_psz_objectId = vlc_uri_decode( &psz_objectid[strlen("ObjectID=")] );
     }
+
+    m_original_url = std::string( m_psz_root ).replace(0, 4, "http");
 }
 
 MediaServer::~MediaServer()
@@ -1219,7 +1192,7 @@ IXML_Document* MediaServer::_browseAction( const char* psz_object_id_,
      * interrupted by vlc_interrupt_kill */
     i11eCb = new Upnp_i11e_cb( sendActionCb, &p_response );
     i_res = UpnpSendActionAsync( sys->p_upnp->handle(),
-              m_psz_root,
+              m_original_url.c_str(),
               CONTENT_DIRECTORY_SERVICE_TYPE,
               NULL, /* ignored in SDK, must be NULL */
               p_action,
@@ -1366,6 +1339,8 @@ UpnpInstanceWrapper::~UpnpInstanceWrapper()
 
 #ifdef _WIN32
 
+#include <iphlpapi.h> // IP_ADAPTER_ADDRESSES, IP_ADAPTER_MULTICAST_ADDRESS, etc
+
 static IP_ADAPTER_MULTICAST_ADDRESS* getMulticastAddress(IP_ADAPTER_ADDRESSES* p_adapter)
 {
     const unsigned long i_broadcast_ip = inet_addr("239.255.255.250");
@@ -1432,8 +1407,6 @@ static IP_ADAPTER_ADDRESSES* ListAdapters()
     return addresses;
 }
 
-#ifdef UPNP_ENABLE_IPV6
-
 static char* getPreferedAdapter()
 {
     IP_ADAPTER_ADDRESSES *p_adapter, *addresses;
@@ -1462,8 +1435,6 @@ static char* getPreferedAdapter()
     free(addresses);
     return NULL;
 }
-
-#else
 
 static char *getIpv4ForMulticast()
 {
@@ -1551,10 +1522,7 @@ done:
     free(addresses);
     return NULL;
 }
-#endif /* UPNP_ENABLE_IPV6 */
 #else /* _WIN32 */
-
-#ifdef UPNP_ENABLE_IPV6
 
 #ifdef __APPLE__
 #include <TargetConditionals.h>
@@ -1563,40 +1531,6 @@ done:
 #include <CoreFoundation/CoreFoundation.h>
 #include <SystemConfiguration/SystemConfiguration.h>
 #include "vlc_charset.h"
-
-inline char *FromCFString(const CFStringRef cfString,
-                          const CFStringEncoding cfStringEncoding)
-{
-    // Try the quick way to obtain the buffer
-    const char *tmpBuffer = CFStringGetCStringPtr(cfString, cfStringEncoding);
-    if (tmpBuffer != NULL) {
-        return strdup(tmpBuffer);
-    }
-
-    // The quick way did not work, try the long way
-    CFIndex length = CFStringGetLength(cfString);
-    CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, cfStringEncoding);
-
-    // If result would exceed LONG_MAX, kCFNotFound is returned
-    if (unlikely(maxSize == kCFNotFound)) {
-        return NULL;
-    }
-
-    // Account for the null terminator
-    maxSize++;
-
-    char *buffer = (char *)malloc(maxSize);
-    if (unlikely(buffer == NULL)) {
-        return NULL;
-    }
-
-    // Copy CFString in requested encoding to buffer
-    Boolean success = CFStringGetCString(cfString, buffer, maxSize, cfStringEncoding);
-
-    if (!success)
-        FREENULL(buffer);
-    return buffer;
-}
 
 inline char *getPreferedAdapter()
 {
@@ -1666,14 +1600,11 @@ inline char *getPreferedAdapter()
 }
 
 #endif
-#else
 
 static char *getIpv4ForMulticast()
 {
     return NULL;
 }
-
-#endif
 
 #endif /* _WIN32 */
 
@@ -1700,7 +1631,9 @@ UpnpInstanceWrapper *UpnpInstanceWrapper::get(vlc_object_t *p_obj, services_disc
             return NULL;
         }
 
-    #ifdef UPNP_ENABLE_IPV6
+        /* libupnp 1.8.3 deprecate `UpnpInit` and introduce `UpnpInit2` as a replacement.
+           libupnp <1.8.3 provides `UpnpInit2` only if built with IPv6. */
+    #if UPNP_VERSION >= 10803 || defined( UPNP_ENABLE_IPV6 )
         char* psz_miface = var_InheritString( p_obj, "miface" );
         if (psz_miface == NULL)
             psz_miface = getPreferedAdapter();
@@ -1708,11 +1641,11 @@ UpnpInstanceWrapper *UpnpInstanceWrapper::get(vlc_object_t *p_obj, services_disc
         int i_res = UpnpInit2( psz_miface, 0 );
         free( psz_miface );
     #else
-        /* If UpnpInit2 isnt available, initialize on first IPv4-capable interface */
+        /* If UpnpInit2 isn't available, initialize on first IPv4-capable interface */
         char *psz_hostip = getIpv4ForMulticast();
         int i_res = UpnpInit( psz_hostip, 0 );
         free(psz_hostip);
-    #endif /* UPNP_ENABLE_IPV6 */
+    #endif /* UPNP_VERSION >= 10803 || defined( UPNP_ENABLE_IPV6 ) */
         if( i_res != UPNP_E_SUCCESS )
         {
             msg_Err( p_obj, "Initialization failed: %s", UpnpGetErrorMessage( i_res ) );

@@ -1,7 +1,7 @@
 # Theora
 
 THEORA_VERSION := 1.1.1
-THEORA_URL := http://downloads.xiph.org/releases/theora/libtheora-$(THEORA_VERSION).tar.xz
+THEORA_URL := $(XIPH)/theora/libtheora-$(THEORA_VERSION).tar.xz
 
 PKGS += theora
 ifeq ($(call need_pkg,"theora >= 1.0"),)
@@ -15,15 +15,15 @@ $(TARBALLS)/libtheora-$(THEORA_VERSION).tar.xz:
 
 libtheora: libtheora-$(THEORA_VERSION).tar.xz .sum-theora
 	$(UNPACK)
+	$(UPDATE_AUTOCONFIG)
 	$(APPLY) $(SRC)/theora/libtheora-compiler-differentiation.patch
 	$(APPLY) $(SRC)/theora/libtheora-no-forceaddr.patch
 	# Disable the generation of documentation. In 1.2.x it can be replaced by
 	# a --disable-doc parameter.
 	sed -i.orig "/^SUBDIRS =/s/doc//g" "$(UNPACK_DIR)/Makefile.am" "$(UNPACK_DIR)/Makefile.in"
-	$(UPDATE_AUTOCONFIG)
 	$(MOVE)
 
-THEORACONF := $(HOSTCONF) \
+THEORACONF := \
 	--disable-spec \
 	--disable-sdltest \
 	--disable-oggtest \
@@ -51,6 +51,8 @@ endif
 DEPS_theora = ogg $(DEPS_ogg)
 
 .theora: libtheora
-	cd $< && $(HOSTVARS) ./configure $(THEORACONF)
-	cd $< && $(MAKE) install
+	$(MAKEBUILDDIR)
+	$(MAKECONFIGURE) $(THEORACONF)
+	+$(MAKEBUILD)
+	+$(MAKEBUILD) install
 	touch $@

@@ -10,6 +10,8 @@ LIBVLC_SAMPLES = \
 	libvlc/QtPlayer/QtVLC.pro \
 	libvlc/vlc-thumb.c \
 	libvlc/wx_player.cpp \
+	libvlc/win_player.c \
+	libvlc/CMakeLists.txt \
 	$(NULL)
 
 nobase_doc_DATA = $(LIBVLC_SAMPLES)
@@ -42,6 +44,10 @@ CHANGELOGS = \
 	ChangeLog-2019 \
 	ChangeLog-2020 \
 	ChangeLog-2021 \
+	ChangeLog-2022 \
+	ChangeLog-2023 \
+	ChangeLog-2024 \
+	ChangeLog-2025 \
 	$(NULL)
 
 man1_MANS = \

@@ -193,7 +193,7 @@ struct  demux_sys_t
     bool                b_menu;
     bool                b_menu_open;
     bool                b_popup_available;
-    mtime_t             i_still_end_time;
+    vlc_tick_t          i_still_end_time;
 
     vlc_mutex_t         bdj_overlay_lock; /* used to lock BD-J overlay open/close while overlays are being sent to vout */
 
@@ -391,8 +391,6 @@ static int   onIntfEvent(vlc_object_t *, char const *,
 static void  blurayRestartParser(demux_t *p_demux, bool, bool);
 static void  notifyDiscontinuityToParser( demux_sys_t *p_sys );
 
-#define FROM_TICKS(a) ((a)*CLOCK_FREQ / INT64_C(90000))
-#define TO_TICKS(a)   ((a)*INT64_C(90000)/CLOCK_FREQ)
 
 #define STILL_IMAGE_NOT_SET    0
 #define STILL_IMAGE_INFINITE  -1
@@ -619,7 +617,7 @@ static int probeStream(demux_t *p_demux)
     }
 
     /* first sector(s) should be filled with zeros */
-    size_t i_peek;
+    ssize_t i_peek;
     const uint8_t *p_peek;
     i_peek = vlc_stream_Peek( p_demux->s, &p_peek, 2048 );
     if( i_peek != 2048 ) {
@@ -1485,7 +1483,7 @@ static void updater_unlock_overlay(subpicture_updater_sys_t *p_upd_sys)
 static int subpictureUpdaterValidate(subpicture_t *p_subpic,
                                       bool b_fmt_src, const video_format_t *p_fmt_src,
                                       bool b_fmt_dst, const video_format_t *p_fmt_dst,
-                                      mtime_t i_ts)
+                                      vlc_tick_t i_ts)
 {
     VLC_UNUSED(b_fmt_src);
     VLC_UNUSED(b_fmt_dst);
@@ -1510,7 +1508,7 @@ static int subpictureUpdaterValidate(subpicture_t *p_subpic,
 static void subpictureUpdaterUpdate(subpicture_t *p_subpic,
                                     const video_format_t *p_fmt_src,
                                     const video_format_t *p_fmt_dst,
-                                    mtime_t i_ts)
+                                    vlc_tick_t i_ts)
 {
     VLC_UNUSED(p_fmt_src);
     VLC_UNUSED(p_fmt_dst);
@@ -1524,7 +1522,7 @@ static void subpictureUpdaterUpdate(subpicture_t *p_subpic,
 
     /*
      * When this function is called, all p_subpic regions are gone.
-     * We need to duplicate our regions (stored internaly) to this subpic.
+     * We need to duplicate our regions (stored internally) to this subpic.
      */
     subpicture_region_t *p_src = p_overlay->p_regions;
     if (!p_src) {
@@ -2067,7 +2065,7 @@ static bool blurayTitleIsRepeating(BLURAY_TITLE_INFO *title_info,
 
 static void blurayUpdateTitleInfo(input_title_t *t, BLURAY_TITLE_INFO *title_info)
 {
-    t->i_length = FROM_TICKS(title_info->duration);
+    t->i_length = FROM_SCALE_NZ(title_info->duration);
 
     for (int i = 0; i < t->i_seekpoint; i++)
         vlc_seekpoint_Delete( t->seekpoint[i] );
@@ -2082,7 +2080,7 @@ static void blurayUpdateTitleInfo(input_title_t *t, BLURAY_TITLE_INFO *title_inf
         if (!s) {
             break;
         }
-        s->i_time_offset = FROM_TICKS(title_info->chapters[j].start);
+        s->i_time_offset = FROM_SCALE_NZ(title_info->chapters[j].start);
 
         TAB_APPEND(t->i_seekpoint, t->seekpoint, s);
     }
@@ -2371,7 +2369,7 @@ static int blurayControl(demux_t *p_demux, int query, va_list args)
     case DEMUX_SET_TIME:
     {
         int64_t i_time = va_arg(args, int64_t);
-        bd_seek_time(p_sys->bluray, TO_TICKS(i_time));
+        bd_seek_time(p_sys->bluray, TO_SCALE_NZ(i_time));
         blurayRestartParser(p_demux, true, true);
         notifyDiscontinuityToParser(p_sys);
         p_sys->b_draining = false;
@@ -2384,7 +2382,7 @@ static int blurayControl(demux_t *p_demux, int query, va_list args)
         if( p_demux->info.i_title < (int) p_sys->i_title &&
            (CURRENT_TITLE->i_flags & INPUT_TITLE_INTERACTIVE))
                 return VLC_EGENERIC;
-        *pi_time = (int64_t)FROM_TICKS(bd_tell_time(p_sys->bluray));
+        *pi_time = FROM_SCALE_NZ(bd_tell_time(p_sys->bluray));
         return VLC_SUCCESS;
     }
 
@@ -2395,13 +2393,13 @@ static int blurayControl(demux_t *p_demux, int query, va_list args)
            (CURRENT_TITLE->i_flags & INPUT_TITLE_INTERACTIVE))
                 return VLC_EGENERIC;
         *pf_position = p_demux->info.i_title < (int) p_sys->i_title && CUR_LENGTH > 0 ?
-                      (double)FROM_TICKS(bd_tell_time(p_sys->bluray))/CUR_LENGTH : 0.0;
+                      (double)FROM_SCALE_NZ(bd_tell_time(p_sys->bluray))/CUR_LENGTH : 0.0;
         return VLC_SUCCESS;
     }
     case DEMUX_SET_POSITION:
     {
         double f_position = va_arg(args, double);
-        bd_seek_time(p_sys->bluray, TO_TICKS(f_position*CUR_LENGTH));
+        bd_seek_time(p_sys->bluray, TO_SCALE_NZ(f_position*CUR_LENGTH));
         blurayRestartParser(p_demux, true, true);
         notifyDiscontinuityToParser(p_sys);
         p_sys->b_draining = false;
@@ -3048,13 +3046,13 @@ struct escape_es_id
 {
     es_out_id_t *es;
     bool drop_first;
-    mtime_t first_dts;
+    vlc_tick_t first_dts;
 };
 
 struct escape_esout_sys
 {
     es_out_t *dst_out;
-    mtime_t   offset_pcr;
+    vlc_tick_t  offset_pcr;
 
     vlc_array_t es_ids; /* escape_es_id */
 };
@@ -3116,7 +3114,7 @@ static int escape_esOutSend(es_out_t *out, es_out_id_t *es, block_t *block)
             if (esc_id->drop_first)
                 block->i_flags |= BLOCK_FLAG_PREROLL;
         }
-        mtime_t offset = esout_sys->offset_pcr - esc_id->first_dts;
+        vlc_tick_t offset = esout_sys->offset_pcr - esc_id->first_dts;
         block->i_pts += offset;
         block->i_dts += offset;
     }
@@ -3157,7 +3155,7 @@ static int escape_esOutControl(es_out_t *p_out, int query, va_list args)
         case ES_OUT_SET_GROUP_PCR:
         {
             int group = va_arg( args, int );
-            mtime_t pcr = va_arg( args, int64_t );
+            vlc_tick_t pcr = va_arg( args, int64_t );
 
             if (esout_sys->offset_pcr == -1)
                 esout_sys->offset_pcr = pcr;

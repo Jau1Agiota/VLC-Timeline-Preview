@@ -29,7 +29,7 @@
 # include "config.h"
 #endif
 
-#include <assert.h>
+#include <cassert>
 
 #include "qt.hpp"
 
@@ -105,7 +105,7 @@ public:
 protected:
     QSignalMapper *menusMapper;
     QSignalMapper *menusUpdateMapper;
-    void customEvent( QEvent *);
+    void customEvent( QEvent *) override;
 
 private:
     DialogsProvider( intf_thread_t *);
@@ -139,7 +139,7 @@ public slots:
     void vlmDialog();
 #endif
     void helpDialog();
-#ifdef UPDATE_CHECK
+#if defined(UPDATE_CHECK)
     void updateDialog();
 #endif
     void aboutDialog();

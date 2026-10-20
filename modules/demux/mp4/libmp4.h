@@ -204,6 +204,11 @@ typedef int64_t stime_t;
 #define ATOM_fLaC VLC_FOURCC( 'f', 'L', 'a', 'C' )
 #define ATOM_dfLa VLC_FOURCC( 'd', 'f', 'L', 'a' )
 
+/* ISO-IEC 23003-5 */
+#define ATOM_fpcm VLC_FOURCC( 'f', 'p', 'c', 'm' )
+#define ATOM_ipcm VLC_FOURCC( 'i', 'p', 'c', 'm' )
+#define ATOM_pcmC VLC_FOURCC( 'p', 'c', 'm', 'C' )
+
 /* XiphQT */
 #define ATOM_fCtS VLC_FOURCC( 'f', 'C', 't', 'S' )
 #define ATOM_vCtH VLC_FOURCC( 'v', 'C', 't', 'H' )
@@ -249,6 +254,8 @@ typedef int64_t stime_t;
 #define ATOM_av1C VLC_FOURCC( 'a', 'v', '1', 'C' )
 #define ATOM_avcC VLC_FOURCC( 'a', 'v', 'c', 'C' )
 #define ATOM_vpcC VLC_FOURCC( 'v', 'p', 'c', 'C' )
+#define ATOM_apv1 VLC_FOURCC( 'a', 'p', 'v', '1' )
+#define ATOM_apvC VLC_FOURCC( 'a', 'p', 'v', 'C' )
 #define ATOM_m4ds VLC_FOURCC( 'm', '4', 'd', 's' )
 
 #define ATOM_fiel VLC_FOURCC( 'f', 'i', 'e', 'l' )
@@ -614,7 +621,7 @@ typedef struct MP4_Box_data_stts_s
 
     uint32_t i_entry_count;
     uint32_t *pi_sample_count; /* these are array */
-    int32_t  *pi_sample_delta;
+    uint32_t *pi_sample_delta;
 
 } MP4_Box_data_stts_t;
 
@@ -1478,6 +1485,12 @@ typedef struct
 
 typedef struct
 {
+    uint8_t i_format_flags;
+    uint8_t i_sample_size;
+} MP4_Box_data_pcmC_t;
+
+typedef struct
+{
     uint32_t i_entry_count;
     struct
     {
@@ -1566,8 +1579,8 @@ typedef struct
     uint8_t i_length_size_of_trun_num;
     uint8_t i_length_size_of_sample_num;
 
-    uint32_t *p_time;
-    uint32_t *p_moof_offset;
+    uint64_t *p_time;
+    uint64_t *p_moof_offset;
     uint8_t *p_traf_number;
     uint8_t *p_trun_number;
     uint8_t *p_sample_number;
@@ -1703,6 +1716,7 @@ typedef union MP4_Box_data_s
     MP4_Box_data_fiel_t *p_fiel;
     MP4_Box_data_chan_t *p_chan;
     MP4_Box_data_enda_t *p_enda;
+    MP4_Box_data_pcmC_t *p_pcmC;
     MP4_Box_data_keys_t *p_keys;
     MP4_Box_data_iods_t *p_iods;
     MP4_Box_data_btrt_t *p_btrt;
@@ -1913,10 +1927,10 @@ void MP4_BoxFree( MP4_Box_t *p_box );
  *****************************************************************************
  * Useful while debugging
  *****************************************************************************/
-void MP4_BoxDumpStructure( stream_t *p_input, const MP4_Box_t *p_box );
+void MP4_BoxDumpStructure( vlc_object_t *, const MP4_Box_t *p_box );
 
 /*****************************************************************************
- * MP4_BoxGet: find a box given a path relative to p_box
+ * MP4_BoxGetVa: find a box given a path relative to p_box
  *****************************************************************************
  * Path Format: . .. / as usual
  *              [number] to specifie box number ex: trak[12]
@@ -1924,10 +1938,20 @@ void MP4_BoxDumpStructure( stream_t *p_input, const MP4_Box_t *p_box );
  * ex: /moov/trak[12]
  *     ../mdia
  *****************************************************************************/
-MP4_Box_t *MP4_BoxGet( const MP4_Box_t *p_box, const char *psz_fmt, ... );
+MP4_Box_t *MP4_BoxGetVa( const MP4_Box_t *p_box, const char *psz_fmt, ... ) VLC_FORMAT(2, 3);
 
 /*****************************************************************************
- * MP4_BoxCount: find number of box given a path relative to p_box
+ * MP4_BoxGet: find a box given a path relative to p_box
+ *****************************************************************************
+ * Path Format: . .. / as usual
+ *
+ * ex: /moov/mvex
+ *     ../mdia
+ *****************************************************************************/
+MP4_Box_t *MP4_BoxGet( const MP4_Box_t *p_box, const char *psz_fmt) ;
+
+/*****************************************************************************
+ * MP4_BoxCountVa: find number of box given a path relative to p_box
  *****************************************************************************
  * Path Format: . .. / as usual
  *              [number] to specifie box number ex: trak[12]
@@ -1935,7 +1959,17 @@ MP4_Box_t *MP4_BoxGet( const MP4_Box_t *p_box, const char *psz_fmt, ... );
  * ex: /moov/trak
  *     ../mdia
  *****************************************************************************/
-unsigned MP4_BoxCount( const MP4_Box_t *p_box, const char *psz_fmt, ... );
+unsigned MP4_BoxCountVa( const MP4_Box_t *p_box, const char *psz_fmt, ... ) VLC_FORMAT(2, 3);
+
+/*****************************************************************************
+ * MP4_BoxCount: find number of box given a path relative to p_box
+ *****************************************************************************
+ * Path Format: . .. / as usual
+ *
+ * ex: /moov/mvex
+ *     ../mdia
+ *****************************************************************************/
+unsigned MP4_BoxCount( const MP4_Box_t *p_box, const char *psz_fmt );
 
 MP4_Box_t * MP4_BoxExtract( MP4_Box_t **pp_chain, uint32_t i_type );
 

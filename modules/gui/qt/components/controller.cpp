@@ -52,6 +52,9 @@
 #include <QApplication>
 #include <QWindow>
 #include <QScreen>
+#if QT_VERSION < QT_VERSION_CHECK(5, 10, 0)
+#include <QDesktopWidget>
+#endif
 
 //#define DEBUG_LAYOUT 1
 
@@ -73,9 +76,9 @@ AbstractController::AbstractController( intf_thread_t * _p_i, QWidget *_parent )
 
     /* Main action provider */
     toolbarActionsMapper = new QSignalMapper( this );
-    CONNECT( toolbarActionsMapper, mapped( int ),
-             ActionsManager::getInstance( p_intf  ), doAction( int ) );
-    CONNECT( THEMIM->getIM(), playingStatusChanged( int ), this, setStatus( int ) );
+    connect( toolbarActionsMapper, QSIGNALMAPPER_MAPPEDINT_SIGNAL,
+             ActionsManager::getInstance( p_intf  ), &ActionsManager::doAction );
+    connect( THEMIM->getIM(), &InputManager::playingStatusChanged, this, &AbstractController::setStatus);
 
     setSizePolicy( QSizePolicy::MinimumExpanding, QSizePolicy::Fixed );
 }
@@ -114,7 +117,13 @@ void AbstractController::setupButton( QAbstractButton *aButton )
 void AbstractController::parseAndCreate( const QString& config,
                                          QBoxLayout *newControlLayout )
 {
-    QStringList list = config.split( ";", QString::SkipEmptyParts ) ;
+    QStringList list = config.split( ";",
+                                      #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+                                        Qt::SkipEmptyParts
+                                      #else
+                                        QString::SkipEmptyParts
+                                      #endif
+                                    );
     for( int i = 0; i < list.count(); i++ )
     {
         QStringList list2 = list.at( i ).split( "-" );
@@ -199,12 +208,6 @@ void AbstractController::createAndAddWidget( QBoxLayout *controlLayout_,
     }
 }
 
-
-#define CONNECT_MAP( a ) CONNECT( a, clicked(),  toolbarActionsMapper, map() )
-#define SET_MAPPING( a, b ) toolbarActionsMapper->setMapping( a , b )
-#define CONNECT_MAP_SET( a, b ) \
-    CONNECT_MAP( a ); \
-    SET_MAPPING( a, b );
 #define BUTTON_SET_BAR( a_button ) \
     a_button->setToolTip( qtr( tooltipL[button] ) ); \
     a_button->setIcon( QIcon( iconL[button] ) );
@@ -213,17 +216,18 @@ void AbstractController::createAndAddWidget( QBoxLayout *controlLayout_,
     button->setIcon( QIcon( ":/"#image ".svg" ) );
 
 #define ENABLE_ON_VIDEO( a ) \
-    CONNECT( THEMIM->getIM(), voutChanged( bool ), a, setEnabled( bool ) ); \
+    connect( THEMIM->getIM(), &InputManager::voutChanged, a, &QToolButton::setEnabled ); \
     a->setEnabled( THEMIM->getIM()->hasVideo() ); /* TODO: is this necessary? when input is started before the interface? */
 
 #define ENABLE_ON_INPUT( a ) \
-    CONNECT( this, inputExists( bool ), a, setEnabled( bool ) ); \
+    connect( this, &AbstractController::inputExists, a, &QToolButton::setEnabled ); \
     a->setEnabled( THEMIM->getIM()->hasInput() ); /* TODO: is this necessary? when input is started before the interface? */
 
 #define NORMAL_BUTTON( name )                           \
     QToolButton * name ## Button = new QToolButton;     \
     setupButton( name ## Button );                      \
-    CONNECT_MAP_SET( name ## Button, name ## _ACTION ); \
+    connect( name ## Button, &QToolButton::clicked, toolbarActionsMapper, QOverload<>::of(&QSignalMapper::map) ); \
+    toolbarActionsMapper->setMapping( name ## Button, name ## _ACTION ); \
     BUTTON_SET_BAR( name ## Button );                   \
     widget = name ## Button;
 
@@ -241,9 +245,9 @@ QWidget *AbstractController::createWidget( buttonType_e button, int options )
         PlayButton *playButton = new PlayButton;
         setupButton( playButton );
         BUTTON_SET_BAR(  playButton );
-        CONNECT_MAP_SET( playButton, PLAY_ACTION );
-        CONNECT( this, inputPlaying( bool ),
-                 playButton, updateButtonIcons( bool ));
+        connect( playButton, &PlayButton::clicked, toolbarActionsMapper, QOverload<>::of(&QSignalMapper::map) );
+        toolbarActionsMapper->setMapping( playButton, PLAY_ACTION );
+        connect( this, &AbstractController::inputPlaying, playButton, &PlayButton::updateButtonIcons );
         playButton->updateButtonIcons( THEMIM->getIM()->playingStatus() == PLAYING_S );
         widget = playButton;
         }
@@ -282,8 +286,8 @@ QWidget *AbstractController::createWidget( buttonType_e button, int options )
         QToolButtonExt *but = new QToolButtonExt;
         setupButton( but );
         BUTTON_SET_BAR( but );
-        CONNECT( but, shortClicked(), THEMIM, prev() );
-        CONNECT( but, longClicked(), THEAM, skipBackward() );
+        connect( but, &QToolButtonExt::shortClicked, THEMIM, &MainInputManager::prev );
+        connect( but, &QToolButtonExt::longClicked, THEAM, &ActionsManager::skipBackward );
         widget = but;
         }
         break;
@@ -291,8 +295,8 @@ QWidget *AbstractController::createWidget( buttonType_e button, int options )
         QToolButtonExt *but = new QToolButtonExt;
         setupButton( but );
         BUTTON_SET_BAR( but );
-        CONNECT( but, shortClicked(), THEMIM, next() );
-        CONNECT( but, longClicked(), THEAM, skipForward() );
+        connect( but, &QToolButtonExt::shortClicked, THEMIM, &MainInputManager::next );
+        connect( but, &QToolButtonExt::longClicked, THEAM, &ActionsManager::skipForward );
         widget = but;
         }
         break;
@@ -328,12 +332,12 @@ QWidget *AbstractController::createWidget( buttonType_e button, int options )
     case RECORD_BUTTON:{
         QToolButton *recordButton = new QToolButton;
         setupButton( recordButton );
-        CONNECT_MAP_SET( recordButton, RECORD_ACTION );
+        recordButton->setCheckable( true );
+        connect( recordButton, &QToolButton::clicked, toolbarActionsMapper, QOverload<>::of(&QSignalMapper::map) );
+        toolbarActionsMapper->setMapping( recordButton, RECORD_ACTION );
+        connect( THEMIM->getIM(), &InputManager::recordingStateChanged, recordButton, &QToolButton::setChecked );
         BUTTON_SET_BAR(  recordButton );
         ENABLE_ON_INPUT( recordButton );
-        recordButton->setCheckable( true );
-        CONNECT( THEMIM->getIM(), recordingStateChanged( bool ),
-                 recordButton, setChecked( bool ) );
         widget = recordButton;
         }
         break;
@@ -343,29 +347,29 @@ QWidget *AbstractController::createWidget( buttonType_e button, int options )
         ABButton->setShortcut( qtr("Shift+L") );
         BUTTON_SET_BAR( ABButton );
         ENABLE_ON_INPUT( ABButton );
-        CONNECT_MAP_SET( ABButton, ATOB_ACTION );
-        CONNECT( THEMIM->getIM(), AtoBchanged( bool, bool),
-                 ABButton, updateButtonIcons( bool, bool ) );
+        connect( ABButton, &AtoB_Button::clicked, toolbarActionsMapper, QOverload<>::of(&QSignalMapper::map) );
+        toolbarActionsMapper->setMapping( ABButton, ATOB_ACTION );
+        connect( THEMIM->getIM(), &InputManager::AtoBchanged, ABButton, &AtoB_Button::updateButtonIcons );
         widget = ABButton;
         }
         break;
     case INPUT_SLIDER: {
         SeekSlider *slider = new SeekSlider( p_intf, Qt::Horizontal, NULL, !b_shiny );
         SeekPoints *chapters = new SeekPoints( this, p_intf );
-        CONNECT( THEMIM->getIM(), chapterChanged( bool ), chapters, update() );
+        connect( THEMIM->getIM(), &InputManager::chapterChanged, chapters, &SeekPoints::update );
         slider->setChapters( chapters );
 
         /* Update the position when the IM has changed */
-        CONNECT( THEMIM->getIM(), positionUpdated( float, int64_t, int ),
-                slider, setPosition( float, int64_t, int ) );
+        connect( THEMIM->getIM(), &InputManager::positionUpdated,
+                slider, &SeekSlider::setPosition );
         /* And update the IM, when the position has changed */
-        CONNECT( slider, sliderDragged( float ),
-                 THEMIM->getIM(), sliderUpdate( float ) );
-        CONNECT( THEMIM->getIM(), cachingChanged( float ),
-                 slider, updateBuffering( float ) );
+        connect( slider, &SeekSlider::sliderDragged,
+                 THEMIM->getIM(), &InputManager::sliderUpdate );
+        connect( THEMIM->getIM(), &InputManager::cachingChanged,
+                 slider, &SeekSlider::updateBuffering );
         /* Give hint to disable slider's interactivity when useless */
-        CONNECT( THEMIM->getIM(), inputCanSeek( bool ),
-                 slider, setSeekable( bool ) );
+        connect( THEMIM->getIM(), &InputManager::inputCanSeek,
+                 slider, &SeekSlider::setSeekable );
         widget = slider;
         }
         break;
@@ -410,12 +414,12 @@ QWidget *AbstractController::createWidget( buttonType_e button, int options )
     case REVERSE_BUTTON:{
         QToolButton *reverseButton = new QToolButton;
         setupButton( reverseButton );
-        CONNECT_MAP_SET( reverseButton, REVERSE_ACTION );
+        connect( reverseButton, &QToolButton::clicked, THEMIM->getIM(), &InputManager::reverse);
         BUTTON_SET_BAR(  reverseButton );
         reverseButton->setCheckable( true );
         /* You should, of COURSE change this to the correct event,
            when/if we have one, that tells us if trickplay is possible . */
-        CONNECT( this, inputIsTrickPlayable( bool ), reverseButton, setVisible( bool ) );
+        connect( this, &AbstractController::inputIsTrickPlayable, reverseButton, &QToolButton::setVisible );
         reverseButton->setVisible( false );
         widget = reverseButton;
         }
@@ -438,8 +442,7 @@ QWidget *AbstractController::createWidget( buttonType_e button, int options )
         NORMAL_BUTTON( RANDOM );
         RANDOMButton->setCheckable( true );
         RANDOMButton->setChecked( var_GetBool( THEPL, "random" ) );
-        CONNECT( THEMIM, randomChanged( bool ),
-                 RANDOMButton, setChecked( bool ) );
+        connect( THEMIM, &MainInputManager::randomChanged, RANDOMButton, &QToolButton::setChecked );
         }
         break;
     case LOOP_BUTTON:{
@@ -454,8 +457,8 @@ QWidget *AbstractController::createWidget( buttonType_e button, int options )
             loopButton->updateButtonIcons( i_state );
         }
 
-        CONNECT( THEMIM, repeatLoopChanged( int ), loopButton, updateButtonIcons( int ) );
-        CONNECT( loopButton, clicked(), THEMIM, loopRepeatLoopStatus() );
+        connect( THEMIM, &MainInputManager::repeatLoopChanged, loopButton, &LoopButton::updateButtonIcons );
+        connect( loopButton, &LoopButton::clicked, THEMIM, &MainInputManager::loopRepeatLoopStatus );
         widget = loopButton;
         }
         break;
@@ -472,9 +475,12 @@ QWidget *AbstractController::createWidget( buttonType_e button, int options )
         layout->setBackwardButton( prev );
         layout->setForwardButton( next );
         layout->setRoundButton( play );
-        CONNECT_MAP_SET( prev, PREVIOUS_ACTION );
-        CONNECT_MAP_SET( next, NEXT_ACTION );
-        CONNECT_MAP_SET( play, PLAY_ACTION );
+        connect( prev, &BrowseButton::clicked, toolbarActionsMapper, QOverload<>::of(&QSignalMapper::map) );
+        toolbarActionsMapper->setMapping( prev, PREVIOUS_ACTION );
+        connect( next, &BrowseButton::clicked, toolbarActionsMapper, QOverload<>::of(&QSignalMapper::map) );
+        toolbarActionsMapper->setMapping( next, NEXT_ACTION );
+        connect( play, &BrowseButton::clicked, toolbarActionsMapper, QOverload<>::of(&QSignalMapper::map) );
+        toolbarActionsMapper->setMapping( play, PLAY_ACTION );
         }
         break;
     case ASPECT_RATIO_COMBOBOX:
@@ -536,12 +542,12 @@ QFrame *AbstractController::discFrame()
     QFrame *discFrame = new QFrame( this );
 
     QHBoxLayout *discLayout = new QHBoxLayout( discFrame );
-    discLayout->setSpacing( 0 ); discLayout->setMargin( 0 );
+    discLayout->setSpacing( 0 ); discLayout->setContentsMargins( 0, 0, 0, 0 );
 
 
     QFrame *chapFrame = new QFrame( discFrame );
     QHBoxLayout *chapLayout = new QHBoxLayout( chapFrame );
-    chapLayout->setSpacing( 0 ); chapLayout->setMargin( 0 );
+    chapLayout->setSpacing( 0 ); chapLayout->setContentsMargins( 0, 0, 0, 0 );
 
     QToolButton *prevSectionButton = new QToolButton( chapFrame );
     setupButton( prevSectionButton );
@@ -560,7 +566,7 @@ QFrame *AbstractController::discFrame()
 
     QFrame *menuFrame = new QFrame( discFrame );
     QHBoxLayout *menuLayout = new QHBoxLayout( menuFrame );
-    menuLayout->setSpacing( 0 ); menuLayout->setMargin( 0 );
+    menuLayout->setSpacing( 0 ); menuLayout->setContentsMargins( 0, 0, 0, 0 );
 
     QToolButton *menuButton = new QToolButton( menuFrame );
     setupButton( menuButton );
@@ -572,17 +578,12 @@ QFrame *AbstractController::discFrame()
 
     /* Change the navigation button display when the IM
        navigation changes */
-    CONNECT( THEMIM->getIM(), chapterChanged( bool ),
-            chapFrame, setVisible( bool ) );
-    CONNECT( THEMIM->getIM(), titleChanged( bool ),
-            menuFrame, setVisible( bool ) );
+    connect( THEMIM->getIM(), &InputManager::chapterChanged, chapFrame, &QFrame::setVisible );
+    connect( THEMIM->getIM(), &InputManager::titleChanged, menuFrame, &QFrame::setVisible );
     /* Changes the IM navigation when triggered on the nav buttons */
-    CONNECT( prevSectionButton, clicked(), THEMIM->getIM(),
-            sectionPrev() );
-    CONNECT( nextSectionButton, clicked(), THEMIM->getIM(),
-            sectionNext() );
-    CONNECT( menuButton, clicked(), THEMIM->getIM(),
-            sectionMenu() );
+    connect( prevSectionButton, &QToolButton::clicked, THEMIM->getIM(), &InputManager::sectionPrev );
+    connect( nextSectionButton, &QToolButton::clicked, THEMIM->getIM(), &InputManager::sectionNext );
+    connect( menuButton, &QToolButton::clicked, THEMIM->getIM(), &InputManager::sectionMenu );
 
     return discFrame;
 }
@@ -594,9 +595,9 @@ QFrame *AbstractController::telexFrame()
      **/
     QFrame *telexFrame = new QFrame( this );
     QHBoxLayout *telexLayout = new QHBoxLayout( telexFrame );
-    telexLayout->setSpacing( 0 ); telexLayout->setMargin( 0 );
-    CONNECT( THEMIM->getIM(), teletextPossible( bool ),
-             telexFrame, setVisible( bool ) );
+    telexLayout->setSpacing( 0 ); telexLayout->setContentsMargins( 0, 0, 0, 0 );
+    connect( THEMIM->getIM(), &InputManager::teletextPossible,
+             telexFrame, &QFrame::setVisible );
 
     /* On/Off button */
     QToolButton *telexOn = new QToolButton;
@@ -608,10 +609,8 @@ QFrame *AbstractController::telexFrame()
     telexLayout->addWidget( telexOn );
 
     /* Teletext Activation and set */
-    CONNECT( telexOn, clicked( bool ),
-             THEMIM->getIM(), activateTeletext( bool ) );
-    CONNECT( THEMIM->getIM(), teletextPossible( bool ),
-             telexOn, setEnabled( bool ) );
+    connect( telexOn, &QToolButton::clicked, THEMIM->getIM(), &InputManager::activateTeletext );
+    connect( THEMIM->getIM(), &InputManager::teletextPossible, telexOn, &QToolButton::setEnabled );
 
     /* Transparency button */
     QToolButton *telexTransparent = new QToolButton;
@@ -623,10 +622,8 @@ QFrame *AbstractController::telexFrame()
     telexLayout->addWidget( telexTransparent );
 
     /* Transparency change and set */
-    CONNECT( telexTransparent, clicked( bool ),
-            THEMIM->getIM(), telexSetTransparency( bool ) );
-    CONNECT( THEMIM->getIM(), teletextTransparencyActivated( bool ),
-             telexTransparent, setChecked( bool ) );
+    connect( telexTransparent, &QToolButton::clicked, THEMIM->getIM(), &InputManager::telexSetTransparency );
+    connect( THEMIM->getIM(), &InputManager::teletextTransparencyActivated, telexTransparent, &QToolButton::setChecked );
 
 
     /* Page setting */
@@ -667,10 +664,9 @@ QFrame *AbstractController::telexFrame()
     contextButton->setIcon( iconPixmap );\
     contextButton->setEnabled( false );\
     contextButtonMapper->setMapping( contextButton, key << 16 );\
-    CONNECT( contextButton, clicked(), contextButtonMapper, map() );\
-    CONNECT( contextButtonMapper, mapped( int ),\
-             THEMIM->getIM(), telexSetPage( int ) );\
-    CONNECT( THEMIM->getIM(), teletextActivated( bool ), contextButton, setEnabled( bool ) );\
+    connect( contextButton, &QToolButton::clicked, contextButtonMapper, QOverload<>::of(&QSignalMapper::map) );\
+    connect( contextButtonMapper, QSIGNALMAPPER_MAPPEDINT_SIGNAL, THEMIM->getIM(), &InputManager::telexSetPage );\
+    connect( THEMIM->getIM(), &InputManager::teletextActivated, contextButton, &QToolButton::setEnabled );\
     telexLayout->addWidget( contextButton )
 
     CREATE_CONTEXT_BUTTON("grey", 'i'); /* index */
@@ -682,19 +678,14 @@ QFrame *AbstractController::telexFrame()
 #undef CREATE_CONTEXT_BUTTON
 
     /* Page change and set */
-    CONNECT( telexPage, valueChanged( int ),
-            THEMIM->getIM(), telexSetPage( int ) );
-    CONNECT( THEMIM->getIM(), newTelexPageSet( int ),
-            telexPage, setValue( int ) );
+    connect( telexPage, QOverload<int>::of(&QSpinBox::valueChanged), THEMIM->getIM(), &InputManager::telexSetPage );
+    connect( THEMIM->getIM(), &InputManager::newTelexPageSet, telexPage, &QSpinBox::setValue );
 
-    CONNECT( THEMIM->getIM(), teletextActivated( bool ), telexPage, setEnabled( bool ) );
-    CONNECT( THEMIM->getIM(), teletextActivated( bool ), telexTransparent, setEnabled( bool ) );
-    CONNECT( THEMIM->getIM(), teletextActivated( bool ), telexOn, setChecked( bool ) );
+    connect( THEMIM->getIM(), &InputManager::teletextActivated, telexPage, &QSpinBox::setEnabled);
+    connect( THEMIM->getIM(), &InputManager::teletextActivated, telexTransparent, &QToolButton::setEnabled );
+    connect( THEMIM->getIM(), &InputManager::teletextActivated, telexOn, &QToolButton::setChecked );
     return telexFrame;
 }
-#undef CONNECT_MAP
-#undef SET_MAPPING
-#undef CONNECT_MAP_SET
 #undef BUTTON_SET_BAR
 #undef BUTTON_SET_BAR2
 #undef ENABLE_ON_VIDEO
@@ -715,19 +706,18 @@ ControlsWidget::ControlsWidget( intf_thread_t *_p_i,
 #ifdef DEBUG_LAYOUT
     setStyleSheet( "background: red ");
 #endif
-    setAttribute( Qt::WA_MacBrushedMetal);
     controlLayout = new QVBoxLayout( this );
     controlLayout->setContentsMargins( 3, 1, 0, 1 );
     controlLayout->setSpacing( 0 );
     QHBoxLayout *controlLayout1 = new QHBoxLayout;
-    controlLayout1->setSpacing( 0 ); controlLayout1->setMargin( 0 );
+    controlLayout1->setSpacing( 0 ); controlLayout1->setContentsMargins( 0, 0, 0, 0 );
 
     QString line1 = getSettings()->value( "MainWindow/MainToolbar1", MAIN_TB1_DEFAULT )
                                         .toString();
     parseAndCreate( line1, controlLayout1 );
 
     QHBoxLayout *controlLayout2 = new QHBoxLayout;
-    controlLayout2->setSpacing( 0 ); controlLayout2->setMargin( 0 );
+    controlLayout2->setSpacing( 0 ); controlLayout2->setContentsMargins( 0, 0, 0, 0 );
     QString line2 = getSettings()->value( "MainWindow/MainToolbar2", MAIN_TB2_DEFAULT )
                                         .toString();
     parseAndCreate( line2, controlLayout2 );
@@ -739,6 +729,11 @@ ControlsWidget::ControlsWidget( intf_thread_t *_p_i,
 
     controlLayout->addLayout( controlLayout1 );
     controlLayout->addLayout( controlLayout2 );
+}
+
+bool ControlsWidget::advancedAvailable()
+{
+    return advControls != nullptr;
 }
 
 void ControlsWidget::toggleAdvanced()
@@ -755,7 +750,7 @@ AdvControlsWidget::AdvControlsWidget( intf_thread_t *_p_i, QWidget *_parent ) :
 {
     RTL_UNAFFECTED_WIDGET
     controlLayout = new QHBoxLayout( this );
-    controlLayout->setMargin( 0 );
+    controlLayout->setContentsMargins( 0, 0, 0, 0 );
     controlLayout->setSpacing( 0 );
 #ifdef DEBUG_LAYOUT
     setStyleSheet( "background: orange ");
@@ -772,7 +767,7 @@ InputControlsWidget::InputControlsWidget( intf_thread_t *_p_i, QWidget *_parent 
 {
     RTL_UNAFFECTED_WIDGET
     controlLayout = new QHBoxLayout( this );
-    controlLayout->setMargin( 0 );
+    controlLayout->setContentsMargins( 0, 0, 0, 0 );
     controlLayout->setSpacing( 0 );
 #ifdef DEBUG_LAYOUT
     setStyleSheet( "background: green ");
@@ -800,14 +795,10 @@ FullscreenControllerWidget::FullscreenControllerWidget( intf_thread_t *_p_i, QWi
     b_fullscreen        = false;
     i_hide_timeout      = 1;
     i_screennumber      = -1;
-#ifdef QT5_HAS_WAYLAND
-    b_hasWayland = QGuiApplication::platformName()
-           .startsWith(QLatin1String("wayland"), Qt::CaseInsensitive);
-#endif
 
     vout.clear();
 
-    setWindowFlags( Qt::Tool | Qt::FramelessWindowHint );
+    setWindowFlags( Qt::Tool | Qt::FramelessWindowHint | Qt::X11BypassWindowManagerHint );
     setAttribute( Qt::WA_ShowWithoutActivating );
     setMinimumWidth( FSC_WIDTH );
     isWideFSC = false;
@@ -831,12 +822,12 @@ FullscreenControllerWidget::FullscreenControllerWidget( intf_thread_t *_p_i, QWi
     /* hiding timer */
     p_hideTimer = new QTimer( this );
     p_hideTimer->setSingleShot( true );
-    CONNECT( p_hideTimer, timeout(), this, hideFSC() );
+    connect( p_hideTimer, &QTimer::timeout, this, &FullscreenControllerWidget::hideFSC );
 
     /* slow hiding timer */
 #if HAVE_TRANSPARENCY
     p_slowHideTimer = new QTimer( this );
-    CONNECT( p_slowHideTimer, timeout(), this, slowHideFSC() );
+    connect( p_slowHideTimer, &QTimer::timeout, this, &FullscreenControllerWidget::slowHideFSC );
     f_opacity = var_InheritFloat( p_intf, "qt-fs-opacity" );
 #endif
 
@@ -844,19 +835,26 @@ FullscreenControllerWidget::FullscreenControllerWidget( intf_thread_t *_p_i, QWi
 
     vlc_mutex_init_recursive( &lock );
 
-    DCONNECT( THEMIM->getIM(), voutListChanged( vout_thread_t **, int ),
-              this, setVoutList( vout_thread_t **, int ) );
+    connect( THEMIM->getIM(), &InputManager::voutListChanged,
+             this, &FullscreenControllerWidget::setVoutList, Qt::DirectConnection );
 
     /* First Move */
     previousPosition = getSettings()->value( "FullScreen/pos" ).toPoint();
     screenRes = getSettings()->value( "FullScreen/screen" ).toRect();
     isWideFSC = getSettings()->value( "FullScreen/wide" ).toBool();
 
-    CONNECT( this, fullscreenChanged( bool ), THEMIM, changeFullscreen( bool ) );
+    connect( this, QOverload<bool>::of(&FullscreenControllerWidget::fullscreenChanged), THEMIM, &MainInputManager::changeFullscreen );
+
+    Q_ASSERT( _parent );
+    _parent->installEventFilter( this );
 }
 
 FullscreenControllerWidget::~FullscreenControllerWidget()
 {
+    QWidget *wParent = parentWidget();
+    Q_ASSERT( wParent );
+    wParent->removeEventFilter( this );
+
     getSettings()->setValue( "FullScreen/pos", previousPosition );
     getSettings()->setValue( "FullScreen/screen", screenRes );
     getSettings()->setValue( "FullScreen/wide", isWideFSC );
@@ -876,16 +874,11 @@ void FullscreenControllerWidget::restoreFSC()
         if ( targetScreen() < 0 )
             return;
 
-        QRect currentRes = QApplication::desktop()->screenGeometry( targetScreen() );
+        QRect currentRes = QGuiApplication::screens()[ targetScreen() ]->geometry();
         QWindow *wh = windowHandle();
         if ( wh != Q_NULLPTR )
         {
-#ifdef QT5_HAS_WAYLAND
-            if ( !b_hasWayland )
-                wh->setScreen(QGuiApplication::screens()[targetScreen()]);
-#else
             wh->setScreen(QGuiApplication::screens()[targetScreen()]);
-#endif
         }
 
         if( currentRes == screenRes &&
@@ -912,7 +905,7 @@ void FullscreenControllerWidget::restoreFSC()
 
 void FullscreenControllerWidget::centerFSC( int number )
 {
-    QRect currentRes = QApplication::desktop()->screenGeometry( number );
+    QRect currentRes = QGuiApplication::screens()[ number ]->geometry();
 
     /* screen has changed, calculate new position */
     QPoint pos = QPoint( currentRes.x() + (currentRes.width() / 2) - (width() / 2),
@@ -986,7 +979,7 @@ void FullscreenControllerWidget::slowHideFSC()
 
 void FullscreenControllerWidget::updateFullwidthGeometry( int number )
 {
-    QRect screenGeometry = QApplication::desktop()->screenGeometry( number );
+    QRect screenGeometry = QGuiApplication::screens()[ number ]->geometry();
     setMinimumWidth( screenGeometry.width() );
     setGeometry( screenGeometry.x(), screenGeometry.y() + screenGeometry.height() - height(), screenGeometry.width(), height() );
     adjustSize();
@@ -1009,8 +1002,23 @@ void FullscreenControllerWidget::setTargetScreen(int screennumber)
 
 int FullscreenControllerWidget::targetScreen()
 {
-    if( i_screennumber < 0 || i_screennumber >= QApplication::desktop()->screenCount() )
+    if( i_screennumber < 0 || i_screennumber >= QGuiApplication::screens().length() )
+    {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+        auto *screen = QGuiApplication::screenAt( p_intf->p_sys->p_mi->pos() );
+        if (screen != nullptr)
+        {
+            for (qsizetype i = 0; i < QGuiApplication::screens().length(); i++)
+            {
+                if (screen == QGuiApplication::screens()[i])
+                    return i;
+            }
+        }
+        return -1;
+#else
         return QApplication::desktop()->screenNumber( p_intf->p_sys->p_mi );
+#endif
+    }
     return i_screennumber;
 }
 
@@ -1069,6 +1077,21 @@ void FullscreenControllerWidget::customEvent( QEvent *event )
     }
 }
 
+bool FullscreenControllerWidget::eventFilter( QObject *watched, QEvent *event )
+{
+    const QWidget *wParent = parentWidget();
+    Q_ASSERT( wParent );
+
+    if ( watched == wParent && event->type() == QEvent::ActivationChange )
+    {
+        /* Hide if not active */
+        if ( !wParent->isActiveWindow() && !isActiveWindow() )
+            hideFSC();
+    }
+
+    return AbstractController::eventFilter( watched, event );
+}
+
 /**
  * On mouse move
  * moving with FSC
@@ -1080,13 +1103,23 @@ void FullscreenControllerWidget::mouseMoveEvent( QMouseEvent *event )
         if( i_mouse_last_x == -1 || i_mouse_last_y == -1 )
             return;
 
-        int i_moveX = event->globalX() - i_mouse_last_x;
-        int i_moveY = event->globalY() - i_mouse_last_y;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        const auto pos = event->globalPosition();
+#else
+        const auto pos = event->globalPos();
+#endif
+        int i_moveX = pos.x() - i_mouse_last_x;
+        int i_moveY = pos.y() - i_mouse_last_y;
 
-        move( x() + i_moveX, y() + i_moveY );
+        const QRect screenRect = QGuiApplication::screens()[ targetScreen() ]->geometry();
 
-        i_mouse_last_x = event->globalX();
-        i_mouse_last_y = event->globalY();
+        const int i_x = qBound( screenRect.left(), x() + i_moveX, screenRect.right() - width() );
+        const int i_y = qBound( screenRect.top(),  y() + i_moveY, screenRect.bottom() - height() );
+
+        move( i_x, i_y );
+
+        i_mouse_last_x = pos.x();
+        i_mouse_last_y = pos.y();
     }
 }
 
@@ -1097,8 +1130,13 @@ void FullscreenControllerWidget::mouseMoveEvent( QMouseEvent *event )
 void FullscreenControllerWidget::mousePressEvent( QMouseEvent *event )
 {
     if( isWideFSC ) return;
-    i_mouse_last_x = event->globalX();
-    i_mouse_last_y = event->globalY();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    auto pos = event->globalPosition();
+#else
+    auto pos = event->globalPos();
+#endif
+    i_mouse_last_x = pos.x();
+    i_mouse_last_y = pos.y();
     event->accept();
 }
 
@@ -1116,7 +1154,11 @@ void FullscreenControllerWidget::mouseReleaseEvent( QMouseEvent *event )
 /**
  * On mouse go above FSC
  */
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+void FullscreenControllerWidget::enterEvent( QEnterEvent *event )
+#else
 void FullscreenControllerWidget::enterEvent( QEvent *event )
+#endif
 {
     b_mouse_over = true;
 
@@ -1271,6 +1313,12 @@ void FullscreenControllerWidget::fullscreenChanged( vout_thread_t *p_vout,
  */
 void FullscreenControllerWidget::mouseChanged( vout_thread_t *, int i_mousex, int i_mousey )
 {
+    const QWidget *wParent = parentWidget();
+    Q_ASSERT( wParent );
+
+    /* Ignore mouse events if not active */
+    if ( !wParent->isActiveWindow() &&  !isActiveWindow() ) return;
+
     bool b_toShow;
 
     /* FIXME - multiple vout (ie multiple mouse position ?) and thread safety if multiple vout ? */

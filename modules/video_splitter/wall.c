@@ -416,9 +416,12 @@ static int Filter( video_splitter_t *p_splitter, picture_t *pp_dst[], picture_t 
                 const int i_y = p_output->i_top  * p->i_visible_pitch / p0->i_visible_pitch;
                 const int i_x = p_output->i_left * p->i_visible_lines / p0->i_visible_lines;
 
-                p->p_pixels += i_y * p->i_pitch + ( i_x - (i_x % p->i_pixel_pitch));
+                p->p_pixels += i_y * p->i_pitch + i_x * p->i_pixel_pitch;
             }
-            picture_Copy( p_dst, &tmp );
+            /* Each plane's p_pixels was advanced to the tile origin, so the
+             * padding lines are past the source: copy only the visible tile. */
+            picture_CopyVisiblePixels( p_dst, &tmp );
+            picture_CopyProperties( p_dst, &tmp );
         }
     }
 

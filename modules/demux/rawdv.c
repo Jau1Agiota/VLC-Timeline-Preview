@@ -108,7 +108,7 @@ struct demux_sys_t
     int    i_bitrate;
 
     /* program clock reference (in units of 90kHz) */
-    mtime_t i_pcr;
+    vlc_tick_t i_pcr;
     bool b_hurry_up;
 };
 
@@ -254,7 +254,6 @@ static int Demux( demux_t *p_demux )
 {
     demux_sys_t *p_sys  = p_demux->p_sys;
     block_t     *p_block;
-    bool  b_audio = false;
 
     if( p_sys->b_hurry_up )
     {
@@ -263,7 +262,7 @@ static int Demux( demux_t *p_demux )
     }
 
     /* Call the pace control */
-    es_out_SetPCR( p_demux->out, VLC_TS_0 + p_sys->i_pcr );
+    es_out_SetPCR( p_demux->out, VLC_TICK_0 + p_sys->i_pcr );
     p_block = vlc_stream_Block( p_demux->s, p_sys->frame_size );
     if( p_block == NULL )
     {
@@ -271,23 +270,26 @@ static int Demux( demux_t *p_demux )
         return 0;
     }
 
-    if( p_sys->p_es_audio )
+    p_block->i_dts =
+    p_block->i_pts = VLC_TICK_0 + p_sys->i_pcr;
+
+    if( likely(p_sys->p_es_audio) )
     {
+        bool b_audio = false;
         es_out_Control( p_demux->out, ES_OUT_GET_ES_STATE,
                         p_sys->p_es_audio, &b_audio );
+        if( b_audio )
+        {
+            block_t *p_audio_block = dv_extract_audio( p_block );
+            if( p_audio_block )
+                es_out_Send( p_demux->out, p_sys->p_es_audio, p_audio_block );
+        }
     }
 
-    p_block->i_dts =
-    p_block->i_pts = VLC_TS_0 + p_sys->i_pcr;
-
-    if( b_audio )
-    {
-        block_t *p_audio_block = dv_extract_audio( p_block );
-        if( p_audio_block )
-            es_out_Send( p_demux->out, p_sys->p_es_audio, p_audio_block );
-    }
-
-    es_out_Send( p_demux->out, p_sys->p_es_video, p_block );
+    if( likely(p_sys->p_es_video) )
+        es_out_Send( p_demux->out, p_sys->p_es_video, p_block );
+    else
+        block_Release( p_block );
 
     if( !p_sys->b_hurry_up )
     {

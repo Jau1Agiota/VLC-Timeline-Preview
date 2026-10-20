@@ -106,7 +106,7 @@ typedef struct
     uint64_t     i_data_packets_count;
     uint64_t     i_play_duration;
     uint64_t     i_send_duration;
-    uint64_t     i_preroll;
+    vlc_tick_t   i_preroll;
     uint32_t     i_flags;
     uint32_t     i_min_data_packet_size;
     uint32_t     i_max_data_packet_size;
@@ -125,7 +125,7 @@ typedef struct
     uint32_t     i_type_specific_data_length;
     uint32_t     i_error_correction_data_length;
     uint16_t     i_flags;
-        /* extrated from flags */
+        /* extracted from flags */
         uint8_t i_stream_number;
     uint32_t    i_reserved;
     uint8_t     *p_type_specific_data;

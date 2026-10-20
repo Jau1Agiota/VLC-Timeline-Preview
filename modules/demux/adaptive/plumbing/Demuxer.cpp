@@ -81,93 +81,12 @@ AbstractDemuxer::Status AbstractDemuxer::returnCode(int i_ret)
     switch(i_ret)
     {
         case VLC_DEMUXER_SUCCESS:
-            return Status::STATUS_SUCCESS;
+            return Status::Success;
         case VLC_DEMUXER_EGENERIC:
-            return Status::STATUS_END_OF_FILE;
+            return Status::Eof;
         default:
-            return Status::STATUS_ERROR;
+            return Status::Error;
     };
-}
-
-MimeDemuxer::MimeDemuxer(vlc_object_t *p_obj_,
-                         const DemuxerFactoryInterface *factory_,
-                         es_out_t *out, AbstractSourceStream *source)
-    : AbstractDemuxer()
-{
-    p_es_out = out;
-    factory = factory_;
-    p_obj = p_obj_;
-    demuxer = NULL;
-    sourcestream = source;
-}
-
-MimeDemuxer::~MimeDemuxer()
-{
-    if( demuxer )
-        delete demuxer;
-}
-
-bool MimeDemuxer::create()
-{
-    stream_t *p_newstream = sourcestream->makeStream();
-    if(!p_newstream)
-        return false;
-
-    StreamFormat format(StreamFormat::UNKNOWN);
-
-    /* Try to probe */
-    const uint8_t *p_peek;
-    size_t i_peek = sourcestream->Peek(&p_peek, StreamFormat::PEEK_SIZE);
-    format = StreamFormat(reinterpret_cast<const void *>(p_peek), i_peek);
-
-    if(format == StreamFormat(StreamFormat::UNKNOWN))
-    {
-        char *type = stream_ContentType(p_newstream);
-        if(type)
-        {
-            format = StreamFormat(std::string(type));
-            free(type);
-        }
-    }
-
-    if(format != StreamFormat(StreamFormat::UNKNOWN))
-        demuxer = factory->newDemux(VLC_OBJECT(p_obj), format,
-                                    p_es_out, sourcestream);
-
-    vlc_stream_Delete(p_newstream);
-
-    if(!demuxer || !demuxer->create())
-        return false;
-
-    b_startsfromzero = demuxer->alwaysStartsFromZero();
-    b_reinitsonseek = demuxer->needsRestartOnSeek();
-    b_alwaysrestarts = demuxer->needsRestartOnEachSegment();
-    b_candetectswitches = demuxer->bitstreamSwitchCompatible();
-
-    return true;
-}
-
-void MimeDemuxer::destroy()
-{
-    if(demuxer)
-    {
-        delete demuxer;
-        demuxer = NULL;
-    }
-    sourcestream->Reset();
-}
-
-void MimeDemuxer::drain()
-{
-    if(demuxer)
-        demuxer->drain();
-}
-
-AbstractDemuxer::Status MimeDemuxer::demux(mtime_t t)
-{
-    if(!demuxer)
-        return Status::STATUS_END_OF_FILE;
-    return demuxer->demux(t);
 }
 
 Demuxer::Demuxer(vlc_object_t *p_obj_, const std::string &name_,
@@ -177,7 +96,7 @@ Demuxer::Demuxer(vlc_object_t *p_obj_, const std::string &name_,
     p_es_out = out;
     name = name_;
     p_obj = p_obj_;
-    p_demux = NULL;
+    p_demux = nullptr;
     b_eof = false;
     sourcestream = source;
 
@@ -225,7 +144,7 @@ void Demuxer::destroy()
     if(p_demux)
     {
         demux_Delete(p_demux);
-        p_demux = NULL;
+        p_demux = nullptr;
     }
     sourcestream->Reset();
 }
@@ -235,10 +154,10 @@ void Demuxer::drain()
     while(p_demux && demux_Demux(p_demux) == VLC_DEMUXER_SUCCESS);
 }
 
-Demuxer::Status Demuxer::demux(mtime_t)
+Demuxer::Status Demuxer::demux(vlc_tick_t)
 {
     if(!p_demux || b_eof)
-        return Status::STATUS_END_OF_FILE;
+        return Status::Eof;
     int i_ret = demux_Demux(p_demux);
     if(i_ret != VLC_DEMUXER_SUCCESS)
         b_eof = true;
@@ -249,7 +168,7 @@ SlaveDemuxer::SlaveDemuxer(vlc_object_t *p_obj, const std::string &name,
                            es_out_t *out, AbstractSourceStream *source)
     : Demuxer(p_obj, name, out, source)
 {
-    length = VLC_TS_INVALID;
+    length = VLC_TICK_INVALID;
     b_reinitsonseek = false;
     b_startsfromzero = false;
 }
@@ -263,7 +182,7 @@ bool SlaveDemuxer::create()
 {
     if(Demuxer::create())
     {
-        length = VLC_TS_INVALID;
+        length = VLC_TICK_INVALID;
         if(demux_Control(p_demux, DEMUX_GET_LENGTH, &length) != VLC_SUCCESS)
             b_eof = true;
         return true;
@@ -271,14 +190,14 @@ bool SlaveDemuxer::create()
     return false;
 }
 
-AbstractDemuxer::Status SlaveDemuxer::demux(mtime_t nz_deadline)
+AbstractDemuxer::Status SlaveDemuxer::demux(vlc_tick_t nz_deadline)
 {
     /* Always call with increment or buffering will get slow stuck */
-    mtime_t i_next_demux_time = VLC_TS_0 + nz_deadline + CLOCK_FREQ / 4;
+    vlc_tick_t i_next_demux_time = VLC_TICK_0 + nz_deadline + CLOCK_FREQ / 4;
     if( demux_Control(p_demux, DEMUX_SET_NEXT_DEMUX_TIME, i_next_demux_time ) != VLC_SUCCESS )
     {
         b_eof = true;
-        return Status::STATUS_END_OF_FILE;
+        return Status::Eof;
     }
     Status status = Demuxer::demux(i_next_demux_time);
     es_out_Control(p_es_out, ES_OUT_SET_GROUP_PCR, 0, i_next_demux_time);

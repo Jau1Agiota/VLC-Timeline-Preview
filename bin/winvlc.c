@@ -70,8 +70,8 @@ static BOOL SetDefaultDllDirectories_(DWORD flags)
 
     BOOL (WINAPI * SetDefaultDllDirectoriesReal)(DWORD);
 
-    SetDefaultDllDirectoriesReal = GetProcAddress(h,
-                                                  "SetDefaultDllDirectories");
+    SetDefaultDllDirectoriesReal = (BOOL (WINAPI *)(DWORD))
+                                    GetProcAddress(h, "SetDefaultDllDirectories");
     if (SetDefaultDllDirectoriesReal == NULL)
         return FALSE;
 
@@ -149,7 +149,9 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
     if (h_Kernel32 != NULL)
     {
         /* Enable DEP */
+#ifndef PROCESS_DEP_ENABLE
 # define PROCESS_DEP_ENABLE 1
+#endif /* PROCESS_DEP_ENABLE */
         BOOL (WINAPI * mySetProcessDEPPolicy)( DWORD dwFlags);
         mySetProcessDEPPolicy = (BOOL (WINAPI *)(DWORD))
                             GetProcAddress(h_Kernel32, "SetProcessDEPPolicy");
@@ -207,19 +209,28 @@ int WINAPI WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
     argv[argc] = NULL;
     LocalFree (wargv);
 
+#ifdef HAVE_BREAKPAD
     void* eh = NULL;
     if(crash_handling)
     {
-#ifdef HAVE_BREAKPAD
-        static wchar_t path[MAX_PATH];
+        wchar_t path[MAX_PATH];
         if( S_OK != SHGetFolderPathW( NULL, CSIDL_APPDATA | CSIDL_FLAG_CREATE,
                     NULL, SHGFP_TYPE_CURRENT, path ) )
             fprintf( stderr, "Can't open the vlc conf PATH\n" );
-        _snwprintf( path+wcslen( path ), MAX_PATH,  L"%s", L"\\vlc\\crashdump" );
-        CheckCrashDump( &path[0] );
-        eh = InstallCrashHandler( &path[0] );
-#endif
+        else
+        {
+            size_t pathlen = wcslen(path);
+            if ( pathlen + 1 + wcslen(L"\\vlc\\crashdump" ) <= MAX_PATH )
+            {
+                wcscpy( &path[pathlen], L"\\vlc\\crashdump" );
+                CheckCrashDump( path );
+                eh = InstallCrashHandler( path );
+            }
+        }
     }
+#else
+    (void)crash_handling;
+#endif
 
     _setmode( _fileno( stdin ), _O_BINARY ); /* Needed for pipes */
 

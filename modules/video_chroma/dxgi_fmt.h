@@ -29,12 +29,18 @@
 #include <vlc_common.h>
 #include <vlc_fourcc.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif// __cplusplus
+
 #define GPU_MANUFACTURER_AMD           0x1002
 #define GPU_MANUFACTURER_NVIDIA        0x10DE
 #define GPU_MANUFACTURER_VIA           0x1106
 #define GPU_MANUFACTURER_INTEL         0x8086
 #define GPU_MANUFACTURER_S3            0x5333
 #define GPU_MANUFACTURER_QUALCOMM  0x4D4F4351
+#define GPU_MANUFACTURER_MICROSOFT     0x1414 // "Microsoft Basic Render Driver"
+#define GPU_MANUFACTURER_MTGPU         0x1ED5
 
 #define D3D11_MAX_SHADER_VIEW  4
 
@@ -55,5 +61,9 @@ const d3d_format_t *GetRenderFormatList(void);
 void DxgiFormatMask(DXGI_FORMAT format, video_format_t *);
 const char *DxgiVendorStr(int gpu_vendor);
 UINT DxgiResourceCount(const d3d_format_t *);
+
+#ifdef __cplusplus
+}
+#endif// __cplusplus
 
 #endif /* include-guard */

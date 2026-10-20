@@ -90,12 +90,13 @@ public:
     uint64_t                i_timescale;
 
     /* duration of the segment */
-    mtime_t                 i_duration;
-    mtime_t                 i_mk_start_time;
+    vlc_tick_t              i_duration;
+    vlc_tick_t              i_mk_start_time;
 
     /* all tracks */
     tracks_map_t tracks;
     SegmentSeeker::track_ids_t priority_tracks;
+    vlc_tick_t               pcr_shift = 0;
 
     /* from seekhead */
     int                     i_seekhead_count;
@@ -141,10 +142,10 @@ public:
     bool PreloadClusters( uint64 i_cluster_position );
     void InformationCreate();
 
-    bool Seek( demux_t &, mtime_t i_mk_date, mtime_t i_mk_time_offset, bool b_accurate );
+    bool Seek( demux_t &, vlc_tick_t i_mk_date, vlc_tick_t i_mk_time_offset, bool b_accurate );
 
     int BlockGet( KaxBlock * &, KaxSimpleBlock * &, KaxBlockAdditions * &,
-                  bool *, bool *, int64_t *);
+                  bool *, bool *, uint64_t *);
 
     mkv_track_t * FindTrackByBlock(const KaxBlock *, const KaxSimpleBlock * );
 
@@ -154,6 +155,9 @@ public:
     static bool CompareSegmentUIDs( const matroska_segment_c * item_a, const matroska_segment_c * item_b );
 
     bool SameFamily( const matroska_segment_c & of_segment ) const;
+
+    // read a whole EBML master element at once
+    bool ReadMaster(EbmlMaster & m, ScopeMode scope = SCOPE_ALL_DATA);
 
 private:
     void LoadCues( KaxCues *cues );

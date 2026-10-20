@@ -118,6 +118,7 @@ private:
 private slots:
     void moreInformation();
     void updateButtons();
+    void reloadExtensions();
 
 private:
     QListView *extList;
@@ -142,7 +143,7 @@ private slots:
 private:
     AddonsTab( intf_thread_t *p_intf );
     virtual ~AddonsTab();
-    bool eventFilter ( QObject * watched, QEvent * event );
+    bool eventFilter ( QObject * watched, QEvent * event ) override;
 
     enum
     {
@@ -240,7 +241,7 @@ public:
 
     static QColor getColorByAddonType( int );
 
-protected slots:
+public slots:
     void addonAdded( addon_entry_t * );
     void addonChanged( const addon_entry_t * );
 

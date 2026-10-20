@@ -136,7 +136,18 @@ vlc_rpc_mainloop(stream_t *p_access, struct rpc_context *p_rpc_ctx,
         struct pollfd p_fds[1];
         int i_ret;
         p_fds[0].fd = rpc_get_fd(p_rpc_ctx);
+
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT < 0x0600)
+        const short nfs_events = rpc_which_events(p_rpc_ctx);
+        short local_events = 0;
+        if (nfs_events & 0x0001) /* libnfs POLLIN  */
+            local_events |= POLLIN;
+        if (nfs_events & 0x0004) /* libnfs POLLOUT */
+            local_events |= POLLOUT;
+        p_fds[0].events = local_events;
+#else
         p_fds[0].events = rpc_which_events(p_rpc_ctx);
+#endif
 
         if ((i_ret = vlc_poll_i11e(p_fds, 1, -1)) < 0)
         {
@@ -146,11 +157,38 @@ vlc_rpc_mainloop(stream_t *p_access, struct rpc_context *p_rpc_ctx,
                 msg_Err(p_access, "vlc_poll_i11e failed");
             p_sys->b_error = true;
         }
-        else if (i_ret > 0 && p_fds[0].revents
-             && rpc_service(p_rpc_ctx, p_fds[0].revents) < 0)
+        else if (i_ret > 0 && p_fds[0].revents)
         {
-            msg_Err(p_access, "nfs_service failed");
-            p_sys->b_error = true;
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT < 0x0600)
+            short rv = p_fds[0].revents;
+            short nfs_revents = 0;
+            if (rv & POLLIN)
+                nfs_revents |= 0x0001; /* libnfs POLLIN  */
+            if (rv & POLLOUT)
+                nfs_revents |= 0x0004; /* libnfs POLLOUT */
+            if (rv & (POLLERR | POLLHUP))
+            {
+                int soerr = 0;
+                int soerr_len = sizeof (soerr);
+                if (getsockopt(p_fds[0].fd, SOL_SOCKET, SO_ERROR,
+                               (char *)&soerr, &soerr_len) == 0 && soerr == 0)
+                {
+                    if (rv & POLLOUT)
+                        nfs_revents |= 0x0004; /* libnfs POLLOUT */
+                }
+                else
+                    nfs_revents |= 0x0008; /* libnfs POLLERR */
+            }
+#else
+            int nfs_revents = p_fds[0].revents;
+#endif
+
+            if (nfs_revents != 0
+             && rpc_service(p_rpc_ctx, nfs_revents) < 0)
+            {
+                msg_Err(p_access, "nfs_service failed");
+                p_sys->b_error = true;
+            }
         }
     }
     return p_sys->b_error ? -1 : 0;
@@ -189,7 +227,8 @@ nfs_read_cb(int i_status, struct nfs_context *p_nfs, void *p_data,
     else
     {
         p_sys->res.read.i_len = i_status;
-        memcpy(p_sys->res.read.p_buf, p_data, i_status);
+        if (p_sys->res.read.p_buf != NULL && p_data != NULL)
+            memcpy(p_sys->res.read.p_buf, p_data, i_status);
     }
 }
 
@@ -209,16 +248,22 @@ FileRead(stream_t *p_access, void *p_buf, size_t i_len)
         return 0;
 
     p_sys->res.read.i_len = 0;
+#ifdef LIBNFS_API_V2
+    p_sys->res.read.p_buf = NULL;
+    if (nfs_read_async(p_sys->p_nfs, p_sys->p_nfsfh, p_buf, i_len, nfs_read_cb,
+                       p_access) < 0)
+#else
     p_sys->res.read.p_buf = p_buf;
     if (nfs_read_async(p_sys->p_nfs, p_sys->p_nfsfh, i_len, nfs_read_cb,
                        p_access) < 0)
+#endif
     {
         msg_Err(p_access, "nfs_read_async failed");
-        return -1;
+        return 0;
     }
 
     if (vlc_nfs_mainloop(p_access, nfs_read_finished_cb) < 0)
-        return -1;
+        return 0;
 
     return p_sys->res.read.i_len;
 }

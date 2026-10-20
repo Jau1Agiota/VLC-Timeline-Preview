@@ -38,8 +38,8 @@ namespace adaptive
 
             private:
                 size_t  segments_count;
-                mtime_t buffering_level;
-                mtime_t buffering_target;
+                vlc_tick_t buffering_level;
+                vlc_tick_t buffering_target;
                 unsigned last_download_rate;
                 unsigned last_duration;
                 MovingAverage<unsigned> average;
@@ -51,9 +51,11 @@ namespace adaptive
                 PredictiveAdaptationLogic(vlc_object_t *);
                 virtual ~PredictiveAdaptationLogic();
 
-                virtual BaseRepresentation* getNextRepresentation(BaseAdaptationSet *, BaseRepresentation *);
-                virtual void                updateDownloadRate     (const ID &, size_t, mtime_t); /* reimpl */
-                virtual void                trackerEvent           (const SegmentTrackerEvent &); /* reimpl */
+                virtual BaseRepresentation* getNextRepresentation(BaseAdaptationSet *,
+                                                                  BaseRepresentation *) override;
+                virtual void                updateDownloadRate     (const ID &, size_t,
+                                                                    mtime_t, mtime_t) override;
+                virtual void                trackerEvent           (const TrackerEvent &) override;
 
             private:
                 unsigned                    getAvailableBw(unsigned, const BaseRepresentation *) const;

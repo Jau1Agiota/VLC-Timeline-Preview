@@ -45,10 +45,18 @@
 #  include <GLES2/gl2.h>
 #  include <GLES2/gl2ext.h>
 # else
-#  ifdef _WIN32
+#  ifdef HAVE_GL_WGLEW_H
 #   include <GL/glew.h>
 #  endif
 #  include <GL/gl.h>
+# endif
+#endif
+
+#ifdef HAVE_LIBPLACEBO
+# include <libplacebo/config.h>
+# if PL_API_VER >= 157
+#  include <libplacebo/log.h>
+#  include <libplacebo/shaders.h>
 # endif
 #endif
 
@@ -83,6 +91,7 @@ typedef void (APIENTRY *PFNGLFLUSHPROC)(void);
 typedef void (APIENTRY *PFNGLGENTEXTURESPROC) (GLsizei n, GLuint *textures);
 typedef GLenum (APIENTRY *PFNGLGETERRORPROC) (void);
 typedef void (APIENTRY *PFNGLGETINTEGERVPROC) (GLenum pname, GLint *data);
+typedef void (APIENTRY *PFNGLGETINTEGERIVPROC) (GLenum pname, GLuint index, GLint *data);
 typedef const GLubyte *(APIENTRY *PFNGLGETSTRINGPROC) (GLenum name);
 typedef void (APIENTRY *PFNGLGETTEXLEVELPARAMETERIVPROC) (GLenum target, GLint level, GLenum pname, GLint *params);
 typedef void (APIENTRY *PFNGLPIXELSTOREIPROC) (GLenum pname, GLint param);
@@ -271,8 +280,12 @@ struct opengl_tex_converter_t
     /* Pointer to object gl, set by the caller */
     vlc_gl_t *gl;
 
+# if PL_API_VER >= 157
+    pl_log pl_ctx;
+# else
     /* libplacebo context, created by the caller (optional) */
     struct pl_context *pl_ctx;
+#endif
 
     /* Function pointers to OpenGL functions, set by the caller */
     const opengl_vtable_t *vt;
@@ -336,7 +349,11 @@ struct opengl_tex_converter_t
     bool yuv_color;
     GLfloat yuv_coefficients[16];
 
+# if PL_API_VER >= 157
+    pl_shader pl_sh;
+# else
     struct pl_shader *pl_sh;
+# endif
     const struct pl_shader_res *pl_sh_res;
 
     /* Private context */

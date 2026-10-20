@@ -38,6 +38,7 @@
 #include "dialogs_provider.hpp" /* THEDP creation */
 #ifdef _WIN32
 # include "main_interface_win32.hpp"
+# include "util/qvlcframe.hpp" /* Accent Color */
 #else
 # include "main_interface.hpp"   /* MainInterface creation */
 #endif
@@ -120,6 +121,9 @@ static void ShowDialog   ( intf_thread_t *, int, int, intf_dialog_args_t * );
                              "X11 with composite extensions." )
 
 #define ERROR_TEXT N_( "Show unimportant error and warnings dialogs" )
+
+#define QT_DARK_TEXT N_( "Enable Dark Mode" )
+#define QT_DARK_LONGTEXT N_( "Applies a dark theme to the style." )
 
 #define UPDATER_TEXT N_( "Activate the updates availability notification" )
 #define UPDATER_LONGTEXT N_( "Activate the automatic notification of new " \
@@ -256,6 +260,8 @@ vlc_module_begin ()
                 RECENTPLAY_FILTER_TEXT, RECENTPLAY_FILTER_LONGTEXT, false )
     add_integer( "qt-continue", 1, CONTINUE_PLAYBACK_TEXT, CONTINUE_PLAYBACK_TEXT, false )
             change_integer_list(i_continue_list, psz_continue_list_text )
+    add_bool( "qt-dark-palette", false, QT_DARK_TEXT,
+                  QT_DARK_LONGTEXT, false )
 
 #ifdef UPDATE_CHECK
     add_bool( "qt-updates-notif", true, UPDATER_TEXT,
@@ -359,9 +365,9 @@ static void Abort( void *obj )
 }
 #endif
 
-#if defined (QT5_HAS_X11)
+#if defined (QT_HAS_X11)
 # include <vlc_xlib.h>
-# include <QX11Info>
+# include "qt_x11.hpp"
 
 static void *ThreadXCB( void *data )
 {
@@ -383,25 +389,63 @@ static bool HasX11( vlc_object_t *obj )
 }
 #endif
 
-#ifdef QT5_HAS_WAYLAND
-# include <wayland-client.h>
-
-static void *ThreadWayland( void *data )
-{
-    char platform_name[] = "wayland";
-    return ThreadPlatform( data, platform_name );
+bool isDarkPaletteEnabled(intf_thread_t *p_intf) {
+    static const bool darkPalette = var_InheritBool( p_intf, "qt-dark-palette" );
+    return darkPalette;
 }
 
-static bool HasWayland( void )
-{
-    struct wl_display *dpy = wl_display_connect( NULL );
-    if( dpy == NULL )
-        return false;
+void applyDarkPalette() {
+    QPalette darkPalette;
+    static const QColor darkColor  (33, 33, 33);
+    static const QColor gray       (75,75,75);
+    static const QColor lightGray  (138, 138, 138);
+    static const QColor baseColor  (18, 18, 18);
+    static const QColor linkColor  (255, 168, 81);
 
-    wl_display_disconnect( dpy );
-    return true;
-}
+#ifdef Q_OS_WIN
+    QColor accentColor = getWindowsAccentColor();
+#else
+    QColor accentColor (42, 130, 218);
 #endif
+
+    // Active group (the currently focused window)
+    darkPalette.setColor(QPalette::Active, QPalette::Window,          darkColor);
+    darkPalette.setColor(QPalette::Active, QPalette::WindowText,      Qt::white);
+    darkPalette.setColor(QPalette::Active, QPalette::Base,            baseColor);
+    darkPalette.setColor(QPalette::Active, QPalette::AlternateBase,   darkColor);
+    darkPalette.setColor(QPalette::Active, QPalette::Button,          darkColor);
+    darkPalette.setColor(QPalette::Active, QPalette::ButtonText,      Qt::white);
+    darkPalette.setColor(QPalette::Active, QPalette::Text,            Qt::white);
+    darkPalette.setColor(QPalette::Active, QPalette::Highlight,       accentColor);
+    darkPalette.setColor(QPalette::Active, QPalette::HighlightedText, Qt::white);
+    darkPalette.setColor(QPalette::Active, QPalette::Link,            linkColor);
+
+    // Inactive group (unfocused window)
+    darkPalette.setColor(QPalette::Inactive, QPalette::Window,          darkColor);
+    darkPalette.setColor(QPalette::Inactive, QPalette::WindowText,      lightGray);
+    darkPalette.setColor(QPalette::Inactive, QPalette::Base,            baseColor);
+    darkPalette.setColor(QPalette::Inactive, QPalette::AlternateBase,   darkColor);
+    darkPalette.setColor(QPalette::Inactive, QPalette::Button,          darkColor);
+    darkPalette.setColor(QPalette::Inactive, QPalette::ButtonText,      lightGray);
+    darkPalette.setColor(QPalette::Inactive, QPalette::Text,            lightGray);
+    darkPalette.setColor(QPalette::Inactive, QPalette::Highlight,       accentColor);
+    darkPalette.setColor(QPalette::Inactive, QPalette::HighlightedText, lightGray);
+
+    // Disabled group (grayed-out widgets)
+    darkPalette.setColor(QPalette::Disabled, QPalette::Window,          darkColor);
+    darkPalette.setColor(QPalette::Disabled, QPalette::WindowText,      lightGray);
+    darkPalette.setColor(QPalette::Disabled, QPalette::Base,            baseColor);
+    darkPalette.setColor(QPalette::Disabled, QPalette::AlternateBase,   darkColor);
+    darkPalette.setColor(QPalette::Disabled, QPalette::Button,          baseColor);
+    darkPalette.setColor(QPalette::Disabled, QPalette::ButtonText,      gray);
+    darkPalette.setColor(QPalette::Disabled, QPalette::Text,            gray);
+    darkPalette.setColor(QPalette::Disabled, QPalette::Highlight,       gray);
+    darkPalette.setColor(QPalette::Disabled, QPalette::HighlightedText, gray);
+    darkPalette.setColor(QPalette::Disabled, QPalette::Light,           darkColor);
+
+    // Apply the dark palette globally
+    QApplication::setPalette(darkPalette);
+}
 
 /* Open Interface */
 static int Open( vlc_object_t *p_this, bool isDialogProvider )
@@ -409,17 +453,10 @@ static int Open( vlc_object_t *p_this, bool isDialogProvider )
     intf_thread_t *p_intf = (intf_thread_t *)p_this;
     void *(*thread)(void *) = Thread;
 
-#ifdef QT5_HAS_X11
+#ifdef QT_HAS_X11
     if( HasX11( p_this ) )
         thread = ThreadXCB;
     else
-#endif
-#ifdef QT5_HAS_WAYLAND
-    if( HasWayland() )
-        thread = ThreadWayland;
-    else
-#endif
-#if defined (QT5_HAS_X11) || defined (QT5_HAS_WAYLAND)
         return VLC_EGENERIC;
 #endif
 
@@ -528,6 +565,9 @@ static void *ThreadPlatform( void *obj, char *platform_name )
     QApplication::setAttribute( Qt::AA_EnableHighDpiScaling );
     QApplication::setAttribute( Qt::AA_UseHighDpiPixmaps );
 #endif
+#if HAS_QT57
+    QApplication::setAttribute( Qt::AA_UseStyleSheetPropagationInWidgetStyles, true);
+#endif
 
     /* Start the QApplication here */
     QVLCApp app( argc, argv );
@@ -632,13 +672,18 @@ static void *ThreadPlatform( void *obj, char *platform_name )
     app.setQuitOnLastWindowClosed( false );
 
     /* Retrieve last known path used in file browsing */
+    const QUrl homeUrl = QUrl::fromLocalFile(QVLCUserDir( VLC_HOME_DIR ));
     p_sys->filepath =
-         getSettings()->value( "filedialog-path", QVLCUserDir( VLC_HOME_DIR ) ).toString();
+         getSettings()->value( "filedialog-path", homeUrl ).toUrl();
 
     /* Loads and tries to apply the preferred QStyle */
     QString s_style = getSettings()->value( "MainWindow/QtStyle", "" ).toString();
-    if( s_style.compare("") != 0 )
+    if (!s_style.isEmpty())
         QApplication::setStyle( s_style );
+
+    // Apply dark palette only if dark palette is enabled
+    if (isDarkPaletteEnabled(p_intf))
+        applyDarkPalette();
 
     /* Launch */
     app.exec();
@@ -711,10 +756,9 @@ static int WindowControl( vout_window_t *, int i_query, va_list );
 
 typedef struct {
     MainInterface *mi;
-#ifdef QT5_HAS_X11
+#ifdef QT_HAS_X11
     Display *dpy;
 #endif
-    bool orphaned;
     QMutex lock;
 } vout_window_qt_t;
 
@@ -750,14 +794,13 @@ static int WindowOpen( vout_window_t *p_wnd, const vout_window_cfg_t *cfg )
     vout_window_qt_t *sys = new vout_window_qt_t;
 
     sys->mi = p_intf->p_sys->p_mi;
-    sys->orphaned = false;
     p_wnd->sys = (vout_window_sys_t *)sys;
     msg_Dbg( p_wnd, "requesting video window..." );
 
-#ifdef QT5_HAS_X11
+#ifdef QT_HAS_X11
     Window xid;
 
-    if (QX11Info::isPlatformX11())
+    if (vlcQtIsX11())
     {
         sys->dpy = XOpenDisplay(NULL);
         if (unlikely(sys->dpy == NULL))
@@ -777,16 +820,16 @@ static int WindowOpen( vout_window_t *p_wnd, const vout_window_cfg_t *cfg )
 
     if (!sys->mi->getVideo(p_wnd, cfg->width, cfg->height, cfg->is_fullscreen))
     {
-#ifdef QT5_HAS_X11
-        if (QX11Info::isPlatformX11())
+#ifdef QT_HAS_X11
+        if (vlcQtIsX11())
             XCloseDisplay(sys->dpy);
 #endif
         delete sys;
         return VLC_EGENERIC;
     }
 
-#ifdef QT5_HAS_X11
-    if (QX11Info::isPlatformX11())
+#ifdef QT_HAS_X11
+    if (vlcQtIsX11())
     {
         QMutexLocker locker2(&sys->lock);
 
@@ -803,13 +846,12 @@ static int WindowOpen( vout_window_t *p_wnd, const vout_window_cfg_t *cfg )
 
 void WindowResized(vout_window_t *wnd, const QSize& size)
 {
-#ifdef QT5_HAS_X11
+#ifdef QT_HAS_X11
     vout_window_qt_t *sys = (vout_window_qt_t *)wnd->sys;
 
-    if (QX11Info::isPlatformX11())
+    if (vlcQtIsX11())
     {
         XResizeWindow(sys->dpy, wnd->handle.xid, size.width(), size.height());
-        XClearWindow(sys->dpy, wnd->handle.xid);
         XSync(sys->dpy, True);
     }
 #endif
@@ -829,19 +871,19 @@ static int WindowControl( vout_window_t *p_wnd, int i_query, va_list args )
     return sys->mi->controlVideo(i_query, args);
 }
 
-void WindowReleased(vout_window_t *wnd)
+void WindowOrphaned(vout_window_t *wnd)
 {
     vout_window_qt_t *sys = (vout_window_qt_t *)wnd->sys;
     QMutexLocker locker(&sys->lock);
 
     msg_Warn(wnd, "orphaned video window");
-    sys->orphaned = true;
-#if defined (QT5_HAS_X11)
-    if (QX11Info::isPlatformX11())
+#if defined (QT_HAS_X11)
+    if (vlcQtIsX11())
     {   /* In the unlikely event that WindowOpen() has not yet reparented the
          * window, WindowOpen() will skip reparenting. Then this call will be
          * a no-op.
          */
+        XUnmapWindow (sys->dpy, wnd->handle.xid);
         XReparentWindow(sys->dpy, wnd->handle.xid,
                         RootWindow(sys->dpy, DefaultScreen(sys->dpy)), 0, 0);
         XSync(sys->dpy, True);
@@ -871,8 +913,8 @@ static void WindowClose( vout_window_t *p_wnd )
     else
         msg_Warn (p_wnd, "video already released");
 
-#if defined (QT5_HAS_X11)
-    if (QX11Info::isPlatformX11())
+#if defined (QT_HAS_X11)
+    if (vlcQtIsX11())
         XCloseDisplay(sys->dpy);
 #endif
     delete sys;

@@ -71,9 +71,9 @@ struct demux_sys_t
     es_out_id_t     *p_es;
 
     bool            b_still;
-    mtime_t         i_still_end;
-    mtime_t         i_time;
-    mtime_t         i_frame_length;
+    vlc_tick_t      i_still_end;
+    vlc_tick_t      i_time;
+    vlc_tick_t      i_frame_length;
     char            *psz_separator;
     int             i_frame_size_estimate;
     const uint8_t   *p_peek;
@@ -309,7 +309,7 @@ static int Open( vlc_object_t * p_this )
     p_demux->pf_control = Control;
     p_demux->p_sys      = p_sys;
     p_sys->p_es         = NULL;
-    p_sys->i_time       = VLC_TS_0;
+    p_sys->i_time       = VLC_TICK_0;
     p_sys->i_level      = 0;
 
     p_sys->psz_separator = NULL;
@@ -482,7 +482,8 @@ static int MimeDemux( demux_t *p_demux )
     }
 
     i = 0;
-    i_size = strlen( p_sys->psz_separator ) + 2;
+    size_t sep_len = strlen(p_sys->psz_separator);
+    i_size = sep_len + 2;
     if( p_sys->i_data_peeked < i_size )
     {
         msg_Warn( p_demux, "data shortage" );
@@ -509,13 +510,22 @@ static int MimeDemux( demux_t *p_demux )
             }
         }
 
+        /* peek is located now at "--", check if we have enough data for the
+         * separator */
+        while (i + 2 + sep_len > (size_t)p_sys->i_data_peeked)
+        {
+            if (!Peek(p_demux, false))
+            {
+                msg_Warn( p_demux, "data shortage" );
+                return VLC_DEMUXER_EOF;
+            }
+        }
+
         /* Handle old and new style of separators */
-        if (!strncmp(p_sys->psz_separator, (char *)(p_sys->p_peek + i + 2),
-                     strlen( p_sys->psz_separator ))
-         || ((strlen(p_sys->psz_separator) > 4)
+        if (!strncmp(p_sys->psz_separator, (char *)(p_sys->p_peek + i + 2), sep_len)
+         || (sep_len > 4
           && !strncmp(p_sys->psz_separator, "--", 2)
-          && !strncmp(p_sys->psz_separator, (char *)(p_sys->p_peek + i),
-                      strlen( p_sys->psz_separator))))
+          && !strncmp(p_sys->psz_separator, (char *)(p_sys->p_peek + i), sep_len)))
         {
             break;
         }

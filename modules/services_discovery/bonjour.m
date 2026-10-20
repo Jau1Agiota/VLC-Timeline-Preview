@@ -32,6 +32,7 @@
 #include <vlc_renderer_discovery.h>
 
 #import <Foundation/Foundation.h>
+#import <arpa/inet.h>
 
 #pragma mark Function declarations
 
@@ -78,6 +79,7 @@ vlc_module_end()
 
 NSString *const VLCBonjourProtocolName          = @"VLCBonjourProtocolName";
 NSString *const VLCBonjourProtocolServiceName   = @"VLCBonjourProtocolServiceName";
+NSString *const VLCBonjourProtocolModules       = @"VLCBonjourProtocolModules";
 NSString *const VLCBonjourIsRenderer            = @"VLCBonjourIsRenderer";
 NSString *const VLCBonjourRendererFlags         = @"VLCBonjourRendererFlags";
 NSString *const VLCBonjourRendererDemux         = @"VLCBonjourRendererDemux";
@@ -121,6 +123,43 @@ NSString *const VLCBonjourRendererDemux         = @"VLCBonjourRendererDemux";
 
 @end
 
+static NSString * ipAddressAsStringForData(NSData * data)
+{
+    char addressBuffer[INET6_ADDRSTRLEN] = { 0 };
+    NSString *returnValue = nil;
+
+    if (data == nil) {
+        return returnValue;
+    }
+
+    typedef union {
+        struct sockaddr sa;
+        struct sockaddr_in ipv4;
+        struct sockaddr_in6 ipv6;
+    } ip_socket_address;
+
+    ip_socket_address *socketAddress = (ip_socket_address *)[data bytes];
+
+    if (socketAddress) {
+        const char *addressStr;
+        if (socketAddress->sa.sa_family == AF_INET) {
+            addressStr = inet_ntop(socketAddress->sa.sa_family,
+                                           (void *)&(socketAddress->ipv4.sin_addr),
+                                           addressBuffer,
+                                           sizeof(addressBuffer));
+        } else if (socketAddress->sa.sa_family == AF_INET6) {
+            addressStr = inet_ntop(socketAddress->sa.sa_family,
+                                           (void *)&(socketAddress->ipv6.sin6_addr),
+                                           addressBuffer,
+                                           sizeof(addressBuffer));
+        }
+        if (addressStr != NULL) {
+            returnValue = [NSString stringWithUTF8String:addressStr];
+        }
+    }
+    return returnValue;
+}
+
 @implementation VLCNetServiceDiscoveryController
 
 - (instancetype)initWithRendererDiscoveryObject:(vlc_renderer_discovery_t *)p_rd
@@ -149,19 +188,23 @@ NSString *const VLCBonjourRendererDemux         = @"VLCBonjourRendererDemux";
 {
     NSDictionary *VLCFtpProtocol = @{ VLCBonjourProtocolName        : @"ftp",
                                       VLCBonjourProtocolServiceName : @"_ftp._tcp.",
-                                      VLCBonjourIsRenderer          : @(NO)
+                                      VLCBonjourIsRenderer          : @(NO),
+                                      VLCBonjourProtocolModules     : @[@"ftp"]
                                       };
     NSDictionary *VLCSmbProtocol = @{ VLCBonjourProtocolName        : @"smb",
                                       VLCBonjourProtocolServiceName : @"_smb._tcp.",
-                                      VLCBonjourIsRenderer          : @(NO)
+                                      VLCBonjourIsRenderer          : @(NO),
+                                      VLCBonjourProtocolModules     : @[@"dsm", @"smb2"]
                                       };
     NSDictionary *VLCNfsProtocol = @{ VLCBonjourProtocolName        : @"nfs",
                                       VLCBonjourProtocolServiceName : @"_nfs._tcp.",
-                                      VLCBonjourIsRenderer          : @(NO)
+                                      VLCBonjourIsRenderer          : @(NO),
+                                      VLCBonjourProtocolModules     : @[@"nfs"]
                                       };
     NSDictionary *VLCSftpProtocol = @{ VLCBonjourProtocolName       : @"sftp",
                                        VLCBonjourProtocolServiceName: @"_sftp-ssh._tcp.",
-                                       VLCBonjourIsRenderer         : @(NO)
+                                       VLCBonjourIsRenderer         : @(NO),
+                                       VLCBonjourProtocolModules     : @[@"sftp"]
                                        };
     NSDictionary *VLCCastProtocol = @{ VLCBonjourProtocolName       : @"chromecast",
                                        VLCBonjourProtocolServiceName: @"_googlecast._tcp.",
@@ -185,10 +228,19 @@ NSString *const VLCBonjourRendererDemux         = @"VLCBonjourRendererDemux";
 
     msg_Info(_p_this, "starting discovery");
     for (NSDictionary *protocol in VLCSupportedProtocols) {
-        /* Only discover services if we actually have a module that can handle those */
-        if (!module_exists([[protocol objectForKey: VLCBonjourProtocolName] UTF8String]) && !_isRendererDiscovery) {
-            msg_Dbg(_p_this, "no module for %s, skipping", [[protocol objectForKey: VLCBonjourProtocolName] UTF8String]);
-            continue;
+        if (!_isRendererDiscovery) {
+            /* Only discover services if we actually have at least one module that can handle their protocol */
+            BOOL canHandle = NO;
+            for (NSString *name in [protocol objectForKey: VLCBonjourProtocolModules]) {
+                if (module_exists([name UTF8String])) {
+                    canHandle = YES;
+                    break;
+                }
+            }
+            if (!canHandle) {
+                msg_Dbg(_p_this, "no module to handle %s, skipping", [[protocol objectForKey: VLCBonjourProtocolName] UTF8String]);
+                continue;
+            }
         }
 
         /* Only discover hosts it they match the current mode (renderer or service) */
@@ -304,7 +356,10 @@ NSString *const VLCBonjourRendererDemux         = @"VLCBonjourRendererDemux";
 {
     vlc_renderer_discovery_t *p_rd = (vlc_renderer_discovery_t *)_p_this;
 
-    NSString *uri = [NSString stringWithFormat:@"%@://%@:%ld", protocol, netService.hostName, netService.port];
+    NSString *host = netService.hostName;
+    if( [host rangeOfString:@":"].location != NSNotFound )
+        host = [NSString stringWithFormat:@"[%@]", host];
+    NSString *uri = [NSString stringWithFormat:@"%@://%@:%ld", protocol, host, (long)netService.port];
     NSDictionary *txtDict = [NSNetService dictionaryFromTXTRecordData:[netService TXTRecordData]];
     NSString *displayName = netService.name;
     int rendererFlags = 0;
@@ -362,8 +417,16 @@ NSString *const VLCBonjourRendererDemux         = @"VLCBonjourRendererDemux";
 - (void)addResolvedInputItem:(NSNetService *)netService withProtocol:(NSString *)protocol
 {
     services_discovery_t *p_sd = (services_discovery_t *)_p_this;
+    NSString *host = netService.hostName;
 
-    NSString *uri = [NSString stringWithFormat:@"%@://%@:%ld", protocol, netService.hostName, netService.port];
+    if ([protocol isEqualToString:@"smb"]) {
+        host = ipAddressAsStringForData(netService.addresses.firstObject);
+    }
+
+    if( [host rangeOfString:@":"].location != NSNotFound )
+        host = [NSString stringWithFormat:@"[%@]", host];
+    NSString *uri = [NSString stringWithFormat:@"%@://%@:%ld", protocol, host, (long)netService.port];
+
     input_item_t *p_input_item = input_item_NewDirectory([uri UTF8String], [netService.name UTF8String], ITEM_NET );
     if (p_input_item != NULL) {
         services_discovery_AddItem(p_sd, p_input_item);

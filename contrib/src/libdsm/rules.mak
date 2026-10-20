@@ -1,14 +1,13 @@
 # libdsm
 
-#LIBDSM_GITURL := git://github.com/videolabs/libdsm.git
-LIBDSM_VERSION := 0.3.2
-LIBDSM_URL := https://github.com/videolabs/libdsm/releases/download/v$(LIBDSM_VERSION)/libdsm-$(LIBDSM_VERSION).tar.gz
+LIBDSM_VERSION := 0.4.3
+LIBDSM_URL := $(GITHUB)/videolabs/libdsm/releases/download/v$(LIBDSM_VERSION)/libdsm-$(LIBDSM_VERSION).tar.xz
 
 ifeq ($(call need_pkg,"libdsm >= 0.2.0"),)
 PKGS_FOUND += libdsm
 endif
 
-$(TARBALLS)/libdsm-$(LIBDSM_VERSION).tar.gz:
+$(TARBALLS)/libdsm-$(LIBDSM_VERSION).tar.xz:
 	$(call download_pkg,$(LIBDSM_URL),libdsm)
 
 LIBDSM_CONF = $(HOSTCONF)
@@ -16,22 +15,22 @@ LIBDSM_CONF = $(HOSTCONF)
 ifndef WITH_OPTIMIZATION
 LIBDSM_CONF += --enable-debug
 endif
-.sum-libdsm: libdsm-$(LIBDSM_VERSION).tar.gz
+.sum-libdsm: libdsm-$(LIBDSM_VERSION).tar.xz
 
-libdsm: libdsm-$(LIBDSM_VERSION).tar.gz .sum-libdsm
+libdsm: libdsm-$(LIBDSM_VERSION).tar.xz .sum-libdsm
 	$(UNPACK)
+	$(APPLY) $(SRC)/libdsm/0001-Avoid-relying-on-implicit-function-declarations.patch
+	$(APPLY) $(SRC)/libdsm/0001-use-GetCurrentProcessId-for-the-process-ID-on-Window.patch
+	$(APPLY) $(SRC)/libdsm/0001-Cast-getsockopt-pointer.patch
 	$(MOVE)
 
-DEPS_libdsm = libtasn1 iconv
+DEPS_libdsm = libtasn1 $(DEPS_libtasn1) iconv $(DEPS_iconv)
 ifdef HAVE_WIN32
-DEPS_libdsm += pthreads $(DEPS_pthreads)
+DEPS_libdsm += winpthreads $(DEPS_winpthreads)
 endif
 
-.libdsm: libdsm
-	cd $< && touch "config.rpath"
-	$(RECONF)
-	cd $< && $(HOSTVARS_PIC) ./configure --disable-programs $(LIBDSM_CONF)
-	cd $< && $(MAKE)
-	$(call pkg_static,"libdsm.pc")
-	cd $< && $(MAKE) install
+.libdsm: libdsm crossfile.meson
+	$(MESONCLEAN)
+	$(MESON) -Dauto_features=disabled -Dbinaries=false
+	+$(MESONBUILD)
 	touch $@

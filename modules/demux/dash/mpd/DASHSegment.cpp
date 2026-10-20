@@ -29,7 +29,9 @@
 #include "DASHSegment.h"
 #include "../../adaptive/playlist/BaseRepresentation.h"
 #include "../mp4/IndexReader.hpp"
-#include "../../adaptive/playlist/AbstractPlaylist.hpp"
+#include "../../adaptive/playlist/BasePlaylist.hpp"
+
+#include <new>
 
 using namespace adaptive::playlist;
 using namespace dash::mpd;

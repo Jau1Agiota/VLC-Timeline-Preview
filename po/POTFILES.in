@@ -217,6 +217,7 @@ modules/access/shm.c
 modules/access/smb.c
 modules/access/smb_common.h
 modules/access/srt.c
+modules/access/srt_common.c
 modules/access/tcp.c
 modules/access/timecode.c
 modules/access/udp.c
@@ -338,7 +339,6 @@ modules/codec/png.c
 modules/codec/qsv.c
 modules/codec/rawvideo.c
 modules/codec/rtpvideo.c
-modules/codec/schroedinger.c
 modules/codec/scte18.c
 modules/codec/scte18.h
 modules/codec/scte27.c
@@ -1264,7 +1264,7 @@ modules/visualization/projectm.cpp
 modules/visualization/visual/visual.c
 modules/visualization/visual/window_presets.h
 modules/visualization/vsxu.cpp
-share/vlc.appdata.xml.in.in
+share/org.videolan.vlc.appdata.xml.in.in
 share/lua/http/dialogs/batch_window.html
 share/lua/http/dialogs/browse_window.html
 share/lua/http/dialogs/create_stream.html
@@ -1286,6 +1286,7 @@ share/lua/http/mobile_view.html
 
 #modules/gui/qt/ui/about.h
 #modules/gui/qt/ui/equalizer.h
+#modules/gui/qt/ui/fingerprintdialog.h
 #modules/gui/qt/ui/messages_panel.h
 #modules/gui/qt/ui/open.h
 #modules/gui/qt/ui/open_capture.h

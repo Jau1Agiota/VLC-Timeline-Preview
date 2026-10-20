@@ -356,7 +356,7 @@ static int ParseVideoExtraVc1(decoder_t *p_dec, uint8_t *p_extra, int i_extra)
         return VLC_EGENERIC;
 
     /* Initialisation data starts with : 0x00 0x00 0x01 0x0f */
-    /* Skipping unecessary data */
+    /* Skipping unnecessary data */
     static const uint8_t vc1_start_code[4] = {0x00, 0x00, 0x01, 0x0f};
     for (; offset < i_extra - 4 ; ++offset)
     {
@@ -497,6 +497,50 @@ static int StartMediaCodec(decoder_t *p_dec)
 
         args.video.p_surface = p_sys->video.p_surface;
         args.video.p_jsurface = p_sys->video.p_jsurface;
+
+        if (p_dec->fmt_out.video.b_color_range_full)
+            args.video.color_range = MC_COLOR_RANGE_FULL;
+        else
+            args.video.color_range = MC_COLOR_RANGE_LIMITED;
+
+        switch (p_dec->fmt_out.video.primaries)
+        {
+            case COLOR_PRIMARIES_BT601_525:
+                args.video.color_standard = MC_COLOR_STANDARD_BT601_NTSC;
+                break;
+            case COLOR_PRIMARIES_BT601_625:
+                args.video.color_standard = MC_COLOR_STANDARD_BT601_PAL;
+                break;
+            case COLOR_PRIMARIES_BT709:
+                args.video.color_standard = MC_COLOR_STANDARD_BT709;
+                break;
+            case COLOR_PRIMARIES_BT2020:
+                args.video.color_standard = MC_COLOR_STANDARD_BT2020;
+                break;
+            default:
+                args.video.color_standard = MC_COLOR_STANDARD_UNSPECIFIED;
+                break;
+        }
+
+        switch (p_dec->fmt_out.video.transfer)
+        {
+            case TRANSFER_FUNC_LINEAR:
+                args.video.color_transfer = MC_COLOR_TRANSFER_LINEAR;
+                break;
+            case TRANSFER_FUNC_SMPTE_ST2084:
+                args.video.color_transfer = MC_COLOR_TRANSFER_ST2084;
+                break;
+            case TRANSFER_FUNC_HLG:
+                args.video.color_transfer = MC_COLOR_TRANSFER_HLG;
+                break;
+            case TRANSFER_FUNC_BT709:
+                args.video.color_transfer = MC_COLOR_TRANSFER_SDR_VIDEO;
+                break;
+            default:
+                args.video.color_transfer = MC_COLOR_TRANSFER_UNSPECIFIED;
+                break;
+        }
+
         args.video.b_tunneled_playback = args.video.p_surface ?
                 var_InheritBool(p_dec, CFG_PREFIX "tunneled-playback") : false;
         if (p_sys->b_adaptive)
@@ -505,7 +549,7 @@ static int StartMediaCodec(decoder_t *p_dec)
     }
     else
     {
-        date_Set(&p_sys->audio.i_end_date, VLC_TS_INVALID);
+        date_Set(&p_sys->audio.i_end_date, VLC_TICK_INVALID);
 
         args.audio.i_sample_rate    = p_dec->fmt_in.audio.i_rate;
         args.audio.i_channel_count  = p_dec->p_sys->audio.i_channels;
@@ -867,7 +911,7 @@ static void ReleasePicture(decoder_t *p_dec, unsigned i_index, bool b_render)
     p_sys->api.release_out(&p_sys->api, i_index, b_render);
 }
 
-static void ReleasePictureTs(decoder_t *p_dec, unsigned i_index, mtime_t i_ts)
+static void ReleasePictureTs(decoder_t *p_dec, unsigned i_index, vlc_tick_t i_ts)
 {
     decoder_sys_t *p_sys = p_dec->p_sys;
     assert(p_sys->api.release_out_ts);
@@ -951,7 +995,7 @@ static int Video_ProcessOutput(decoder_t *p_dec, mc_api_out *p_out,
             return p_sys->api.release_out(&p_sys->api, p_out->buf.i_index, false);
         }
 
-        if (forced_ts == VLC_TS_INVALID)
+        if (forced_ts == VLC_TICK_INVALID)
             p_pic->date = p_out->buf.i_ts;
         else
             p_pic->date = forced_ts;
@@ -963,10 +1007,15 @@ static int Video_ProcessOutput(decoder_t *p_dec, mc_api_out *p_out,
             InsertInflightPicture(p_dec, p_pic->p_sys);
         } else {
             unsigned int chroma_div;
-            GetVlcChromaSizes(p_dec->fmt_out.i_codec,
+            if( !GetVlcChromaSizes(p_dec->fmt_out.i_codec,
                               p_dec->fmt_out.video.i_width,
                               p_dec->fmt_out.video.i_height,
-                              NULL, NULL, &chroma_div);
+                              NULL, NULL, &chroma_div) )
+            {
+                p_sys->api.release_out(&p_sys->api, p_out->buf.i_index, false);
+                picture_Release(p_pic);
+                return -1;
+            }
             CopyOmxPicture(p_sys->video.i_pixel_format, p_pic,
                            p_sys->video.i_slice_height, p_sys->video.i_stride,
                            (uint8_t *)p_out->buf.p_ptr, chroma_div, NULL);
@@ -1000,14 +1049,34 @@ static int Video_ProcessOutput(decoder_t *p_dec, mc_api_out *p_out,
                 p_out->conf.video.crop_left, p_out->conf.video.crop_top,
                 p_out->conf.video.crop_right, p_out->conf.video.crop_bottom);
 
-        int i_width  = p_out->conf.video.crop_right + 1
+        bool valid_crop =
+            p_out->conf.video.crop_left >= 0 &&
+            p_out->conf.video.crop_top >= 0 &&
+            p_out->conf.video.crop_right >= p_out->conf.video.crop_left &&
+            p_out->conf.video.crop_bottom >= p_out->conf.video.crop_top &&
+            p_out->conf.video.crop_right < INT_MAX &&
+            p_out->conf.video.crop_bottom < INT_MAX &&
+            (unsigned)p_out->conf.video.crop_right < p_out->conf.video.width &&
+            (unsigned)p_out->conf.video.crop_bottom < p_out->conf.video.height;
+
+        int i_width, i_height;
+        if (valid_crop)
+        {
+            i_width  = p_out->conf.video.crop_right + 1
                      - p_out->conf.video.crop_left;
-        int i_height = p_out->conf.video.crop_bottom + 1
+            i_height = p_out->conf.video.crop_bottom + 1
                      - p_out->conf.video.crop_top;
+        }
+        else
+        {
+            i_width = p_out->conf.video.width;
+            i_height = p_out->conf.video.height;
+        }
         if (i_width <= 1 || i_height <= 1)
         {
             i_width = p_out->conf.video.width;
             i_height = p_out->conf.video.height;
+            valid_crop = false;
         }
 
         if (!(p_sys->api.i_quirks & MC_API_VIDEO_QUIRKS_IGNORE_SIZE))
@@ -1033,8 +1102,13 @@ static int Video_ProcessOutput(decoder_t *p_dec, mc_api_out *p_out,
         if (p_sys->video.i_slice_height <= 0)
             p_sys->video.i_slice_height = p_out->conf.video.height;
 
-        if (p_sys->video.i_pixel_format == OMX_TI_COLOR_FormatYUV420PackedSemiPlanar)
-            p_sys->video.i_slice_height -= p_out->conf.video.crop_top/2;
+        if (p_sys->video.i_pixel_format == OMX_TI_COLOR_FormatYUV420PackedSemiPlanar
+            && valid_crop)
+        {
+            unsigned int crop_adj = p_out->conf.video.crop_top / 2;
+            if (crop_adj < p_sys->video.i_slice_height)
+                p_sys->video.i_slice_height -= crop_adj;
+        }
         if ((p_sys->api.i_quirks & MC_API_VIDEO_QUIRKS_IGNORE_PADDING))
         {
             p_sys->video.i_slice_height = 0;
@@ -1342,7 +1416,7 @@ static int QueueBlockLocked(decoder_t *p_dec, block_t *p_in_block,
             return VLC_EGENERIC;
 
         bool b_config = false;
-        mtime_t i_ts = 0;
+        vlc_tick_t i_ts = 0;
         p_sys->b_input_dequeued = true;
         const void *p_buf = NULL;
         size_t i_size = 0;
@@ -1424,7 +1498,7 @@ static int QueueBlockLocked(decoder_t *p_dec, block_t *p_in_block,
         /* Wait for the OutThread to stop (and process all remaining output
          * frames. Use a timeout here since we can't know if all decoders will
          * behave correctly. */
-        mtime_t deadline = mdate() + INT64_C(3000000);
+        vlc_tick_t deadline = mdate() + INT64_C(3000000);
         while (!p_sys->b_aborted && !p_sys->b_drained
             && vlc_cond_timedwait(&p_sys->dec_cond, &p_sys->lock, deadline) == 0);
 
@@ -1561,7 +1635,7 @@ static int Video_OnNewBlock(decoder_t *p_dec, block_t **pp_block)
     block_t *p_block = *pp_block;
 
     timestamp_FifoPut(p_sys->video.timestamp_fifo,
-                      p_block->i_pts ? VLC_TS_INVALID : p_block->i_dts);
+                      p_block->i_pts ? VLC_TICK_INVALID : p_block->i_dts);
 
     return 1;
 }
@@ -1683,7 +1757,7 @@ static int Audio_OnNewBlock(decoder_t *p_dec, block_t **pp_block)
     /* We've just started the stream, wait for the first PTS. */
     if (!date_Get(&p_sys->audio.i_end_date))
     {
-        if (p_block->i_pts <= VLC_TS_INVALID)
+        if (p_block->i_pts <= VLC_TICK_INVALID)
             return 0;
         date_Set(&p_sys->audio.i_end_date, p_block->i_pts);
     }
@@ -1695,5 +1769,5 @@ static void Audio_OnFlush(decoder_t *p_dec)
 {
     decoder_sys_t *p_sys = p_dec->p_sys;
 
-    date_Set(&p_sys->audio.i_end_date, VLC_TS_INVALID);
+    date_Set(&p_sys->audio.i_end_date, VLC_TICK_INVALID);
 }

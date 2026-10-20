@@ -735,17 +735,10 @@ static int ShapeParagraphHarfBuzz( filter_t *p_filter,
 
         hb_buffer_set_direction( p_run->p_buffer, p_run->direction );
         hb_buffer_set_script( p_run->p_buffer, p_run->script );
-#ifdef __OS2__
-        hb_buffer_add_utf16( p_run->p_buffer,
-                             p_paragraph->p_code_points + p_run->i_start_offset,
-                             p_run->i_end_offset - p_run->i_start_offset, 0,
-                             p_run->i_end_offset - p_run->i_start_offset );
-#else
         hb_buffer_add_utf32( p_run->p_buffer,
                              p_paragraph->p_code_points + p_run->i_start_offset,
                              p_run->i_end_offset - p_run->i_start_offset, 0,
                              p_run->i_end_offset - p_run->i_start_offset );
-#endif
         hb_shape( p_run->p_hb_font, p_run->p_buffer, 0, 0 );
         p_run->p_glyph_infos =
             hb_buffer_get_glyph_infos( p_run->p_buffer, &p_run->i_glyph_count );
@@ -1106,7 +1099,7 @@ static int LayoutLine( filter_t *p_filter,
     int i_last_run = -1;
     run_desc_t *p_run = 0;
     const text_style_t *p_style = 0;
-    FT_Face p_face = 0;
+    FT_Face p_face = NULL;
     FT_Vector pen = { .x = 0, .y = 0 };
     int i_line_index = 0;
 
@@ -1229,7 +1222,7 @@ static int LayoutLine( filter_t *p_filter,
         int i_line_offset    = 0;
         int i_line_thickness = 0;
 
-        if( p_ch->p_style->i_style_flags & (STYLE_UNDERLINE | STYLE_STRIKEOUT) )
+        if( ( p_ch->p_style->i_style_flags & (STYLE_UNDERLINE | STYLE_STRIKEOUT) ) && p_face )
         {
             i_line_offset =
                 labs( FT_FLOOR( FT_MulFix( p_face->underline_position,

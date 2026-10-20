@@ -55,9 +55,14 @@ static void CommonChangeThumbnailClip(vout_display_t *, bool show);
 #if !VLC_WINSTORE_APP
 static int  CommonControlSetFullscreen(vout_display_t *, bool is_fullscreen);
 
-static bool GetRect(const vout_display_sys_t *sys, RECT *out)
+static bool GetWindowSize(const vout_display_sys_t *sys, UINT *w, UINT *h)
 {
-    return GetClientRect(sys->hwnd, out);
+    RECT out;
+    if (!GetClientRect(sys->hwnd, &out))
+        return false;
+    *w = out.right;  // out.left is zero
+    *h = out.bottom; // out.top is zero
+    return true;
 }
 #endif
 
@@ -87,7 +92,7 @@ int CommonInit(vout_display_t *vd)
     sys->pf_GetPictureWidth  = GetPictureWidth;
     sys->pf_GetPictureHeight = GetPictureHeight;
 #if !VLC_WINSTORE_APP
-    sys->pf_GetRect = GetRect;
+    sys->pf_GetWindowSize = GetWindowSize;
     SetRectEmpty(&sys->rect_display);
     SetRectEmpty(&sys->rect_parent);
 
@@ -113,6 +118,8 @@ int CommonInit(vout_display_t *vd)
     cfg.y      = var_InheritInteger(vd, "video-y");
     cfg.width  = vd->cfg->display.width;
     cfg.height = vd->cfg->display.height;
+
+    sys->src_fmt = &vd->source;
 
     event_hwnd_t hwnd;
     if (EventThreadStart(sys->event, &hwnd, &cfg))
@@ -156,13 +163,12 @@ void UpdateRects(vout_display_t *vd,
     bool is_forced)
 {
     vout_display_sys_t *sys = vd->sys;
-    const video_format_t *source = &vd->source;
+    const video_format_t *source = sys->src_fmt;
 #define rect_src sys->rect_src
 #define rect_src_clipped sys->rect_src_clipped
 #define rect_dest sys->rect_dest
 #define rect_dest_clipped sys->rect_dest_clipped
 
-    RECT  rect;
     POINT point;
 
     /* */
@@ -170,37 +176,48 @@ void UpdateRects(vout_display_t *vd,
         cfg = vd->cfg;
 
     /* Retrieve the window size */
-    if (!sys->pf_GetRect(sys, &rect))
+    UINT window_width, window_height;
+    if (!sys->pf_GetWindowSize(sys, &window_width, &window_height))
         return;
 
     /* Retrieve the window position */
     point.x = point.y = 0;
 #if !VLC_WINSTORE_APP
-    ClientToScreen(sys->hwnd, &point);
+    if (likely(sys->hwnd)) // internal rendering
+        ClientToScreen(sys->hwnd, &point);
 #endif
 
     /* If nothing changed, we can return */
     bool has_moved;
     bool is_resized;
-#if VLC_WINSTORE_APP
-    has_moved = false;
-    is_resized = rect.right != (sys->rect_display.right - sys->rect_display.left) ||
-        rect.bottom != (sys->rect_display.bottom - sys->rect_display.top);
-    sys->rect_display = rect;
-#else
-    EventThreadUpdateWindowPosition(sys->event, &has_moved, &is_resized,
-        point.x, point.y,
-        rect.right, rect.bottom);
+    if (unlikely(!sys->event)) // external rendering
+    {
+        has_moved = false;
+        is_resized =
+            window_width  != (UINT)(sys->rect_display.right - sys->rect_display.left) ||
+            window_height != (UINT)(sys->rect_display.bottom - sys->rect_display.top);
+        sys->rect_display.left = 0;
+        sys->rect_display.top = 0;
+        sys->rect_display.right = window_width;
+        sys->rect_display.bottom = window_height;
+    }
+#if !VLC_WINSTORE_APP
+    else
+    {
+        EventThreadUpdateWindowPosition(sys->event, &has_moved, &is_resized,
+            point.x, point.y,
+            window_width, window_height);
+    }
 #endif
     if (is_resized)
-        vout_display_SendEventDisplaySize(vd, rect.right, rect.bottom);
+        vout_display_SendEventDisplaySize(vd, window_width, window_height);
     if (!is_forced && !has_moved && !is_resized)
         return;
 
     /* Update the window position and size */
     vout_display_cfg_t place_cfg = *cfg;
-    place_cfg.display.width = rect.right;
-    place_cfg.display.height = rect.bottom;
+    place_cfg.display.width = window_width;
+    place_cfg.display.height = window_height;
 
 #if (defined(MODULE_NAME_IS_glwin32))
     /* Reverse vertical alignment as the GL tex are Y inverted */
@@ -214,20 +231,33 @@ void UpdateRects(vout_display_t *vd,
     vout_display_PlacePicture(&place, source, &place_cfg, false);
 
 #if !VLC_WINSTORE_APP
-    EventThreadUpdateSourceAndPlace(sys->event, source, &place);
+    if (likely(sys->event)) // internal rendering
+    {
+        EventThreadUpdateSourceAndPlace(sys->event, source, &place);
 
-    if (sys->hvideownd)
-        SetWindowPos(sys->hvideownd, 0,
-            place.x, place.y, place.width, place.height,
-            SWP_NOCOPYBITS | SWP_NOZORDER | SWP_ASYNCWINDOWPOS);
+        if (sys->hvideownd)
+            SetWindowPos(sys->hvideownd, 0,
+                place.x, place.y, place.width, place.height,
+                SWP_NOCOPYBITS | SWP_NOZORDER | SWP_ASYNCWINDOWPOS);
+    }
 #endif
 
     /* Destination image position and dimensions */
-#if (defined(MODULE_NAME_IS_direct3d9) || defined(MODULE_NAME_IS_direct3d11)) && !VLC_WINSTORE_APP
-    rect_dest.left = 0;
-    rect_dest.right = place.width;
-    rect_dest.top = 0;
-    rect_dest.bottom = place.height;
+#if (defined(MODULE_NAME_IS_direct3d9) || defined(MODULE_NAME_IS_direct3d11))
+    if (unlikely(!sys->event)) // external rendering
+    {
+        rect_dest.left = place.x;
+        rect_dest.right = rect_dest.left + place.width;
+        rect_dest.top = place.y;
+        rect_dest.bottom = rect_dest.top + place.height;
+    }
+    else
+    {
+        rect_dest.left = 0;
+        rect_dest.right = place.width;
+        rect_dest.top = 0;
+        rect_dest.bottom = place.height;
+    }
 #else
     rect_dest.left = point.x + place.x;
     rect_dest.right = rect_dest.left + place.width;
@@ -270,9 +300,7 @@ void UpdateRects(vout_display_t *vd,
     /* the 2 following lines are to fix a bug when clicking on the desktop */
     if ((rect_dest_clipped.right - rect_dest_clipped.left) == 0 ||
         (rect_dest_clipped.bottom - rect_dest_clipped.top) == 0) {
-#if !VLC_WINSTORE_APP
-        SetRectEmpty(&rect_src_clipped);
-#endif
+        rect_src_clipped = (RECT){0, 0, 0, 0};
         goto exit;
     }
 
@@ -368,6 +396,7 @@ void CommonClean(vout_display_t *vd)
             HRESULT hr = pf_DXGIGetDebugInterface(&IID_IDXGIDebug, (void**)&pDXGIDebug);
             if (SUCCEEDED(hr) && pDXGIDebug) {
                 hr = IDXGIDebug_ReportLiveObjects(pDXGIDebug, DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
+                IDXGIDebug_Release(pDXGIDebug);
             }
         }
         FreeLibrary(sys->dxgidebug_dll);
@@ -417,7 +446,7 @@ void CommonManage(vout_display_t *vd)
     }
 
     /* HasMoved means here resize or move */
-    if (EventThreadGetAndResetHasMoved(sys->event))
+    if (!sys->event || EventThreadGetAndResetHasMoved(sys->event))
         UpdateRects(vd, NULL, false);
 }
 
@@ -519,7 +548,7 @@ static void CommonChangeThumbnailClip(vout_display_t *vd, bool show)
         hr = taskbl->lpVtbl->SetThumbnailClip(taskbl, hroot,
                                                  show ? &video : NULL);
         if ( hr != S_OK )
-            msg_Err(vd, "SetThumbNailClip failed: 0x%0lx", hr);
+            msg_Err(vd, "SetThumbNailClip failed: 0x%lX", hr);
 
         taskbl->lpVtbl->Release(taskbl);
     }
@@ -646,6 +675,8 @@ int CommonControl(vout_display_t *vd, int query, va_list args)
 #if !VLC_WINSTORE_APP
     case VOUT_DISPLAY_CHANGE_DISPLAY_SIZE:   /* const vout_display_cfg_t *p_cfg */
     {   /* Update dimensions */
+        if (unlikely(!sys->event)) // external rendering
+            return VLC_EGENERIC;
         const vout_display_cfg_t *cfg = va_arg(args, const vout_display_cfg_t *);
         RECT rect_window = {
             .top    = 0,
@@ -664,6 +695,8 @@ int CommonControl(vout_display_t *vd, int query, va_list args)
         return VLC_SUCCESS;
     }
     case VOUT_DISPLAY_CHANGE_WINDOW_STATE: {       /* unsigned state */
+        if (unlikely(!sys->event)) // external rendering
+            return VLC_EGENERIC;
         const unsigned state = va_arg(args, unsigned);
         const bool is_on_top = (state & VOUT_WINDOW_STATE_ABOVE) != 0;
 #ifdef MODULE_NAME_IS_direct3d9
@@ -683,6 +716,8 @@ int CommonControl(vout_display_t *vd, int query, va_list args)
         return VLC_SUCCESS;
     }
     case VOUT_DISPLAY_CHANGE_FULLSCREEN: {
+        if (unlikely(!sys->event)) // external rendering
+            return VLC_EGENERIC;
         bool fs = va_arg(args, int);
         if (CommonControlSetFullscreen(vd, fs))
             return VLC_EGENERIC;

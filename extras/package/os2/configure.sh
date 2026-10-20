@@ -10,7 +10,6 @@ OPTIONS="
       --enable-sftp
       --enable-vcd
       --enable-libcddb
-      --enable-realrtsp
       --enable-dvbpsi
       --enable-ogg
       --enable-mad
@@ -19,9 +18,7 @@ OPTIONS="
       --enable-avformat
       --enable-swscale
       --enable-postproc
-      --enable-a52
       --enable-flac
-      --enable-libmpeg2
       --enable-vorbis
       --enable-png
       --enable-x264

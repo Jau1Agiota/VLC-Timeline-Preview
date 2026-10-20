@@ -29,7 +29,7 @@
 # include <config.h>
 #endif
 
-#include <assert.h>
+#include <cassert>
 
 #include <vlc_common.h>
 #include <vlc_block.h>
@@ -340,7 +340,7 @@ ssize_t BDAOutput::Pop(void *buf, size_t len, int ms)
 
     vlc_mutex_locker l( &lock );
 
-    mtime_t i_deadline = mdate() + ms * 1000;
+    vlc_tick_t i_deadline = mdate() + VLC_TICK_FROM_MS( ms );
     while( !p_first )
     {
         if( vlc_cond_timedwait( &wait, &lock, i_deadline ) )
@@ -2054,7 +2054,7 @@ HRESULT BDAGraph::Check( REFCLSID guid_this_network_type )
      * available, so return with an error. */
 
     long l_adapter = -1;
-    l_adapter = var_GetInteger( p_access, "dvb-adapter" );
+    l_adapter = var_InheritInteger( p_access, "dvb-adapter" );
     if( l_tuner_used < 0 && l_adapter >= 0 )
         l_tuner_used = l_adapter - 1;
 
@@ -3000,7 +3000,7 @@ HRESULT BDAGraph::Start()
     hr = p_media_control->Run();
     if( SUCCEEDED( hr ) )
     {
-        msg_Dbg( p_access, "Start: Graph started, hr=0x%lx", hr );
+        msg_Dbg( p_access, "Start: Graph started, hr=0x%lX", hr );
         return S_OK;
     }
 
@@ -3019,7 +3019,7 @@ HRESULT BDAGraph::Start()
     msg_Dbg( p_access, "Start: got state" );
     if( i_state == State_Running )
     {
-        msg_Dbg( p_access, "Graph started after a delay, hr=0x%lx", hr );
+        msg_Dbg( p_access, "Graph started after a delay, hr=0x%lX", hr );
         return S_OK;
     }
 

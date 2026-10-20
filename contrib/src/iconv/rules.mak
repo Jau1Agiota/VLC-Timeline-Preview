@@ -1,5 +1,5 @@
 # libiconv
-LIBICONV_VERSION := 1.15
+LIBICONV_VERSION := 1.17
 LIBICONV_URL := $(GNU)/libiconv/libiconv-$(LIBICONV_VERSION).tar.gz
 
 PKGS += iconv
@@ -22,16 +22,25 @@ $(TARBALLS)/libiconv-$(LIBICONV_VERSION).tar.gz:
 
 iconv: libiconv-$(LIBICONV_VERSION).tar.gz .sum-iconv
 	$(UNPACK)
-	$(APPLY) $(SRC)/iconv/win32.patch
+	$(UPDATE_AUTOCONFIG)
 	$(APPLY) $(SRC)/iconv/bins.patch
-ifdef HAVE_WIN64
-	$(APPLY) $(SRC)/iconv/libiconv-win64.patch
-endif
-	$(UPDATE_AUTOCONFIG) && cd $(UNPACK_DIR) && mv config.guess config.sub build-aux
-	$(UPDATE_AUTOCONFIG) && cd $(UNPACK_DIR) && mv config.guess config.sub libcharset/build-aux
+
+	# use CreateFile2 instead of CreateFile in UWP
+	$(APPLY) $(SRC)/iconv/0001-Use-CreateFile2-in-UWP-builds.patch
+
+	# fix forbidden UWP call which can't be upstreamed as they won't
+	# differentiate for winstore, only _WIN32_WINNT
+	$(APPLY) $(SRC)/iconv/0001-do-not-call-GetHandleInformation-in-Winstore-apps.patch
+
+	cd $(UNPACK_DIR) && cp config.guess config.sub build-aux \
+	                 && mv config.guess config.sub libcharset/build-aux
 	$(MOVE)
 
+ICONV_CONF := --disable-nls
+
 .iconv: iconv
-	cd $< && $(HOSTVARS) ./configure CFLAGS="$(CFLAGS) -fgnu89-inline" $(HOSTCONF) --disable-nls
-	cd $< && $(MAKE) install
+	$(MAKEBUILDDIR)
+	$(MAKECONFIGURE) $(ICONV_CONF)
+	+$(MAKEBUILD)
+	+$(MAKEBUILD) install
 	touch $@

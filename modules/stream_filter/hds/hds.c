@@ -288,7 +288,7 @@ static uint8_t* parse_asrt( vlc_object_t* p_this,
 
     if( 0 != memcmp( "asrt", data_p, 4 ) )
     {
-        msg_Err( p_this, "Cant find asrt in bootstrap" );
+        msg_Err( p_this, "Can't find asrt in bootstrap" );
         return NULL;
     }
     data_p += 4;
@@ -392,7 +392,7 @@ static uint8_t* parse_afrt( vlc_object_t* p_this,
 
     if( 0 != memcmp( data_p, "afrt", 4 ) )
     {
-        msg_Err( p_this, "Cant find afrt in bootstrap" );
+        msg_Err( p_this, "Can't find afrt in bootstrap" );
         return NULL;
     }
     data_p += 4;
@@ -522,7 +522,7 @@ static void parse_BootstrapData( vlc_object_t* p_this,
 
     if( 0 != memcmp( data_p, "abst", 4 ) )
     {
-        msg_Warn( p_this, "Cant find abst in bootstrap" );
+        msg_Warn( p_this, "Can't find abst in bootstrap" );
         return;
     }
     data_p += 4;
@@ -809,13 +809,12 @@ static uint8_t* download_chunk( stream_t *s,
     free( fragment_url );
 
     int64_t size = stream_Size( download_stream );
-    chunk->data_len = (uint32_t) size;
-
     if( size > MAX_REQUEST_SIZE )
     {
         msg_Err(s, "Strangely-large chunk of %"PRIi64" Bytes", size );
         return NULL;
     }
+    chunk->data_len = (uint32_t) size;
 
     uint8_t* data = malloc( size );
     if( ! data )
@@ -1131,7 +1130,7 @@ static void* live_thread( void* p )
         }
     }
 
-    mtime_t last_dl_start_time;
+    vlc_tick_t last_dl_start_time;
 
     while( ! sys->closed )
     {
@@ -1144,25 +1143,32 @@ static void* live_thread( void* p )
         else
         {
             int64_t size = stream_Size( download_stream );
-            uint8_t* data = malloc( size );
-            int read = vlc_stream_Read( download_stream, data,
-                                    size );
-            if( read < size )
+            if( size == 0 )
             {
-                msg_Err( p_this, "Requested %"PRIi64" bytes, "  \
-                         "but only got %d", size, read );
-
+                msg_Err( s, "Unknown stream size for %s", abst_url );
             }
             else
             {
-                vlc_mutex_lock( & hds_stream->abst_lock );
-                parse_BootstrapData( p_this, hds_stream,
-                                     data, data + read );
-                vlc_mutex_unlock( & hds_stream->abst_lock );
-                maintain_live_chunks( p_this, hds_stream );
-            }
+                uint8_t* data = malloc( size );
+                int read = vlc_stream_Read( download_stream, data,
+                                        size );
+                if( read < size )
+                {
+                    msg_Err( p_this, "Requested %"PRIi64" bytes, "  \
+                             "but only got %d", size, read );
 
-            free( data );
+                }
+                else
+                {
+                    vlc_mutex_lock( & hds_stream->abst_lock );
+                    parse_BootstrapData( p_this, hds_stream,
+                                         data, data + read );
+                    vlc_mutex_unlock( & hds_stream->abst_lock );
+                    maintain_live_chunks( p_this, hds_stream );
+                }
+
+                free( data );
+            }
 
             vlc_stream_Delete( download_stream );
         }
@@ -1557,7 +1563,7 @@ static int parse_Manifest( stream_t *s, manifest_t *m )
                     new_stream->metadata_len = medias[i].metadata_len;
                 }
 
-                if( ! sys->live )
+                if( ! sys->live && bootstraps[j].data )
                 {
                     parse_BootstrapData( (vlc_object_t*)s,
                                          new_stream,
@@ -1579,7 +1585,7 @@ static int parse_Manifest( stream_t *s, manifest_t *m )
                             total_duration += chunk->duration;
                     }
                 }
-                else
+                else if( bootstraps[j].url )
                 {
                     if( !(new_stream->abst_url = strdup( bootstraps[j].url ) ) )
                     {

@@ -1,7 +1,7 @@
 # aribb24
 
 ARIBB24_VERSION := 1.0.3
-ARIBB24_URL := https://github.com/nkoriyama/aribb24/archive/v$(ARIBB24_VERSION).tar.gz
+ARIBB24_URL := $(GITHUB)/nkoriyama/aribb24/archive/v$(ARIBB24_VERSION).tar.gz
 
 ifdef GPL
 ifdef GNUV3
@@ -23,12 +23,15 @@ aribb24: aribb24-$(ARIBB24_VERSION).tar.gz .sum-aribb24
 	$(call pkg_static,"src/aribb24.pc.in")
 	$(MOVE)
 
-DEPS_aribb24 = png
+DEPS_aribb24 = png $(DEPS_png)
 
 .aribb24: aribb24
 	$(REQUIRE_GPL)
 	$(REQUIRE_GNUV3)
-	cd $< && $(SHELL) ./bootstrap
-	cd $< && $(HOSTVARS) ./configure $(HOSTCONF)
-	cd $< && $(MAKE) && $(MAKE) install
+	mkdir -p $</m4
+	$(RECONF)
+	$(MAKEBUILDDIR)
+	$(MAKECONFIGURE)
+	+$(MAKEBUILD)
+	+$(MAKEBUILD) install
 	touch $@

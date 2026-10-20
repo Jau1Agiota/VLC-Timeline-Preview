@@ -22,14 +22,16 @@
 
 #include <vector>
 #include <vlc_common.h>
-#include "../tools/Properties.hpp"
+#include <vlc_mtime.h>
+
+#include "../tools/Compatibility.hpp"
 
 namespace adaptive
 {
     namespace playlist
     {
         class BaseRepresentation;
-        class AbstractPlaylist;
+        class BasePlaylist;
     }
 
     namespace logic
@@ -43,23 +45,24 @@ namespace adaptive
                 virtual ~AbstractBufferingLogic() {}
 
                 virtual uint64_t getStartSegmentNumber(BaseRepresentation *) const = 0;
-                virtual mtime_t getMinBuffering(const AbstractPlaylist *) const = 0;
-                virtual mtime_t getMaxBuffering(const AbstractPlaylist *) const = 0;
-                virtual mtime_t getLiveDelay(const AbstractPlaylist *) const = 0;
-                void setUserMinBuffering(mtime_t);
-                void setUserMaxBuffering(mtime_t);
-                void setUserLiveDelay(mtime_t);
+                virtual vlc_tick_t getMinBuffering(const BasePlaylist *) const = 0;
+                virtual vlc_tick_t getMaxBuffering(const BasePlaylist *) const = 0;
+                virtual vlc_tick_t getLiveDelay(const BasePlaylist *) const = 0;
+                virtual vlc_tick_t getStableBuffering(const BasePlaylist *) const = 0;
+                void setUserMinBuffering(vlc_tick_t);
+                void setUserMaxBuffering(vlc_tick_t);
+                void setUserLiveDelay(vlc_tick_t);
                 void setLowDelay(bool);
-                static const mtime_t BUFFERING_LOWEST_LIMIT;
-                static const mtime_t DEFAULT_MIN_BUFFERING;
-                static const mtime_t DEFAULT_MAX_BUFFERING;
-                static const mtime_t DEFAULT_LIVE_BUFFERING;
+                static const vlc_tick_t BUFFERING_LOWEST_LIMIT;
+                static const vlc_tick_t DEFAULT_MIN_BUFFERING;
+                static const vlc_tick_t DEFAULT_MAX_BUFFERING;
+                static const vlc_tick_t DEFAULT_LIVE_BUFFERING;
 
             protected:
-                mtime_t userMinBuffering;
-                mtime_t userMaxBuffering;
-                mtime_t userLiveDelay;
-                Undef<bool> userLowLatency;
+                vlc_tick_t userMinBuffering;
+                vlc_tick_t userMaxBuffering;
+                vlc_tick_t userLiveDelay;
+                optional<bool> userLowLatency;
         };
 
         class DefaultBufferingLogic : public AbstractBufferingLogic
@@ -67,15 +70,18 @@ namespace adaptive
             public:
                 DefaultBufferingLogic();
                 virtual ~DefaultBufferingLogic() {}
-                virtual uint64_t getStartSegmentNumber(BaseRepresentation *) const; /* impl */
-                virtual mtime_t getMinBuffering(const AbstractPlaylist *) const; /* impl */
-                virtual mtime_t getMaxBuffering(const AbstractPlaylist *) const; /* impl */
-                virtual mtime_t getLiveDelay(const AbstractPlaylist *) const; /* impl */
+                virtual uint64_t getStartSegmentNumber(BaseRepresentation *) const override;
+                virtual vlc_tick_t getMinBuffering(const BasePlaylist *) const override;
+                virtual vlc_tick_t getMaxBuffering(const BasePlaylist *) const override;
+                virtual vlc_tick_t getLiveDelay(const BasePlaylist *) const override;
+                virtual vlc_tick_t getStableBuffering(const BasePlaylist *) const override;
+                static const unsigned SAFETY_BUFFERING_EDGE_OFFSET;
+                static const unsigned SAFETY_EXPURGING_OFFSET;
 
             protected:
-                mtime_t getBufferingOffset(const AbstractPlaylist *) const;
+                vlc_tick_t getBufferingOffset(const BasePlaylist *) const;
                 uint64_t getLiveStartSegmentNumber(BaseRepresentation *) const;
-                bool isLowLatency(const AbstractPlaylist *) const;
+                bool isLowLatency(const BasePlaylist *) const;
         };
     }
 }

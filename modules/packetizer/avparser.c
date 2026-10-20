@@ -67,6 +67,8 @@ static void FlushPacketizer( decoder_t *p_dec )
 {
     avparser_ClosePacketizer( VLC_OBJECT( p_dec ) );
     p_dec->p_sys = NULL;
+    es_format_Clean( &p_dec->fmt_out );
+    es_format_Init( &p_dec->fmt_out, p_dec->fmt_in.i_cat, 0 );
     int res = avparser_OpenPacketizer( VLC_OBJECT( p_dec ) );
     if ( res != VLC_SUCCESS )
     {
@@ -86,6 +88,9 @@ int avparser_OpenPacketizer( vlc_object_t *p_this )
     decoder_t     *p_dec = (decoder_t*)p_this;
     decoder_sys_t *p_sys;
 
+    if( p_dec->fmt_in.i_cat != VIDEO_ES )
+        return VLC_EGENERIC;
+
     /* Restrict to VP9 for now */
     if( p_dec->fmt_in.i_codec != VLC_CODEC_VP9 )
         return VLC_EGENERIC;
@@ -104,7 +109,7 @@ int avparser_OpenPacketizer( vlc_object_t *p_this )
     if( !p_ctx )
         return VLC_EGENERIC;
 
-    AVCodec * p_codec = avcodec_find_decoder( i_avcodec_id );
+    const AVCodec * p_codec = avcodec_find_decoder( i_avcodec_id );
     if( unlikely( !p_codec ) )
     {
         av_parser_close( p_ctx );
@@ -204,7 +209,7 @@ static block_t *Packetize ( decoder_t *p_dec, block_t **pp_block )
         memcpy( p_ret->p_buffer, p_outdata, i_outlen );
         p_ret->i_pts = p_block->i_pts;
         p_ret->i_dts = p_block->i_dts;
-        p_block->i_pts = p_block->i_dts = VLC_TS_INVALID;
+        p_block->i_pts = p_block->i_dts = VLC_TICK_INVALID;
     }
     else /* as-is block is now used */
     {

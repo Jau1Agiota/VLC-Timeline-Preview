@@ -221,7 +221,7 @@ static subpicture_t *ParseText( decoder_t *p_dec, block_t *p_block )
         return NULL;
 
     /* We cannot display a subpicture with no date */
-    if( p_block->i_pts <= VLC_TS_INVALID )
+    if( p_block->i_pts <= VLC_TICK_INVALID )
     {
         msg_Warn( p_dec, "subtitle without a date" );
         return NULL;
@@ -438,7 +438,7 @@ static subpicture_region_t *CreateTextRegion( decoder_t *p_dec,
         }
 
         /* Set default or user align/magin.
-         * Style overriden if no user value. */
+         * Style overridden if no user value. */
         p_text_region->i_x = i_sys_align > 0 ? 20 : 0;
         p_text_region->i_y = 10;
         p_text_region->i_align = SUBPICTURE_ALIGN_BOTTOM |

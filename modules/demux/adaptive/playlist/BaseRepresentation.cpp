@@ -29,20 +29,25 @@
 
 #include "BaseRepresentation.h"
 #include "BaseAdaptationSet.h"
+#include "BasePlaylist.hpp"
 #include "SegmentTemplate.h"
 #include "SegmentTimeline.h"
+#include "SegmentList.h"
+#include "SegmentBase.h"
 #include "../ID.hpp"
 #include "../tools/Helper.h"
+
+#include <limits>
 
 using namespace adaptive;
 using namespace adaptive::playlist;
 
 BaseRepresentation::BaseRepresentation( BaseAdaptationSet *set ) :
+                CommonAttributesElements( set ),
                 SegmentInformation( set ),
                 adaptationSet   ( set ),
                 bandwidth       (0)
 {
-    b_consistent = true;
 }
 
 BaseRepresentation::~BaseRepresentation ()
@@ -82,9 +87,50 @@ void BaseRepresentation::addCodecs(const std::string &s)
         codecs.push_back(*it);
 }
 
+void BaseRepresentation::getCodecsDesc(CodecDescriptionList *desc) const
+{
+    std::list<std::string> codecs = getCodecs();
+    if(codecs.empty())
+    {
+        const StreamFormat format = getStreamFormat();
+        switch(format)
+        {
+            case StreamFormat::Type::TTML:
+                codecs.push_front("stpp");
+                break;
+            case StreamFormat::Type::WebVTT:
+                codecs.push_front("wvtt");
+                break;
+            default:
+                break;
+        }
+    }
+
+    for(auto it = codecs.cbegin(); it != codecs.cend(); ++it)
+    {
+        CodecDescription *dsc = makeCodecDescription(*it);
+        dsc->setDescription(adaptationSet->description);
+        dsc->setLanguage(adaptationSet->getLang());
+        if(getWidth() > 0 && getHeight() > 0)
+            dsc->setDimensions(getWidth(), getHeight());
+        desc->push_back(dsc);
+    }
+}
+
+CodecDescription * BaseRepresentation::makeCodecDescription(const std::string &codec) const
+{
+    return new CodecDescription(codec);
+}
+
 bool BaseRepresentation::needsUpdate(uint64_t) const
 {
     return false;
+}
+
+bool BaseRepresentation::needsIndex() const
+{
+    SegmentBase *base = inheritSegmentBase();
+    return base && base->subSegments().empty();
 }
 
 bool BaseRepresentation::runLocalUpdates(SharedResources *)
@@ -97,48 +143,27 @@ void BaseRepresentation::scheduleNextUpdate(uint64_t, bool)
 
 }
 
-bool BaseRepresentation::consistentSegmentNumber() const
+bool BaseRepresentation::canNoLongerUpdate() const
 {
-    return b_consistent;
+    return false;
 }
 
-void BaseRepresentation::pruneByPlaybackTime(mtime_t time)
+void BaseRepresentation::pruneByPlaybackTime(vlc_tick_t time)
 {
     uint64_t num;
     if(getSegmentNumberByTime(time, &num))
         pruneBySegmentNumber(num);
 }
 
-mtime_t BaseRepresentation::getMinAheadTime(uint64_t curnum) const
+vlc_tick_t BaseRepresentation::getMinAheadTime(uint64_t curnum) const
 {
-    std::vector<ISegment *> seglist;
-    getSegments(INFOTYPE_MEDIA, seglist);
+    AbstractSegmentBaseType *profile = inheritSegmentTemplate();
+    if(!profile)
+        profile = inheritSegmentList();
+    if(!profile)
+        profile = inheritSegmentBase();
 
-    if(seglist.size() == 1 && seglist.front()->isTemplate())
-    {
-        const MediaSegmentTemplate *templ = dynamic_cast<MediaSegmentTemplate *>(seglist.front());
-        if(templ)
-        {
-            const Timescale timescale = templ->inheritTimescale();
-            stime_t i_length = templ->getMinAheadScaledTime(curnum);
-            return timescale.ToTime(i_length);
-        }
-
-        /* should not happen */
-        return CLOCK_FREQ;
-    }
-
-    mtime_t minTime = 0;
-    const Timescale timescale = inheritTimescale();
-    std::vector<ISegment *>::const_iterator it;
-    for(it = seglist.begin(); it != seglist.end(); ++it)
-    {
-        const ISegment *seg = *it;
-        if(seg->getSequenceNumber() > curnum)
-            minTime += timescale.ToTime(seg->duration.Get());
-    }
-
-    return minTime;
+    return profile ? profile->getMinAheadTime(curnum) : 0;
 }
 
 void BaseRepresentation::debug(vlc_object_t *obj, int indent) const
@@ -155,15 +180,13 @@ void BaseRepresentation::debug(vlc_object_t *obj, int indent) const
         text.append("]");
     }
     msg_Dbg(obj, "%s", text.c_str());
-    std::vector<ISegment *> list;
-    getAllSegments(list);
-    std::vector<ISegment *>::const_iterator l;
-    for(l = list.begin(); l != list.end(); ++l)
-        (*l)->debug(obj, indent + 1);
+    const AbstractSegmentBaseType *profile = getProfile();
+    if(profile)
+        profile->debug(obj, indent + 1);
 }
 
 std::string BaseRepresentation::contextualize(size_t, const std::string &component,
-                                              const BaseSegmentTemplate *) const
+                                              const SegmentTemplate *) const
 {
     return component;
 }
@@ -177,4 +200,92 @@ bool BaseRepresentation::bwCompare(const BaseRepresentation *a,
 bool BaseRepresentation::validateCodec(const std::string &) const
 {
     return true;
+}
+
+uint64_t BaseRepresentation::translateSegmentNumber(uint64_t num, const BaseRepresentation *) const
+{
+    return num;
+}
+
+bool BaseRepresentation::getSegmentNumberByTime(vlc_tick_t time, uint64_t *ret) const
+{
+    const AbstractSegmentBaseType *profile = inheritSegmentProfile();
+    return profile && profile->getSegmentNumberByTime(time, ret);
+}
+
+bool BaseRepresentation::getPlaybackTimeDurationBySegmentNumber(uint64_t number,
+                                                                vlc_tick_t *time, vlc_tick_t *duration) const
+{
+    if(number == std::numeric_limits<uint64_t>::max())
+        return false;
+
+    const AbstractSegmentBaseType *profile = inheritSegmentProfile();
+    return profile && profile->getPlaybackTimeDurationBySegmentNumber(number, time, duration);
+}
+
+bool BaseRepresentation::getMediaPlaybackRange(vlc_tick_t *rangeBegin,
+                                               vlc_tick_t *rangeEnd,
+                                               vlc_tick_t *rangeLength) const
+{
+    SegmentTemplate *mediaSegmentTemplate = inheritSegmentTemplate();
+    if( mediaSegmentTemplate )
+    {
+        const Timescale timescale = mediaSegmentTemplate->inheritTimescale();
+        const SegmentTimeline *timeline = mediaSegmentTemplate->inheritSegmentTimeline();
+        if( timeline )
+        {
+            stime_t startTime, endTime, duration;
+            if(!timeline->getScaledPlaybackTimeDurationBySegmentNumber(timeline->minElementNumber(),
+                                                                       &startTime, &duration) ||
+               !timeline->getScaledPlaybackTimeDurationBySegmentNumber(timeline->maxElementNumber(),
+                                                                       &endTime, &duration))
+                return false;
+
+            *rangeBegin = timescale.ToTime(startTime);
+            *rangeEnd = timescale.ToTime(endTime+duration);
+            *rangeLength = timescale.ToTime(timeline->getTotalLength());
+            return true;
+        }
+        /* Else compute, current time and timeshiftdepth based */
+        else if( mediaSegmentTemplate->inheritDuration() )
+        {
+            *rangeEnd = 0;
+            *rangeBegin = -1 * getPlaylist()->timeShiftBufferDepth;
+            *rangeLength = getPlaylist()->timeShiftBufferDepth;
+            return true;
+        }
+    }
+
+    SegmentList *segmentList = inheritSegmentList();
+    if ( segmentList && !segmentList->getSegments().empty() )
+    {
+        const Timescale timescale = segmentList->inheritTimescale();
+        const std::vector<Segment *> &list = segmentList->getSegments();
+        const ISegment *back = list.back();
+        const stime_t startTime = list.front()->startTime;
+        const stime_t endTime = back->startTime + back->duration;
+        *rangeBegin = timescale.ToTime(startTime);
+        *rangeEnd = timescale.ToTime(endTime);
+        *rangeLength = timescale.ToTime(segmentList->getTotalLength());
+        return true;
+    }
+
+    SegmentBase *segmentBase = inheritSegmentBase();
+    if( segmentBase )
+    {
+        const std::vector<Segment *> &list = segmentBase->subSegments();
+        if(list.empty())
+            return false;
+
+        const Timescale timescale = inheritTimescale();
+        const Segment *back = list.back();
+        const stime_t startTime = list.front()->startTime;
+        const stime_t endTime = back->startTime + back->duration;
+        *rangeBegin = timescale.ToTime(startTime);
+        *rangeEnd = timescale.ToTime(endTime);
+        *rangeLength = 0;
+        return true;
+    }
+
+    return false;
 }

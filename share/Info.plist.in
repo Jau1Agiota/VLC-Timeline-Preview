@@ -8,6 +8,8 @@
 	<true/>
 	<key>CFBundleAllowMixedLocalizations</key>
 	<true/>
+	<key>NSPrefersDisplaySafeAreaCompatibilityMode</key>
+	<false/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -355,6 +357,18 @@
 			<string>DTS Encoded Audio File</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
+		</dict>
+		<dict>
+			<key>CFBundleTypeIconFile</key>
+			<string>movie.icns</string>
+			<key>CFBundleTypeName</key>
+			<string>DAV Video File</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>org.videolan.dav</string>
+			</array>
 		</dict>
 		<dict>
 			<key>CFBundleTypeExtensions</key>
@@ -1377,12 +1391,14 @@
 	<string>VLC</string>
 	<key>CFBundleIconFile</key>
 	<string>VLC.icns</string>
+	<key>CFBundleIconName</key>
+	<string>VLC</string>
 	<key>CFBundleIdentifier</key>
 	<string>org.videolan.vlc</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>VLC media player</string>
+	<string>VLC</string>
 	<key>CFBundleDisplayName</key>
 	<string>VLC</string>
 	<key>CFBundleShortVersionString</key>
@@ -2363,6 +2379,23 @@
 				<key>public.filename-extension</key>
 				<array>
 					<string>nuv</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.video</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>DAV Video File</string>
+			<key>UTTypeIdentifier</key>
+			<string>org.videolan.dav</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>dav</string>
 				</array>
 			</dict>
 		</dict>

@@ -45,8 +45,8 @@ typedef struct
     int i_height;
     int i_x;
     int i_y;
-    mtime_t i_start;
-    mtime_t i_stop;
+    vlc_tick_t i_start;
+    vlc_tick_t i_stop;
     bool b_ephemer;
     bool b_subtitle;
 } spu_properties_t;
@@ -70,11 +70,11 @@ typedef struct
 
 } subpicture_data_t;
 
-static int  ParseControlSeq( decoder_t *, mtime_t i_pts,
-                             void(*pf_queue)(decoder_t *, subpicture_t *) );
+static int  ParseControlSeq( decoder_t *, vlc_tick_t i_pts,
+                             int(*pf_queue)(decoder_t *, subpicture_t *) );
 static int  ParseRLE       ( decoder_t *, subpicture_data_t *,
-                             const spu_properties_t *, uint16_t * );
-static int  Render         ( decoder_t *, subpicture_t *, const uint16_t *,
+                             const spu_properties_t *, uint16_t *, size_t * );
+static int  Render         ( decoder_t *, subpicture_t *, const uint16_t *, size_t,
                              const subpicture_data_t *, const spu_properties_t * );
 
 /*****************************************************************************
@@ -109,6 +109,9 @@ static void CLUTIdxToYUV(const struct subs_format_t *subs,
 static void ParsePXCTLI( decoder_t *p_dec, const subpicture_data_t *p_spu_data,
                          subpicture_t *p_spu )
 {
+    if (p_spu->p_region == NULL)
+        return;
+
     plane_t *p_plane = &p_spu->p_region->p_picture->p[0];
     video_palette_t *p_palette = p_spu->p_region->fmt.p_palette;
 
@@ -196,7 +199,7 @@ static void ParsePXCTLI( decoder_t *p_dec, const subpicture_data_t *p_spu_data,
 static void OutputPicture( decoder_t *p_dec,
                            const subpicture_data_t *p_spu_data,
                            const spu_properties_t *p_spu_properties,
-                           void(*pf_queue)(decoder_t *, subpicture_t *) )
+                           int(*pf_queue)(decoder_t *, subpicture_t *) )
 {
     decoder_sys_t *p_sys = p_dec->p_sys;
     subpicture_t *p_spu;
@@ -218,7 +221,7 @@ static void OutputPicture( decoder_t *p_dec,
     if( p_spu->i_stop <= p_spu->i_start && !p_spu->b_ephemer )
     {
         /* This subtitle will live for 5 seconds or until the next subtitle */
-        p_spu->i_stop = p_spu->i_start + (mtime_t)500 * 11000;
+        p_spu->i_stop = p_spu->i_start + (vlc_tick_t)500 * 11000;
         p_spu->b_ephemer = true;
     }
 
@@ -232,9 +235,11 @@ static void OutputPicture( decoder_t *p_dec,
      */
     p_pixeldata = vlc_alloc( p_sys->i_rle_size, sizeof(*p_pixeldata) * 2 * 2 );
 
+    size_t pixeldata_size = p_sys->i_rle_size * 2 * 2; // in 16-bit
+
     /* We try to display it */
     subpicture_data_t render_spu_data = *p_spu_data; /* Need a copy */
-    if( ParseRLE( p_dec, &render_spu_data, p_spu_properties, p_pixeldata ) )
+    if( ParseRLE( p_dec, &render_spu_data, p_spu_properties, p_pixeldata, &pixeldata_size ) )
     {
         /* There was a parse error, delete the subpicture */
         subpicture_Delete( p_spu );
@@ -248,7 +253,7 @@ static void OutputPicture( decoder_t *p_dec,
              render_spu_data.pi_offset[0], render_spu_data.pi_offset[1] );
 #endif
 
-    if( Render( p_dec, p_spu, p_pixeldata, &render_spu_data, p_spu_properties ) )
+    if( Render( p_dec, p_spu, p_pixeldata, pixeldata_size, &render_spu_data, p_spu_properties ) )
     {
         subpicture_Delete( p_spu );
         free( p_pixeldata );
@@ -293,7 +298,7 @@ static int Validate( decoder_t *p_dec, unsigned i_index,
         return VLC_EGENERIC;
     }
 
-    if( p_spu_properties->i_start == VLC_TS_INVALID )
+    if( p_spu_properties->i_start == VLC_TICK_INVALID )
     {
         msg_Err( p_dec, "no `start display' command" );
         return VLC_EGENERIC;
@@ -318,7 +323,7 @@ static int Validate( decoder_t *p_dec, unsigned i_index,
  * This function parses the SPU packet and, if valid, sends it to the
  * video output.
  *****************************************************************************/
-void ParsePacket( decoder_t *p_dec, void(*pf_queue)(decoder_t *, subpicture_t *) )
+void ParsePacket( decoder_t *p_dec, int(*pf_queue)(decoder_t *, subpicture_t *) )
 {
     decoder_sys_t *p_sys = p_dec->p_sys;
 
@@ -334,8 +339,8 @@ void ParsePacket( decoder_t *p_dec, void(*pf_queue)(decoder_t *, subpicture_t *)
  * information, coordinates, and so on. For more information on the
  * subtitles format, see http://sam.zoy.org/doc/dvd/subtitles/index.html
  *****************************************************************************/
-static int ParseControlSeq( decoder_t *p_dec, mtime_t i_pts,
-                            void(*pf_queue)(decoder_t *, subpicture_t *) )
+static int ParseControlSeq( decoder_t *p_dec, vlc_tick_t i_pts,
+                            int(*pf_queue)(decoder_t *, subpicture_t *) )
 {
     decoder_sys_t *p_sys = p_dec->p_sys;
 
@@ -347,7 +352,7 @@ static int ParseControlSeq( decoder_t *p_dec, mtime_t i_pts,
 
     /* Command and date */
     uint8_t i_command = SPU_CMD_END;
-    mtime_t date = 0;
+    vlc_tick_t date = 0;
     bool b_cmd_offset = false;
     bool b_cmd_alpha = false;
 
@@ -370,8 +375,8 @@ static int ParseControlSeq( decoder_t *p_dec, mtime_t i_pts,
     /* Initialize the structure */
     spu_properties_t spu_properties;
     memset( &spu_properties, 0, sizeof(spu_properties) );
-    spu_properties.i_start = VLC_TS_INVALID;
-    spu_properties.i_stop = VLC_TS_INVALID;
+    spu_properties.i_start = VLC_TICK_INVALID;
+    spu_properties.i_stop = VLC_TICK_INVALID;
     spu_properties.b_subtitle = true;
 
     for( i_index = 4 + p_sys->i_rle_size; i_index < p_sys->i_spu_size ; )
@@ -390,7 +395,7 @@ static int ParseControlSeq( decoder_t *p_dec, mtime_t i_pts,
             b_cmd_offset = false;
             b_cmd_alpha = false;
             /* Get the control sequence date */
-            date = (mtime_t)GetWBE( &p_sys->buffer[i_index] ) * 11000;
+            date = VLC_TICK_FROM_MS(GetWBE( &p_sys->buffer[i_index] ) * 11);
 
             /* Next offset */
             i_cur_seq = i_index;
@@ -406,7 +411,7 @@ static int ParseControlSeq( decoder_t *p_dec, mtime_t i_pts,
             i_index += 4;
         }
 
-        i_command = p_sys->buffer[i_index];
+        i_command = i_index < p_sys->buffer_size ? p_sys->buffer[i_index] : (SPU_CMD_END - 1);
 
         switch( i_command )
         {
@@ -525,11 +530,11 @@ static int ParseControlSeq( decoder_t *p_dec, mtime_t i_pts,
 
             spu_properties.i_start = i_pts + date;
 
-            if( p_sys->i_spu_size >
-                i_index + 3 + 4 + (p_sys->buffer[i_index+5] >> 4) )
+            uint8_t pcxtli_count = p_sys->buffer[i_index+5] >> 4;
+            if( p_sys->i_spu_size > i_index + 3 + 4 + pcxtli_count )
             {
                 spu_data.p_pxctli = &p_sys->buffer[i_index+3 + 4];
-                spu_data.i_pxclti = p_sys->buffer[i_index+5] >> 4;
+                spu_data.i_pxclti = __MIN(pcxtli_count, (p_sys->i_spu_size - (i_index + 3 + 4)) / 6 );
             }
 
             i_index += 1 + GetWBE(&p_sys->buffer[i_index+1]);
@@ -603,7 +608,7 @@ static int ParseControlSeq( decoder_t *p_dec, mtime_t i_pts,
 static int ParseRLE( decoder_t *p_dec,
                      subpicture_data_t *p_spu_data,
                      const spu_properties_t *p_spu_properties,
-                     uint16_t *p_pixeldata )
+                     uint16_t *p_pixeldata, size_t * pixeldata_size )
 {
     decoder_sys_t *p_sys = p_dec->p_sys;
 
@@ -612,6 +617,14 @@ static int ParseRLE( decoder_t *p_dec,
     unsigned int i_x, i_y;
 
     uint16_t *p_dest = p_pixeldata;
+    size_t dest_left = *pixeldata_size;
+#define WRITE_CODE(x)         \
+    if (dest_left == 0)       \
+        break;                \
+    do {                      \
+        *p_dest++ = (x);      \
+        dest_left--;          \
+    } while(0)
 
     /* The subtitles are interlaced, we need two offsets */
     unsigned int  i_id = 0;                   /* Start on the even SPU layer */
@@ -630,17 +643,17 @@ static int ParseRLE( decoder_t *p_dec,
     pi_table[ 0 ] = p_spu_data->pi_offset[ 0 ] << 1;
     pi_table[ 1 ] = p_spu_data->pi_offset[ 1 ] << 1;
 
-    for( i_y = 0 ; i_y < i_height ; i_y++ )
+    for( i_y = 0 ; i_y < i_height && dest_left != 0 ; i_y++ )
     {
         unsigned int i_code;
         pi_offset = pi_table + i_id;
 
-        for( i_x = 0 ; i_x < i_width ; i_x += i_code >> 2 )
+        for( i_x = 0 ; i_x < i_width && dest_left != 0 ; i_x += i_code >> 2 )
         {
             i_code = 0;
             for( unsigned int i_min = 1; i_min <= 0x40 && i_code < i_min; i_min <<= 2 )
             {
-                if( (*pi_offset >> 1) >= p_sys->i_spu_size )
+                if( (*pi_offset >> 1) + 4 >= p_sys->i_spu_size )
                 {
                     msg_Err( p_dec, "out of bounds while reading rle" );
                     return VLC_EGENERIC;
@@ -698,14 +711,14 @@ static int ParseRLE( decoder_t *p_dec,
                     {
                         /* We can't be sure the current lines will be skipped,
                          * so we store the code just in case. */
-                      *p_dest++ = i_code;
+                      WRITE_CODE( i_code );
                       i_skipped_bottom++;
                     }
                 }
                 else
                 {
                     /* We got a valid code, store it */
-                    *p_dest++ = i_code;
+                    WRITE_CODE( i_code );
 
                     /* Valid code means no blank line */
                     b_empty_top = false;
@@ -714,7 +727,7 @@ static int ParseRLE( decoder_t *p_dec,
             }
             else
             {
-                *p_dest++ = i_code;
+                WRITE_CODE( i_code );
             }
         }
 
@@ -745,7 +758,7 @@ static int ParseRLE( decoder_t *p_dec,
         /* Skip them just in case */
         while( i_y < i_height )
         {
-            *p_dest++ = i_width << 2;
+            WRITE_CODE( i_width << 2 );
             i_y++;
         }
 
@@ -832,19 +845,27 @@ static int ParseRLE( decoder_t *p_dec,
 #endif
     }
 
+    *pixeldata_size = *pixeldata_size - dest_left;
+
     return VLC_SUCCESS;
 }
 
 static int Render( decoder_t *p_dec, subpicture_t *p_spu,
-                    const uint16_t *p_pixeldata,
+                    const uint16_t *p_pixeldata, size_t pixeldata_size,
                     const subpicture_data_t *p_spu_data,
                     const spu_properties_t *p_spu_properties )
 {
     uint8_t *p_p;
     int i_x, i_y, i_len, i_color, i_pitch;
     const uint16_t *p_source = p_pixeldata;
+    size_t source_left = pixeldata_size;
     video_format_t fmt;
     video_palette_t palette;
+
+    if (p_spu_properties->i_width <= 0)
+        return VLC_SUCCESS;
+    if (p_spu_properties->i_height <= (p_spu_data->i_y_top_offset + p_spu_data->i_y_bottom_offset))
+        return VLC_SUCCESS;
 
     /* Create a new subpicture region */
     video_format_Init( &fmt, VLC_CODEC_YUVP );
@@ -863,6 +884,7 @@ static int Render( decoder_t *p_dec, subpicture_t *p_spu,
         fmt.p_palette->palette[i_x][2] = p_spu_data->pi_yuv[i_x][2];
         fmt.p_palette->palette[i_x][3] = p_spu_data->pi_alpha[i_x] * 0x11;
     }
+    fmt.b_color_range_full = false;
 
     p_spu->p_region = subpicture_region_New( &fmt );
     if( !p_spu->p_region )
@@ -884,9 +906,17 @@ static int Render( decoder_t *p_dec, subpicture_t *p_spu,
         /* Draw until we reach the end of the line */
         for( i_x = 0 ; i_x < (int)fmt.i_width; i_x += i_len )
         {
+            if( source_left == 0 )
+            {
+                msg_Err( p_dec, "missing RLE data" );
+                subpicture_region_Delete( p_spu->p_region );
+                p_spu->p_region = NULL;
+                return VLC_EGENERIC;
+            }
             /* Get the RLE part, then draw the line */
             i_color = *p_source & 0x3;
             i_len = *p_source++ >> 2;
+            source_left--;
             memset( p_p + i_x + i_y, i_color, i_len );
         }
     }

@@ -61,6 +61,8 @@ vlc_module_begin ()
     set_description( N_("Chromaprint stream output") )
     set_capability( "sout stream", 0 )
     add_shortcut( "chromaprint" )
+    set_category( CAT_SOUT )
+    set_subcategory( SUBCAT_SOUT_STREAM )
     add_integer( "duration", 90, DURATION_TEXT, DURATION_LONGTEXT, true )
     set_callbacks( Open, Close )
 vlc_module_end ()
@@ -229,7 +231,7 @@ static int Send( sout_stream_t *p_stream, sout_stream_id_sys_t *id,
         if ( !p_sys->b_finished && id->i_samples > 0 && p_buf->i_buffer )
         {
             if(! chromaprint_feed( p_sys->p_chromaprint_ctx,
-                                   p_buf->p_buffer,
+                                   (int16_t *)p_buf->p_buffer,
                                    p_buf->i_buffer / BYTESPERSAMPLE ) )
                 msg_Warn( p_stream, "feed error" );
             id->i_samples -= i_samples;

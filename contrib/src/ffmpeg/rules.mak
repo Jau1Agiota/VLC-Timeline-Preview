@@ -5,14 +5,19 @@
 #USE_FFMPEG ?= 1
 
 ifndef USE_LIBAV
-FFMPEG_HASH=eaff5fcb7cde8d1614755269773d471d3a3d1bfc
-FFMPEG_SNAPURL := http://git.videolan.org/?p=ffmpeg.git;a=snapshot;h=$(FFMPEG_HASH);sf=tgz
-FFMPEG_GITURL := http://git.videolan.org/git/ffmpeg.git
+FFMPEG_HASH=71fb6132637a2a430375c24afc381fff8b854fe7
+FFMPEG_MAJVERSION := 8.1
+FFMPEG_REVISION := 2
+FFMPEG_VERSION := $(FFMPEG_MAJVERSION).$(FFMPEG_REVISION)
+# FFMPEG_VERSION := $(FFMPEG_MAJVERSION)
+FFMPEG_BRANCH=release/$(FFMPEG_MAJVERSION)
+FFMPEG_URL := https://ffmpeg.org/releases/ffmpeg-$(FFMPEG_VERSION).tar.xz
+FFMPEG_GITURL := https://code.ffmpeg.org/FFmpeg/FFmpeg.git
 FFMPEG_LAVC_MIN := 57.37.100
 USE_FFMPEG := 1
 else
-FFMPEG_HASH=e171022c24c42b1e88a51bb3b4c27f13c87c85cb
-FFMPEG_SNAPURL := http://git.libav.org/?p=libav.git;a=snapshot;h=$(FFMPEG_HASH);sf=tgz
+FFMPEG_HASH=e5afa1b556542fd7a52a0a9b409c80f2e6e1e9bb
+FFMPEG_BRANCH=
 FFMPEG_GITURL := git://git.libav.org/libav.git
 FFMPEG_LAVC_MIN := 57.16.0
 endif
@@ -20,7 +25,8 @@ endif
 FFMPEG_BASENAME := $(subst .,_,$(subst \,_,$(subst /,_,$(FFMPEG_HASH))))
 
 # bsf=vp9_superframe is needed to mux VP9 inside webm/mkv
-FFMPEGCONF = \
+FFMPEGCONF = --prefix="$(PREFIX)" --enable-static --disable-shared \
+	--extra-ldflags="$(LDFLAGS)" \
 	--cc="$(CC)" \
 	--pkg-config="$(PKG_CONFIG)" \
 	--disable-doc \
@@ -36,7 +42,6 @@ FFMPEGCONF = \
 	--disable-bsfs \
 	--disable-bzlib \
 	--disable-libvpx \
-	--disable-avresample \
 	--enable-bsf=vp9_superframe
 
 ifdef USE_FFMPEG
@@ -48,12 +53,15 @@ FFMPEGCONF += \
 	--disable-linux-perf
 ifdef HAVE_DARWIN_OS
 FFMPEGCONF += \
-	--disable-videotoolbox \
 	--disable-securetransport
 endif
 endif
 
-DEPS_ffmpeg = zlib gsm
+ifdef ENABLE_PDB
+FFMPEGCONF += --ln_s=false
+endif
+
+DEPS_ffmpeg = zlib $(DEPS_zlib) gsm $(DEPS_gsm)
 
 ifndef USE_LIBAV
 FFMPEGCONF += \
@@ -72,6 +80,10 @@ else
 FFMPEGCONF += --disable-encoders --disable-muxers
 endif
 
+ifneq ($(findstring amf,$(PKGS)),)
+DEPS_ffmpeg += amf $(DEPS_amf)
+endif
+
 # Small size
 ifdef WITH_OPTIMIZATION
 ifdef ENABLE_SMALL
@@ -83,7 +95,7 @@ FFMPEGCONF += --enable-thumb
 endif
 endif
 else
-FFMPEGCONF += --optflags=-O0
+FFMPEGCONF += --optflags=-Og
 endif
 
 ifdef HAVE_CROSS_COMPILE
@@ -96,9 +108,6 @@ endif
 # ARM stuff
 ifeq ($(ARCH),arm)
 FFMPEGCONF += --arch=arm
-ifdef HAVE_NEON
-FFMPEGCONF += --enable-neon
-endif
 ifdef HAVE_ARMV7A
 FFMPEGCONF += --cpu=cortex-a8
 endif
@@ -120,6 +129,11 @@ ifeq ($(ARCH),mips64el)
 FFMPEGCONF += --arch=mips64
 endif
 
+# RISC-V stuff
+ifneq ($(findstring $(ARCH),riscv32 riscv64),)
+FFMPEGCONF += --arch=riscv
+endif
+
 # x86 stuff
 ifeq ($(ARCH),i386)
 ifndef HAVE_DARWIN_OS
@@ -136,7 +150,13 @@ endif
 
 # Darwin
 ifdef HAVE_DARWIN_OS
-FFMPEGCONF += --arch=$(ARCH) --target-os=darwin
+ifeq ($(ARCH),arm64_32)
+# TODO remove when FFMpeg supports arm64_32
+FFMPEGCONF += --arch=aarch64_32
+else
+FFMPEGCONF += --arch=$(ARCH)
+endif
+FFMPEGCONF += --target-os=darwin --extra-cflags="$(CFLAGS)"
 ifdef USE_FFMPEG
 FFMPEGCONF += --disable-lzma
 endif
@@ -145,15 +165,12 @@ FFMPEGCONF += --cpu=core2
 endif
 ifdef HAVE_IOS
 FFMPEGCONF += --enable-pic --extra-ldflags="$(EXTRA_CFLAGS) -isysroot $(IOS_SDK)"
-ifdef HAVE_NEON
-FFMPEGCONF += --as="$(AS)"
-endif
 endif
 endif
 
 # Linux
 ifdef HAVE_LINUX
-FFMPEGCONF += --target-os=linux --enable-pic --extra-libs="-lm"
+FFMPEGCONF += --target-os=linux --enable-pic
 
 endif
 
@@ -162,30 +179,24 @@ ifdef HAVE_ANDROID
 ifeq ($(ANDROID_ABI), x86)
 FFMPEGCONF +=  --disable-mmx --disable-mmxext --disable-inline-asm
 endif
-ifeq ($(ANDROID_ABI), x86_64)
-FFMPEGCONF +=  --disable-mmx --disable-mmxext --disable-inline-asm
-endif
-ifdef HAVE_NEON
-ifeq ($(ANDROID_ABI), armeabi-v7a)
-FFMPEGCONF += --as='gas-preprocessor.pl -as-type clang -arch arm $(CC)'
-endif
-endif
 endif
 
 # Windows
 ifdef HAVE_WIN32
 ifndef HAVE_VISUALSTUDIO
-DEPS_ffmpeg += d3d11
-ifndef HAVE_MINGW_W64
-DEPS_ffmpeg += directx
-endif
+DEPS_ffmpeg += d3d11 mingw12-fixes
 endif
 FFMPEGCONF += --target-os=mingw32
-FFMPEGCONF += --enable-w32threads
+FFMPEGCONF += --disable-w32threads --enable-pthreads --extra-libs="-lpthread"
+DEPS_ffmpeg += winpthreads $(DEPS_winpthreads)
+# disable modules not compatible with XP
+FFMPEGCONF += --disable-mediafoundation --disable-amf --disable-schannel
+# We don't currently support D3D12 in VLC
+FFMPEGCONF += --disable-d3d12va
 ifndef HAVE_WINSTORE
 FFMPEGCONF += --enable-dxva2
 else
-FFMPEGCONF += --disable-dxva2
+FFMPEGCONF += --disable-dxva2 --disable-mediafoundation
 endif
 
 ifeq ($(ARCH),x86_64)
@@ -218,35 +229,37 @@ ifeq ($(call need_pkg,"libavcodec >= $(FFMPEG_LAVC_MIN) libavformat >= 53.21.0 l
 PKGS_FOUND += ffmpeg
 endif
 
-FFMPEGCONF += --nm="$(NM)" --ar="$(AR)"
+FFMPEGCONF += --nm="$(NM)" --ar="$(AR)" --ranlib="$(RANLIB)"
 
 $(TARBALLS)/ffmpeg-$(FFMPEG_BASENAME).tar.xz:
-	$(call download_git,$(FFMPEG_GITURL),,$(FFMPEG_HASH))
+	$(call download_git,$(FFMPEG_GITURL),$(FFMPEG_BRANCH),$(FFMPEG_HASH))
 
-.sum-ffmpeg: $(TARBALLS)/ffmpeg-$(FFMPEG_BASENAME).tar.xz
-	$(call check_githash,$(FFMPEG_HASH))
-	touch $@
+# .sum-ffmpeg: $(TARBALLS)/ffmpeg-$(FFMPEG_BASENAME).tar.xz
+# 	$(call check_githash,$(FFMPEG_HASH))
+# 	touch $@
 
-ffmpeg: ffmpeg-$(FFMPEG_BASENAME).tar.xz .sum-ffmpeg
-	rm -Rf $@ $@-$(FFMPEG_BASENAME)
-	mkdir -p $@-$(FFMPEG_BASENAME)
-	tar xvJfo "$<" --strip-components=1 -C $@-$(FFMPEG_BASENAME)
-	$(APPLY) $(SRC)/ffmpeg/0001-arm-vc1dsp-Add-commas-between-macro-arguments.patch
-	$(APPLY) $(SRC)/ffmpeg/0002-arm-Produce-.const_data-instead-of-.section-.rodata-.patch
+$(TARBALLS)/ffmpeg-$(FFMPEG_VERSION).tar.xz:
+	$(call download_pkg,$(FFMPEG_URL),ffmpeg)
+
+.sum-ffmpeg: ffmpeg-$(FFMPEG_VERSION).tar.xz
+
+ffmpeg: ffmpeg-$(FFMPEG_VERSION).tar.xz .sum-ffmpeg
+	$(UNPACK)
 ifdef USE_FFMPEG
-	$(APPLY) $(SRC)/ffmpeg/0003-arm-swscale-Only-compile-the-rgb2yuv-asm-if-.dn-alia.patch
-	$(APPLY) $(SRC)/ffmpeg/0004-arm-hevcdsp-Avoid-using-macro-expansion-counters.patch
-	$(APPLY) $(SRC)/ffmpeg/0005-arm-hevcdsp-Add-commas-between-macro-arguments.patch
-	$(APPLY) $(SRC)/ffmpeg/0006-ffmpeg-Fix-memset-size-on-ctts_data-in-mov_read_trun.patch
-	$(APPLY) $(SRC)/ffmpeg/armv7_fixup.patch
 	$(APPLY) $(SRC)/ffmpeg/dxva_vc1_crash.patch
 	$(APPLY) $(SRC)/ffmpeg/h264_early_SAR.patch
-	$(APPLY) $(SRC)/ffmpeg/ffmpeg-mkv-overshoot.patch
-	$(APPLY) $(SRC)/ffmpeg/0001-avcodec-hevcdec-set-the-SEI-parameters-early-on-the-.patch
-	$(APPLY) $(SRC)/ffmpeg/0001-avcodec-h264_slice-set-the-SEI-parameters-early-on-t.patch
-	$(APPLY) $(SRC)/ffmpeg/0001-avcodec-vp9-add-profile-2-10-bit-DXVA2-D3D11-decodin.patch
+	$(APPLY) $(SRC)/ffmpeg/0001-avutil-define-WC_ERR_INVALID_CHARS-when-it-s-missing.patch
+	$(APPLY) $(SRC)/ffmpeg/0001-avcodec-dxva2_hevc-add-support-for-parsing-HEVC-Rang.patch
+	$(APPLY) $(SRC)/ffmpeg/0002-avcodec-hevcdec-allow-HEVC-444-8-10-12-bits-decoding.patch
+	$(APPLY) $(SRC)/ffmpeg/0003-avcodec-hevcdec-allow-HEVC-422-10-12-bits-decoding-w.patch
 	$(APPLY) $(SRC)/ffmpeg/0001-avcodec-mpeg12dec-don-t-call-hw-end_frame-when-start.patch
 	$(APPLY) $(SRC)/ffmpeg/0002-avcodec-mpeg12dec-don-t-end-a-slice-without-first_sl.patch
+	$(APPLY) $(SRC)/ffmpeg/0001-fix-mf_utils-compilation-with-mingw64.patch
+	# replace Vista checks with XP SP1 checks so we don't actually change _WIN32_WINNT
+	sed -i.orig 's,< 0x0600,< 0x0501,g' $(UNPACK_DIR)/configure
+	$(APPLY) $(SRC)/ffmpeg/0001-bring-back-XP-support.patch
+	$(APPLY) $(SRC)/ffmpeg/0011-avcodec-videotoolboxenc-disable-calls-on-unsupported.patch
+	$(APPLY) $(SRC)/ffmpeg/avcodec-fix-compilation-visionos.patch
 endif
 ifdef USE_LIBAV
 	$(APPLY) $(SRC)/ffmpeg/libav_gsm.patch
@@ -254,8 +267,8 @@ endif
 	$(MOVE)
 
 .ffmpeg: ffmpeg
-	cd $< && $(HOSTVARS) ./configure \
-		--extra-ldflags="$(LDFLAGS)" $(FFMPEGCONF) \
-		--prefix="$(PREFIX)" --enable-static --disable-shared
-	cd $< && $(MAKE) install-libs install-headers
+	$(MAKEBUILDDIR)
+	$(MAKECONFDIR)/configure $(FFMPEGCONF)
+	+$(MAKEBUILD)
+	+$(MAKEBUILD) install-libs install-headers
 	touch $@

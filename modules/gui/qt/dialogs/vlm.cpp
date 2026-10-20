@@ -34,22 +34,16 @@
 #include "util/qt_dirs.hpp"
 
 #include <QString>
-#include <QComboBox>
 #include <QVBoxLayout>
-#include <QStackedWidget>
 #include <QLabel>
 #include <QWidget>
 #include <QGridLayout>
-#include <QLineEdit>
-#include <QCheckBox>
 #include <QToolButton>
 #include <QGroupBox>
 #include <QPushButton>
-#include <QHBoxLayout>
 #include <QDateTimeEdit>
 #include <QDateTime>
 #include <QSpinBox>
-#include <QScrollArea>
 #include <QFileDialog>
 
 
@@ -140,21 +134,21 @@ VLMDialog::VLMDialog( intf_thread_t *_p_intf ) : QVLCFrame( _p_intf )
     showScheduleWidget( QVLM_Broadcast );
 
     /* Connect the comboBox to show the right Widgets */
-    CONNECT( ui.mediaType, currentIndexChanged( int ),
-             this, showScheduleWidget( int ) );
+    connect( ui.mediaType, QOverload<int>::of(&QComboBox::currentIndexChanged),
+             this, &VLMDialog::showScheduleWidget );
 
     /* Connect the leftList to show the good VLMItem */
-    CONNECT( ui.vlmListItem, currentRowChanged( int ),
-             this, selectVLMItem( int ) );
+    connect( ui.vlmListItem, &QListWidget::currentRowChanged,
+             this, &VLMDialog::selectVLMItem );
 
-    BUTTONACT( closeButton, close() );
-    BUTTONACT( exportButton, exportVLMConf() );
-    BUTTONACT( importButton, importVLMConf() );
-    BUTTONACT( ui.addButton, addVLMItem() );
-    BUTTONACT( ui.clearButton, clearWidgets() );
-    BUTTONACT( ui.saveButton, saveModifications() );
-    BUTTONACT( ui.inputButton, selectInput() );
-    BUTTONACT( ui.outputButton, selectOutput() );
+    BUTTONACT( closeButton, close );
+    BUTTONACT( exportButton, exportVLMConf );
+    BUTTONACT( importButton, importVLMConf );
+    BUTTONACT( ui.addButton, addVLMItem );
+    BUTTONACT( ui.clearButton, clearWidgets );
+    BUTTONACT( ui.saveButton, saveModifications );
+    BUTTONACT( ui.inputButton, selectInput );
+    BUTTONACT( ui.outputButton, selectOutput );
 
     if( !restoreGeometry( getSettings()->value("VLM/geometry").toByteArray() ) )
     {
@@ -497,9 +491,9 @@ VLMAWidget::VLMAWidget( VLMWrapper *_vlm, const QString& _name,
     deleteButton->setToolTip("Delete");
     objLayout->addWidget( deleteButton, 0, 6 );
 
-    BUTTONACT( modifyButton, modify() );
-    BUTTONACT( deleteButton, del() );
-    CONNECT( this, clicked( bool ), this, toggleEnabled( bool ) );
+    BUTTONACT( modifyButton, modify );
+    BUTTONACT( deleteButton, del );
+    connect( this, &VLMAWidget::clicked, this, &VLMAWidget::toggleEnabled );
 }
 
 void VLMAWidget::modify()
@@ -548,9 +542,9 @@ VLMBroadcast::VLMBroadcast( VLMWrapper *vlm, const QString& _name,
     loopButton->setToolTip( qtr("Repeat") );
     objLayout->addWidget( loopButton, 1, 2 );
 
-    BUTTONACT( playButton, togglePlayPause() );
-    BUTTONACT( stopButton, stop() );
-    BUTTONACT( loopButton, toggleLoop() );
+    BUTTONACT( playButton, togglePlayPause );
+    BUTTONACT( stopButton, stop );
+    BUTTONACT( loopButton, toggleLoop );
 
     update();
 }
@@ -692,7 +686,14 @@ void VLMWrapper::EditBroadcast( const QString& name, const QString& input,
         vlm_ExecuteCommand( p_vlm, qtu( command ), &message );
         vlm_MessageDelete( message );
 
-        QStringList options = inputOptions.split( " :", QString::SkipEmptyParts );
+        QStringList options = inputOptions.split( " :",
+                                                  #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+                                                      Qt::SkipEmptyParts
+                                                  #else
+                                                      QString::SkipEmptyParts
+                                                  #endif
+                                                );
+
         for( int i = 0; i < options.count(); i++ )
         {
             command = "setup \"" + name + "\" option \"" + options[i].trimmed() + "\"";
@@ -779,7 +780,13 @@ void VLMWrapper::EditVod( const QString& name, const QString& input,
         vlm_ExecuteCommand( p_vlm, qtu( command ), &message );
         vlm_MessageDelete( message );
 
-        QStringList options = inputOptions.split( " :", QString::SkipEmptyParts );
+        QStringList options = inputOptions.split( " :",
+                                                  #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+                                                      Qt::SkipEmptyParts
+                                                  #else
+                                                      QString::SkipEmptyParts
+                                                  #endif
+                                    );
         for( int i = 0; i < options.count(); i++ )
         {
             command = "setup \"" + name + "\" option \"" + options[i].trimmed() + "\"";
@@ -838,7 +845,13 @@ void VLMWrapper::EditSchedule( const QString& name, const QString& input,
         vlm_ExecuteCommand( p_vlm, qtu( command ), &message );
         vlm_MessageDelete( message );
 
-        QStringList options = inputOptions.split( " :", QString::SkipEmptyParts );
+        QStringList options = inputOptions.split( " :",
+                                                  #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+                                                      Qt::SkipEmptyParts
+                                                  #else
+                                                      QString::SkipEmptyParts
+                                                  #endif
+                                                );
         for( int i = 0; i < options.count(); i++ )
         {
             command = "setup \"" + name + "\" option \"" + options[i].trimmed() + "\"";
@@ -876,14 +889,14 @@ void VLMWrapper::EditSchedule( const QString& name, const QString& input,
 
     if( _scherepeatnumber > 0 )
     {
-       command = "setup \"" + name + "\" repeat \"" + _scherepeatnumber + "\"";
+       command = "setup \"" + name + "\" repeat \"" + QString::number(_scherepeatnumber) + "\"";
        vlm_ExecuteCommand( p_vlm, qtu( command ), &message );
        vlm_MessageDelete( message );
     }
 
     if( _repeatDays > 0 )
     {
-       command = "setup \"" + name + "\" period \"" + _repeatDays + "\"";
+       command = "setup \"" + name + "\" period \"" + QString::number(_repeatDays) + "\"";
        vlm_ExecuteCommand( p_vlm, qtu( command ), &message );
        vlm_MessageDelete( message );
     }

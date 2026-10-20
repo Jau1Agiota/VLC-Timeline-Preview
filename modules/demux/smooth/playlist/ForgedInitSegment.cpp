@@ -28,6 +28,7 @@
 #include <vlc_common.h>
 
 #include <cstdlib>
+#include <new>
 
 extern "C"
 {
@@ -44,13 +45,13 @@ ForgedInitSegment::ForgedInitSegment(ICanonicalUrl *parent,
                                      const std::string &type_,
                                      uint64_t timescale_,
                                      uint64_t duration_) :
-    InitSegment(parent), TimescaleAble()
+    InitSegment(parent)
 {
     type = type_;
-    duration.Set(duration_);
-    extradata = NULL;
+    duration = duration_;
+    extradata = nullptr;
     i_extradata = 0;
-    setTimescale(timescale_);
+    timescale = timescale_;
     formatex.cbSize = 0;
     formatex.nAvgBytesPerSec = 0;
     formatex.nBlockAlign = 0;
@@ -76,7 +77,7 @@ static uint8_t *HexDecode(const std::string &s, size_t *decoded_size)
     if(data)
     {
         for(size_t i=0; i<*decoded_size; i++)
-            data[i] = std::strtoul(s.substr(i*2, 2).c_str(), NULL, 16);
+            data[i] = std::strtoul(s.substr(i*2, 2).c_str(), nullptr, 16);
     }
     return data;
 }
@@ -86,7 +87,7 @@ void ForgedInitSegment::fromWaveFormatEx(const uint8_t *p_data, size_t i_data)
     if(i_data >= sizeof(WAVEFORMATEX))
     {
         formatex.wFormatTag = GetWLE(p_data);
-        wf_tag_to_fourcc(formatex.wFormatTag, &fourcc, NULL);
+        wf_tag_to_fourcc(formatex.wFormatTag, &fourcc, nullptr);
         formatex.nChannels = GetWLE(&p_data[2]);
         formatex.nSamplesPerSec = GetDWLE(&p_data[4]);
         formatex.nAvgBytesPerSec = GetDWLE(&p_data[8]);
@@ -98,7 +99,7 @@ void ForgedInitSegment::fromWaveFormatEx(const uint8_t *p_data, size_t i_data)
             if(extradata)
             {
                 free(extradata);
-                extradata = NULL;
+                extradata = nullptr;
                 i_extradata = 0;
             }
             formatex.cbSize = __MIN(i_data - sizeof(WAVEFORMATEX), formatex.cbSize);
@@ -132,7 +133,7 @@ void ForgedInitSegment::setCodecPrivateData(const std::string &extra)
     if(extradata)
     {
         free(extradata);
-        extradata = NULL;
+        extradata = nullptr;
         i_extradata = 0;
     }
     extradata = HexDecode(extra, &i_extradata);
@@ -175,7 +176,7 @@ void ForgedInitSegment::setTrackID(unsigned i)
 
 void ForgedInitSegment::setAudioTag(uint16_t i)
 {
-    wf_tag_to_fourcc(i, &fourcc, NULL);
+    wf_tag_to_fourcc(i, &fourcc, nullptr);
 }
 
 void ForgedInitSegment::setFourCC(const std::string &fcc)
@@ -207,12 +208,11 @@ void ForgedInitSegment::setLanguage(const std::string &lang)
 
 block_t * ForgedInitSegment::buildMoovBox()
 {
-    const Timescale &trackTimescale = inheritTimescale();
     mp4mux_trackinfo_t trackinfo;
     mp4mux_trackinfo_Init(&trackinfo,
                           0x01, /* Will always be 1st and unique track; tfhd patched on block read */
-                          (uint32_t) trackTimescale);
-    trackinfo.i_read_duration = duration.Get();
+                          (uint32_t) timescale);
+    trackinfo.i_read_duration = duration;
     trackinfo.i_trex_default_length = 1;
     trackinfo.i_trex_default_size = 1;
 
@@ -273,16 +273,16 @@ block_t * ForgedInitSegment::buildMoovBox()
         trackinfo.fmt.psz_language = strdup(language.c_str());
 
     mp4mux_trackinfo_t *p_tracks = &trackinfo;
-    bo_t *box = NULL;
+    bo_t *box = nullptr;
 
-    if(mp4mux_CanMux( NULL, &trackinfo.fmt ))
-       box = mp4mux_GetMoovBox(NULL, &p_tracks, 1,
-                               trackTimescale.ToTime(duration.Get()),
+    if(mp4mux_CanMux( nullptr, &trackinfo.fmt ))
+       box = mp4mux_GetMoovBox(nullptr, &p_tracks, 1,
+                               timescale.ToTime(duration),
                                true, false, false, false);
 
     mp4mux_trackinfo_Clear(&trackinfo);
 
-    block_t *moov = NULL;
+    block_t *moov = nullptr;
     if(box)
     {
         moov = box->b;
@@ -305,13 +305,12 @@ block_t * ForgedInitSegment::buildMoovBox()
     return moov;
 }
 
-SegmentChunk* ForgedInitSegment::toChunk(SharedResources *, AbstractConnectionManager *,
-                                         size_t, BaseRepresentation *rep)
+SegmentChunk* ForgedInitSegment::toChunk(SharedResources *, size_t, BaseRepresentation *rep)
 {
     block_t *moov = buildMoovBox();
     if(moov)
     {
-        MemoryChunkSource *source = new (std::nothrow) MemoryChunkSource(moov);
+        MemoryChunkSource *source = new (std::nothrow) MemoryChunkSource(ChunkType::Init, moov);
         if( source )
         {
             SegmentChunk *chunk = new (std::nothrow) SegmentChunk(source, rep);
@@ -321,5 +320,5 @@ SegmentChunk* ForgedInitSegment::toChunk(SharedResources *, AbstractConnectionMa
                 delete source;
         }
     }
-    return NULL;
+    return nullptr;
 }

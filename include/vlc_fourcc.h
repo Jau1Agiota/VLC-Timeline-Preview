@@ -186,6 +186,7 @@
 #define VLC_CODEC_CINEFORM        VLC_FOURCC('C','F','H','D')
 #define VLC_CODEC_SPEEDHQ         VLC_FOURCC('S','H','Q','2')
 #define VLC_CODEC_PIXLET          VLC_FOURCC('p','x','l','t')
+#define VLC_CODEC_APV             VLC_FOURCC('a','p','v','1')
 
 /***********
  * Chromas
@@ -229,6 +230,9 @@
 /* Planar YUV 4:2:2 Y:U:V 12-bit stored on 16 bits */
 #define VLC_CODEC_I422_12L        VLC_FOURCC('I','2','C','L')
 #define VLC_CODEC_I422_12B        VLC_FOURCC('I','2','C','B')
+/* Planar YUV 4:2:2 Y:U:V 16-bit stored on 16 bits */
+#define VLC_CODEC_I422_16L        VLC_FOURCC('I','2','F','L')
+#define VLC_CODEC_I422_16B        VLC_FOURCC('I','2','F','B')
 
 /* Planar YUV 4:4:0 Y:U:V */
 #define VLC_CODEC_I440            VLC_FOURCC('I','4','4','0')
@@ -268,6 +272,10 @@
 /* Planar Y:U:V:A 4:4:4 10bits */
 #define VLC_CODEC_YUVA_444_10L    VLC_FOURCC('Y','A','0','L')
 #define VLC_CODEC_YUVA_444_10B    VLC_FOURCC('Y','A','0','B')
+
+/* Planar Y:U:V:A 4:4:4 12bits */
+#define VLC_CODEC_YUVA_444_12L    VLC_FOURCC('Y','A','2','L')
+#define VLC_CODEC_YUVA_444_12B    VLC_FOURCC('Y','A','2','B')
 
 /* Semi-planar Y/UV */
 
@@ -346,6 +354,15 @@
 
 /* 8 bits grey */
 #define VLC_CODEC_GREY            VLC_FOURCC('G','R','E','Y')
+/* 10 bits grey */
+#define VLC_CODEC_GREY_10L        VLC_FOURCC('G','0','F','L')
+#define VLC_CODEC_GREY_10B        VLC_FOURCC('G','0','F','B')
+/* 12 bits grey */
+#define VLC_CODEC_GREY_12L        VLC_FOURCC('G','2','F','L')
+#define VLC_CODEC_GREY_12B        VLC_FOURCC('G','2','F','B')
+/* 16 bits grey */
+#define VLC_CODEC_GREY_16L        VLC_FOURCC('G','R','F','L')
+#define VLC_CODEC_GREY_16B        VLC_FOURCC('G','R','F','B')
 
 /* VDPAU video surface YCbCr 4:2:0 */
 #define VLC_CODEC_VDPAU_VIDEO_420 VLC_FOURCC('V','D','V','0')
@@ -400,6 +417,7 @@
 #define VLC_CODEC_PCX             VLC_FOURCC('p','c','x',' ')
 #define VLC_CODEC_XWD             VLC_FOURCC('X','W','D',' ')
 #define VLC_CODEC_TXD             VLC_FOURCC('T','X','D',' ')
+#define VLC_CODEC_WEBP            VLC_FOURCC('W','E','B','P')
 
 
 /* Audio codec */
@@ -469,6 +487,9 @@
 #define VLC_CODEC_ATRAC1                     VLC_FOURCC('a','t','r','1')
 #define VLC_CODEC_ATRAC3                     VLC_FOURCC('a','t','r','c')
 #define VLC_CODEC_ATRAC3P                    VLC_FOURCC('a','t','r','p')
+#define VLC_CODEC_ATRAC3AL                   VLC_FOURCC('a','t','r','l')
+#define VLC_CODEC_ATRAC3PAL                  VLC_FOURCC('a','t','p','l')
+#define VLC_CODEC_ATRAC9                     VLC_FOURCC('a','t','r','9')
 #define VLC_CODEC_IMC                        VLC_FOURCC(0x1,0x4,0x0,0x0)
 #define VLC_CODEC_TRUESPEECH                 VLC_FOURCC(0x22,0x0,0x0,0x0)
 #define VLC_CODEC_NELLYMOSER                 VLC_FOURCC('N','E','L','L')

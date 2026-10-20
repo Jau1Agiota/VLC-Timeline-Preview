@@ -30,7 +30,7 @@
 #include <QDialogButtonBox>
 
 FirstRun::FirstRun( QWidget *_p, intf_thread_t *_p_intf  )
-         : QWidget( _p ), p_intf( _p_intf )
+         : QVLCDialog( _p, _p_intf), p_intf( _p_intf )
 {
     msg_Dbg( p_intf, "Boring first Run Wizard" );
     buildPrivDialog();
@@ -107,6 +107,6 @@ void FirstRun::buildPrivDialog()
 
     gLayout->addWidget( buttonsBox, 2, 0, 2, 3 );
 
-    CONNECT( buttonsBox, accepted(), this, save() );
+    connect( buttonsBox, &QDialogButtonBox::accepted, this, &FirstRun::save );
     buttonsBox->setFocus();
 }

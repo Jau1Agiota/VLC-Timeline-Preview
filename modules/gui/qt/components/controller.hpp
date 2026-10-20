@@ -217,6 +217,7 @@ public:
 protected:
     friend class MainInterface;
 
+    bool advancedAvailable();
     bool b_advancedVisible;
 
 private:
@@ -276,11 +277,17 @@ protected:
     void mouseMoveEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
     void mousePressEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
     void mouseReleaseEvent( QMouseEvent *event ) Q_DECL_OVERRIDE;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    void enterEvent( QEnterEvent *event ) Q_DECL_OVERRIDE;
+#else
     void enterEvent( QEvent *event ) Q_DECL_OVERRIDE;
+#endif
     void leaveEvent( QEvent *event ) Q_DECL_OVERRIDE;
     void keyPressEvent( QKeyEvent *event ) Q_DECL_OVERRIDE;
 
     void customEvent( QEvent *event ) Q_DECL_OVERRIDE;
+
+    bool eventFilter( QObject *watched, QEvent *event ) Q_DECL_OVERRIDE;
 
 private slots:
     void showFSC();
@@ -318,10 +325,6 @@ private:
 
     bool isWideFSC;
     int i_sensitivity;
-
-#ifdef QT5_HAS_WAYLAND
-    bool b_hasWayland;
-#endif
 };
 
 #endif

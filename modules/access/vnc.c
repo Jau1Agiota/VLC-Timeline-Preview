@@ -33,6 +33,8 @@
 #ifdef HAVE_CONFIG_H
 # include "config.h"
 #endif
+#include <assert.h>
+#include <limits.h>
 
 #include <vlc_common.h>
 #include <vlc_plugin.h>
@@ -115,12 +117,12 @@ struct demux_sys_t
     int i_cancel_state;
 
     rfbClient* p_client;
-    int i_framebuffersize;
+    size_t i_framebuffersize;
     block_t *p_block;
 
     float f_fps;
     int i_frame_interval;
-    mtime_t i_starttime;
+    vlc_tick_t i_starttime;
 
     es_out_id_t *es;
 };
@@ -143,11 +145,19 @@ static rfbBool mallocFrameBufferHandler( rfbClient* p_client )
         p_sys->es = NULL;
     }
 
-    int i_width = p_client->width;
-    int i_height = p_client->height;
-    int i_depth = p_client->format.bitsPerPixel;
+    if ( p_client->width > UINT16_MAX || p_client->height > UINT16_MAX )
+    {
+        assert(p_client->width <= UINT16_MAX); // fits in 16 bits
+        assert(p_client->height <= UINT16_MAX); // fits in 16 bits
+        return FALSE;
+    }
+    unsigned int i_width = p_client->width;
+    unsigned int i_height = p_client->height;
 
-    switch( i_depth )
+    uint8_t i_bits_per_pixel = p_client->format.bitsPerPixel;
+    assert((i_bits_per_pixel & 0x7) == 0); // multiple of 8
+
+    switch( i_bits_per_pixel )
     {
         case 8:
             i_chroma = VLC_CODEC_RGB8;
@@ -180,7 +190,11 @@ static rfbBool mallocFrameBufferHandler( rfbClient* p_client )
     }
 
     /* Set up framebuffer */
-    p_sys->i_framebuffersize = i_width * i_height * i_depth / 8;
+    if (mul_overflow(i_height, i_bits_per_pixel / 8, &p_sys->i_framebuffersize) ||
+        mul_overflow(i_width, p_sys->i_framebuffersize, &p_sys->i_framebuffersize)) {
+        msg_Err(p_demux, "VNC framebuffersize overflow");
+        return FALSE;
+    }
 
     /* Reuse unsent block */
     if ( p_sys->p_block )
@@ -211,7 +225,7 @@ static rfbBool mallocFrameBufferHandler( rfbClient* p_client )
     fmt.video.i_frame_rate_base = 1000;
     fmt.video.i_frame_rate = 1000 * p_sys->f_fps;
 
-    fmt.video.i_bits_per_pixel = i_depth;
+    fmt.video.i_bits_per_pixel = i_bits_per_pixel;
     fmt.video.i_rmask = p_client->format.redMax << p_client->format.redShift;
     fmt.video.i_gmask = p_client->format.greenMax << p_client->format.greenShift;
     fmt.video.i_bmask = p_client->format.blueMax << p_client->format.blueShift;
@@ -334,7 +348,7 @@ static void *DemuxThread( void *p_data )
 {
     demux_t *p_demux = (demux_t *) p_data;
     demux_sys_t  *p_sys = p_demux->p_sys;
-    mtime_t i_next_frame_date = mdate() + p_sys->i_frame_interval;
+    vlc_tick_t i_next_frame_date = mdate() + p_sys->i_frame_interval;
     int i_status;
 
     for(;;)
@@ -357,7 +371,8 @@ static void *DemuxThread( void *p_data )
             if ( ! i_status )
             {
                 msg_Warn( p_demux, "Cannot get announced data. Server closed ?" );
-                es_out_Del( p_demux->out, p_sys->es );
+                if ( p_sys->es )
+                    es_out_Del( p_demux->out, p_sys->es );
                 p_sys->es = NULL;
                 return NULL;
             }
@@ -368,7 +383,10 @@ static void *DemuxThread( void *p_data )
                 {
                     p_sys->p_block->i_dts = p_sys->p_block->i_pts = mdate();
                     es_out_SetPCR( p_demux->out, p_sys->p_block->i_pts );
-                    es_out_Send( p_demux->out, p_sys->es, p_sys->p_block );
+                    if ( p_sys->es )
+                        es_out_Send( p_demux->out, p_sys->es, p_sys->p_block );
+                    else
+                        block_Release( p_sys->p_block );
                     p_sys->p_block = p_block;
                 }
             }

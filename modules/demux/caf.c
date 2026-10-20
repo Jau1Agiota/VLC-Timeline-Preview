@@ -330,12 +330,12 @@ static int FrameSpanAddDescription( demux_t *p_demux, uint64_t i_desc_offset, fr
 
 /* FrameSpanGetTime returns the time span represented by the frame span. */
 
-static inline mtime_t FrameSpanGetTime( frame_span_t *span, uint32_t i_sample_rate )
+static inline vlc_tick_t FrameSpanGetTime( frame_span_t *span, uint32_t i_sample_rate )
 {
     if( !i_sample_rate )
-        return VLC_TS_INVALID;
+        return VLC_TICK_INVALID;
 
-    return ( span->i_samples * CLOCK_FREQ ) / i_sample_rate + VLC_TS_0;
+    return ( span->i_samples * CLOCK_FREQ ) / i_sample_rate + VLC_TICK_0;
 }
 
 /* SetSpanWithSample returns the span from the beginning of the file up to and
@@ -412,7 +412,7 @@ static int NextChunk( demux_t *p_demux, vlc_fourcc_t *p_fcc, uint64_t *pi_size )
     *p_fcc = ReadFOURCC( p_read );
     uint64_t i_size = GetQWBE( p_read + 4 );
 
-    /* We accept no negativ sizes for chunks, except -1 for the data chunk. */
+    /* We accept no negative sizes for chunks, except -1 for the data chunk. */
 
     if( i_size > INT64_MAX )
     {
@@ -527,7 +527,7 @@ static int ReadDescChunk( demux_t *p_demux )
     return VLC_SUCCESS;
 }
 
-/*  This is lifted from cafdec.c in libavformat (function read_kuki_chunk). Appearantly the
+/*  This is lifted from cafdec.c in libavformat (function read_kuki_chunk). Apparently the
     alac library expects the cookie to be of length 36, but current alac files
     have a cookie length of 24.
  */
@@ -535,9 +535,9 @@ static int ProcessALACCookie( demux_t *p_demux, const uint8_t *p, uint64_t i_siz
 {
     demux_sys_t *p_sys = p_demux->p_sys;
 
-    const unsigned int kALAC_NEW_KUKI_SIZE = 24;
-    const unsigned int kALAC_LIB_REQ_KUKI_SIZE = 36;
-    int i_extra;
+    const size_t kALAC_NEW_KUKI_SIZE = 24;
+    const size_t kALAC_LIB_REQ_KUKI_SIZE = 36;
+    size_t i_extra;
 
     if( i_size == kALAC_NEW_KUKI_SIZE || i_size == kALAC_LIB_REQ_KUKI_SIZE )
     {
@@ -546,25 +546,25 @@ static int ProcessALACCookie( demux_t *p_demux, const uint8_t *p, uint64_t i_siz
     else
     {
         msg_Warn( p_demux, "Unknown alac magic cookie. Passing it on to the decoder as is and hoping for the best." );
-        i_extra = ( int )i_size;
+        i_extra = i_size;
     }
 
+    free(p_sys->fmt.p_extra);
     p_sys->fmt.i_extra = i_extra;
-    p_sys->fmt.p_extra = malloc( i_extra );
+    p_sys->fmt.p_extra = i_extra == 0 ? NULL : malloc( i_extra );
 
-    if( !p_sys->fmt.p_extra )
+    if( i_extra && !p_sys->fmt.p_extra )
         return VLC_ENOMEM;
-
-    uint8_t *p_extra = ( uint8_t * )p_sys->fmt.p_extra;
 
     if( i_size == kALAC_NEW_KUKI_SIZE )
     {
+        uint8_t *p_extra = ( uint8_t * )p_sys->fmt.p_extra;
         SetDWBE( p_extra, 36 );
         memcpy( p_extra + 4, "alac", 4 );
         SetDWBE( p_extra + 8, 0 );
         memcpy( p_extra + 12, p, 24 );
     }
-    else
+    else if (i_size != 0)
     {
         memcpy( p_sys->fmt.p_extra, p, i_size );
     }
@@ -632,7 +632,7 @@ static int ProcessAACCookie( demux_t *p_demux, const uint8_t *p, uint64_t i_size
         if( i_flags&0x80 )
         {
             if( !AACCookieChkLen( 2, i_size, i_offset )) goto aac_kuki_finish;
-            i_offset += 2; /* don't care (dependance) */
+            i_offset += 2; /* don't care (dependence) */
         }
         if( i_flags&0x40 )
         {
@@ -678,15 +678,18 @@ aac_kuki_finish:
         i_offset = 0;
     }
 
-    p_sys->fmt.i_extra = (int)i_kuki_size;
-    p_sys->fmt.p_extra = malloc( i_kuki_size );
+    free(p_sys->fmt.p_extra);
+    p_sys->fmt.i_extra = i_kuki_size;
+    p_sys->fmt.p_extra = i_kuki_size == 0 ? NULL : malloc( i_kuki_size );
 
-    if( !p_sys->fmt.p_extra )
+    if( i_kuki_size && !p_sys->fmt.p_extra )
     {
         return VLC_ENOMEM;
     }
-
-    memcpy( p_sys->fmt.p_extra, p + i_offset, i_kuki_size );
+    if ( i_kuki_size )
+    {
+        memcpy( p_sys->fmt.p_extra, p + i_offset, i_kuki_size );
+    }
 
     return VLC_SUCCESS;
 }
@@ -718,16 +721,20 @@ static int ReadKukiChunk( demux_t *p_demux, uint64_t i_size )
         int error = ProcessAACCookie( p_demux, p_peek, i_size );
         if( error ) return error;
     }
-    else
+    else if( p_sys->fmt.i_codec != 0 )
     {
-        p_sys->fmt.i_extra = (int)i_size;
-        p_sys->fmt.p_extra = malloc( i_size );
+        free(p_sys->fmt.p_extra);
+        p_sys->fmt.i_extra = i_size;
+        p_sys->fmt.p_extra = i_size == 0 ? NULL : malloc( i_size );
 
-        if( !p_sys->fmt.p_extra )
+        if( i_size && !p_sys->fmt.p_extra )
         {
             return VLC_ENOMEM;
         }
-        memcpy( p_sys->fmt.p_extra, p_peek, p_sys->fmt.i_extra );
+        if ( i_size != 0)
+        {
+            memcpy( p_sys->fmt.p_extra, p_peek, p_sys->fmt.i_extra );
+        }
     }
 
     return VLC_SUCCESS;

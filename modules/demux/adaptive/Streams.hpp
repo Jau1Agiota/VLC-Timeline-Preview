@@ -30,6 +30,8 @@
 #include "plumbing/SourceStream.hpp"
 #include "plumbing/FakeESOut.hpp"
 
+#include "Time.hpp"
+
 #include <string>
 
 namespace adaptive
@@ -38,7 +40,7 @@ namespace adaptive
 
     namespace http
     {
-        class AbstractConnectionManager;
+        class ChunkInterface;
     }
 
     namespace playlist
@@ -57,48 +59,57 @@ namespace adaptive
     public:
         AbstractStream(demux_t *);
         virtual ~AbstractStream();
-        bool init(const StreamFormat &, SegmentTracker *, AbstractConnectionManager *);
+        bool init(const StreamFormat &, SegmentTracker *);
 
         void setLanguage(const std::string &);
         void setDescription(const std::string &);
-        mtime_t getPCR() const;
-        mtime_t getMinAheadTime() const;
-        mtime_t getFirstDTS() const;
+        vlc_tick_t getMinAheadTime() const;
+        Times getFirstTimes() const;
         int esCount() const;
         bool isSelected() const;
-        virtual bool reactivate(mtime_t);
         bool isDisabled() const;
         bool isValid() const;
-        typedef enum {
-            status_eof = 0, /* prioritized */
-            status_discontinuity,
-            status_demuxed,
-            status_buffering,
-        } status;
-        typedef enum {
-            buffering_end = 0, /* prioritized */
-            buffering_suspended,
-            buffering_full,
-            buffering_ongoing,
-            buffering_lessthanmin,
-        } buffering_status;
-        buffering_status bufferize(mtime_t, unsigned, unsigned);
-        buffering_status getLastBufferStatus() const;
-        mtime_t getDemuxedAmount(mtime_t) const;
-        status dequeue(mtime_t, mtime_t *);
+        void setLivePause(bool);
+        enum class Status {
+            Eof = 0, /* prioritized */
+            Discontinuity,
+            Demuxed,
+            Buffering,
+        };
+        enum class BufferingStatus {
+            End = 0, /* prioritized */
+            Suspended,
+            Full,
+            Ongoing,
+            Lessthanmin,
+        };
+        BufferingStatus bufferize(Times, mtime_t, mtime_t,
+                                  mtime_t, bool = false);
+        BufferingStatus getBufferAndStatus(const Times &, vlc_tick_t, vlc_tick_t, vlc_tick_t *);
+        vlc_tick_t getDemuxedAmount(Times) const;
+        Status dequeue(Times, Times *);
         bool decodersDrained();
-        virtual bool setPosition(mtime_t, bool);
-        bool getMediaPlaybackTimes(mtime_t *, mtime_t *, mtime_t *,
-                                   mtime_t *, mtime_t *) const;
-        void runUpdates();
+
+        class StreamPosition
+        {
+            public:
+                StreamPosition();
+                Times times;
+                uint64_t number;
+                double pos;
+        };
+        virtual bool reactivate(const StreamPosition &);
+        virtual bool setPosition(const StreamPosition &, bool);
+        bool getMediaPlaybackTimes(vlc_tick_t *, vlc_tick_t *, vlc_tick_t *) const;
+        bool getMediaAdvanceAmount(vlc_tick_t *) const;
+        bool runUpdates(bool = false);
 
         /* Used by demuxers fake streams */
-        virtual std::string getContentType(); /* impl */
-        virtual block_t *readNextBlock(); /* impl */
+        virtual block_t *readNextBlock() override;
 
         /**/
-        virtual void fillExtraFMTInfo( es_format_t * ) const; /* impl */
-        virtual void trackerEvent(const SegmentTrackerEvent &); /* impl */
+        virtual void fillExtraFMTInfo( es_format_t * ) const  override;
+        virtual void trackerEvent(const TrackerEvent &)  override;
 
     protected:
         bool seekAble() const;
@@ -106,39 +117,56 @@ namespace adaptive
         virtual block_t *checkBlock(block_t *, bool) = 0;
         AbstractDemuxer * createDemux(const StreamFormat &);
         virtual AbstractDemuxer * newDemux(vlc_object_t *, const StreamFormat &,
-                                           es_out_t *, AbstractSourceStream *) const; /* impl */
+                                           es_out_t *, AbstractSourceStream *) const  override;
         virtual bool startDemux();
         virtual bool restartDemux();
 
         virtual void prepareRestart(bool = true);
+        bool resetForNewPosition(vlc_tick_t);
 
+        bool contiguous;
+        bool segmentgap;
         bool discontinuity;
         bool needrestart;
         bool inrestart;
         bool demuxfirstchunk;
 
+        bool mightalwaysstartfromzero;
+
         demux_t *p_realdemux;
         StreamFormat format;
 
-        AbstractConnectionManager *connManager; /* not owned */
         SegmentTracker *segmentTracker;
 
-        SegmentChunk *currentChunk;
+        ChunkInterface * getNextChunk() const;
+        ChunkInterface *currentChunk;
         bool eof;
         std::string language;
         std::string description;
+        struct
+        {
+            unsigned width;
+            unsigned height;
+        } currentrep;
 
         AbstractDemuxer *demuxer;
         AbstractSourceStream *demuxersource;
         FakeESOut::LockedFakeEsOut fakeEsOut();
         FakeESOut::LockedFakeEsOut fakeEsOut() const;
         FakeESOut *fakeesout; /* to intercept/proxy what is sent from demuxstream */
-        vlc_mutex_t lock; /* lock for everything accessed by dequeuing */
+        mutable vlc_mutex_t lock; /* lock for everything accessed by dequeuing */
+
+        SegmentTimes startTimeContext;
+        SegmentTimes currentTimeContext;
+        SegmentTimes prevEndTimeContext;
+        vlc_tick_t currentDuration;
+        uint64_t currentSequence;
 
     private:
         void declaredCodecs();
-        buffering_status doBufferize(mtime_t, mtime_t, mtime_t);
-        buffering_status last_buffer_status;
+        BufferingStatus doBufferize(Times, mtime_t, mtime_t,
+                                    mtime_t, bool);
+        BufferingStatus last_buffer_status;
         bool valid;
         bool disabled;
         unsigned notfound_sequence;
@@ -149,7 +177,7 @@ namespace adaptive
         public:
             virtual ~AbstractStreamFactory() {}
             virtual AbstractStream *create(demux_t*, const StreamFormat &,
-                                   SegmentTracker *, AbstractConnectionManager *) const = 0;
+                                           SegmentTracker *) const = 0;
     };
 }
 #endif // STREAMS_HPP

@@ -10,7 +10,7 @@ access_LTLIBRARIES += libattachment_plugin.la
 
 libdcp_plugin_la_SOURCES = access/dcp/dcpparser.h access/dcp/dcp.cpp access/dcp/dcpparser.cpp access/dcp/dcpdecrypt.cpp
 if HAVE_ASDCP
-libdcp_plugin_la_CPPFLAGS = $(AM_CPPFLAGS) $(ASDCP_CFLAGS)
+libdcp_plugin_la_CPPFLAGS = $(AM_CPPFLAGS) $(ASDCP_CFLAGS) -DASDCPLIB_FACTORY=@ASDCPLIB_FACTORY@
 libdcp_plugin_la_LIBADD = $(AM_LIBADD) $(ASDCP_LIBS)
 if HAVE_GCRYPT
 libdcp_plugin_la_CPPFLAGS += $(GCRYPT_CFLAGS)
@@ -205,14 +205,19 @@ EXTRA_LTLIBRARIES += libvnc_plugin.la
 
 ### Optical media ###
 
-libcdda_plugin_la_SOURCES = access/cdda.c access/disc_helper.h access/vcd/cdrom.c \
-                            access/vcd/cdrom.h access/vcd/cdrom_internals.h
+libcdda_plugin_la_SOURCES = access/cdda.c access/vcd/cdrom.c access/vcd/cdrom.h access/vcd/cdrom_internals.h \
+                            misc/webservices/json.c misc/webservices/json.h misc/webservices/json_helper.h \
+                            misc/webservices/musicbrainz.c misc/webservices/musicbrainz.h
 libcdda_plugin_la_CFLAGS = $(AM_CFLAGS) $(LIBCDDB_CFLAGS)
 libcdda_plugin_la_LIBADD = $(LIBCDDB_LIBS) $(LIBM)
 libcdda_plugin_la_LDFLAGS = $(AM_LDFLAGS) -rpath '$(accessdir)'
 if HAVE_DARWIN
 libcdda_plugin_la_LIBADD += -liconv
 libcdda_plugin_la_LDFLAGS += -Wl,-framework,IOKit,-framework,CoreFoundation
+endif
+if HAVE_GCRYPT
+libcdda_plugin_la_CFLAGS += $(GCRYPT_CFLAGS)
+libcdda_plugin_la_LIBADD += $(GCRYPT_LIBS)
 endif
 EXTRA_LTLIBRARIES += libcdda_plugin.la
 access_LTLIBRARIES += $(LTLIBcdda)
@@ -247,7 +252,7 @@ endif
 access_LTLIBRARIES += $(LTLIBdvdread)
 EXTRA_LTLIBRARIES += libdvdread_plugin.la
 
-liblibbluray_plugin_la_SOURCES = access/bluray.c
+liblibbluray_plugin_la_SOURCES = access/bluray.c demux/mpeg/timestamps.h
 liblibbluray_plugin_la_CFLAGS = $(AM_CFLAGS) $(BLURAY_CFLAGS)
 liblibbluray_plugin_la_LIBADD = $(BLURAY_LIBS)
 liblibbluray_plugin_la_LDFLAGS = $(AM_LDFLAGS) -rpath '$(accessdir)'
@@ -311,7 +316,7 @@ libhttp_plugin_la_LIBADD = $(SOCKET_LIBS)
 access_LTLIBRARIES += libhttp_plugin.la
 
 liblive555_plugin_la_SOURCES = access/live555.cpp access/mms/asf.c access/mms/buffer.c \
-                               access/live555_dtsgen.h
+                               access/live555_dtsgen.h codec/opus_header.c codec/opus_header.h
 liblive555_plugin_la_CXXFLAGS = $(AM_CXXFLAGS) $(CXXFLAGS_live555)
 liblive555_plugin_la_LIBADD = $(LIBS_live555) $(SOCKET_LIBS)
 liblive555_plugin_la_LDFLAGS = $(AM_LDFLAGS) -rpath '$(accessdir)' \
@@ -421,7 +426,7 @@ EXTRA_LTLIBRARIES += libaccess_mtp_plugin.la
 
 ### SRT ###
 
-libaccess_srt_plugin_la_SOURCES = access/srt.c
+libaccess_srt_plugin_la_SOURCES = access/srt.c access/srt_common.c access/srt_common.h dummy.cpp
 libaccess_srt_plugin_la_CFLAGS = $(AM_CFLAGS) $(SRT_CFLAGS)
 libaccess_srt_plugin_la_CPPFLAGS = $(AM_CPPFLAGS) $(SRT_CPPFLAGS)
 libaccess_srt_plugin_la_LIBADD = $(SRT_LIBS)
@@ -432,6 +437,8 @@ EXTRA_LTLIBRARIES += libaccess_srt_plugin.la
 ### RIST ###
 
 librist_plugin_la_SOURCES = access/rist.c access/rist.h
-librist_plugin_la_CFLAGS = $(AM_CFLAGS)
-librist_plugin_la_LIBADD = $(SOCKET_LIBS)
-access_LTLIBRARIES += librist_plugin.la
+librist_plugin_la_CFLAGS = $(AM_CFLAGS) $(LIBRIST_CFLAGS)
+librist_plugin_la_LIBADD = $(LIBRIST_LIBS) $(SOCKET_LIBS) $(LIBPTHREAD)
+librist_plugin_la_LDFLAGS = $(AM_LDFLAGS) -rpath '$(accessdir)'
+access_LTLIBRARIES += $(LTLIBrist)
+EXTRA_LTLIBRARIES += librist_plugin.la

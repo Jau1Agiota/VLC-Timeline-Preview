@@ -1,9 +1,11 @@
 # libvpx
 
-VPX_VERSION := 1.9.0
-VPX_URL := http://github.com/webmproject/libvpx/archive/v${VPX_VERSION}.tar.gz
+VPX_VERSION := 1.16.0
+VPX_URL := $(GITHUB)/webmproject/libvpx/archive/v${VPX_VERSION}.tar.gz
 
+ifneq ($(filter arm aarch64 i386 loongarch64 mipsel mips64el ppc64le x86_64, $(ARCH)),)
 PKGS += vpx
+endif
 ifeq ($(call need_pkg,"vpx >= 1.5.0"),)
 PKGS_FOUND += vpx
 endif
@@ -15,9 +17,12 @@ $(TARBALLS)/libvpx-$(VPX_VERSION).tar.gz:
 
 libvpx: libvpx-$(VPX_VERSION).tar.gz .sum-vpx
 	$(UNPACK)
+	$(APPLY) $(SRC)/vpx/0001-Disable-forcing-flags-for-Apple-targets.patch
 	$(APPLY) $(SRC)/vpx/libvpx-ios.patch
+	$(APPLY) $(SRC)/vpx/0001-do-not-use-CLOCK_MONOTONIC_RAW-in-older-iOS-macOS.patch
 ifdef HAVE_ANDROID
-	$(APPLY) $(SRC)/vpx/libvpx-android.patch
+	$(APPLY) $(SRC)/vpx/0003-fix-x86-android-build-with-encoders.patch
+	$(APPLY) $(SRC)/vpx/0004-fix-android-build.patch
 	cp "${ANDROID_NDK}"/sources/android/cpufeatures/cpu-features.c $(UNPACK_DIR)/vpx_ports
 	cp "${ANDROID_NDK}"/sources/android/cpufeatures/cpu-features.h $(UNPACK_DIR)
 endif
@@ -27,13 +32,20 @@ ifeq ($(ARCH),aarch64)
 	$(APPLY) $(SRC)/vpx/libvpx-darwin-aarch64.patch
 endif
 endif
+	# Disable automatic addition of -fembed-bitcode for iOS
+	# as it is enabled through --extra-cflags if necessary.
+	$(APPLY) $(SRC)/vpx/libvpx-remove-bitcode.patch
+	$(APPLY) $(SRC)/vpx/0001-fix-compilation-with-Apple-Clang-13.patch
+	# make sure we can build when targetting Windows XP
+	$(APPLY) $(SRC)/vpx/0001-force-detection-of-pthread-on-Windows.patch
+	# do not force C++17, it's not supported by older compilers we support
+	sed -i.orig 's,++17,++14,g' $(UNPACK_DIR)/configure
 	$(MOVE)
 
 DEPS_vpx =
 
 ifdef HAVE_WIN32
-DEPS_vpx += pthreads $(DEPS_pthreads)
-VPX_HOSTVARS = $(HOSTVARS) CFLAGS="$(CFLAGS) -DPTW32_STATIC_LIB" CXXFLAGS="$(CXXFLAGS) -DPTW32_STATIC_LIB"
+DEPS_vpx += winpthreads $(DEPS_winpthreads)
 endif
 
 ifdef HAVE_CROSS_COMPILE
@@ -60,14 +72,10 @@ else ifeq ($(ARCH),mips)
 VPX_ARCH := mips32
 else ifeq ($(ARCH),ppc)
 VPX_ARCH := ppc32
-else ifeq ($(ARCH),ppc64)
-VPX_ARCH := ppc64
-else ifeq ($(ARCH),sparc)
-VPX_ARCH := sparc
-else ifeq ($(ARCH),x86_64)
-VPX_ARCH := x86_64
 else ifeq ($(ARCH),aarch64)
 VPX_ARCH := arm64
+else
+VPX_ARCH := $(ARCH)
 endif
 
 ifdef HAVE_ANDROID
@@ -106,7 +114,9 @@ VPX_CONF := \
 	--disable-install-docs \
 	--disable-dependency-tracking \
 	--enable-vp9-highbitdepth \
-	--disable-tools
+	--disable-tools \
+	--target=$(VPX_TARGET) \
+	--prefix=$(PREFIX)
 
 ifneq ($(filter arm aarch64, $(ARCH)),)
 # Only enable runtime cpu detect on architectures other than arm/aarch64
@@ -118,36 +128,51 @@ endif
 endif
 endif
 
+VPX_CFLAGS=$(CFLAGS)
+
 ifndef BUILD_ENCODERS
 VPX_CONF += --disable-vp8-encoder --disable-vp9-encoder
+endif
+
+ifeq ($(ARCH),i386)
+VPX_CFLAGS += -mstackrealign
 endif
 
 ifndef HAVE_WIN32
 VPX_CONF += --enable-pic
 else
-VPX_CONF += --extra-cflags="-mstackrealign"
+ifeq ($(ARCH),arm)
+# As of libvpx 1.14.0 we have to explicitly disable runtime CPU detection for Windows armv7
+VPX_CONF += --disable-runtime-cpu-detect
+endif
 endif
 ifdef HAVE_DARWIN_OS
-VPX_CONF += --enable-vp8-decoder --disable-tools
-VPX_CONF += --extra-cflags="$(CFLAGS) $(EXTRA_CFLAGS)"
+VPX_CONF += --enable-vp8-decoder
 ifdef HAVE_IOS
-ifdef HAVE_TVOS
-VPX_LDFLAGS := -L$(IOS_SDK)/usr/lib -isysroot $(IOS_SDK) -mtvos-version-min=9.0
-else
-VPX_LDFLAGS := -L$(IOS_SDK)/usr/lib -isysroot $(IOS_SDK) -miphoneos-version-min=8.4
+ifeq ($(ARCH),arm)
+# As of libvpx 1.14.0 we have to explicitly disable runtime CPU detection for iOS arm7
+VPX_CONF += --disable-runtime-cpu-detect
 endif
+VPX_LDFLAGS := -L$(IOS_SDK)/usr/lib -isysroot $(IOS_SDK) $(LDFLAGS)
+endif
+ifeq ($(ARCH),$(filter $(ARCH), arm aarch64))
+ifneq ($(call apple_clang_at_least, 13), true)
+# arm_neon.h broken on Apple Clang 12
+VPX_CONF += --disable-neon-dotprod
+endif
+endif
+ifdef HAVE_MACOSX
+VPX_LDFLAGS := -L$(MACOSX_SDK)/usr/lib -isysroot $(MACOSX_SDK) -mmacosx-version-min=10.7
 endif
 VPX_LDFLAGS += -arch $(PLATFORM_SHORT_ARCH)
 endif
 
-ifneq ($(filter i386 x86_64,$(ARCH)),)
-# broken text relocations or invalid register for .seh_savexmm with gcc8
-VPX_CONF += --disable-mmx
+ifndef WITH_OPTIMIZATION
+VPX_CONF += --disable-optimizations
 endif
 
-ifndef WITH_OPTIMIZATION
-VPX_CONF += --enable-debug --disable-optimizations
-endif
+# Always enable debug symbols, we strip in the final executables if needed
+VPX_CONF += --enable-debug
 
 ifdef HAVE_ANDROID
 # Starting NDK19, standalone toolchains are deprecated and gcc is not shipped.
@@ -156,14 +181,22 @@ ifdef HAVE_ANDROID
 # toolchains, therefore pass the HOSTVARS directly to bypass any detection.
 ifneq ($(shell $(VPX_CROSS)gcc -v >/dev/null 2>&1 || echo FAIL),)
 VPX_HOSTVARS = $(HOSTVARS)
+
+ifeq ($(filter $(ARCH),i386 x86_64),)
+# use CCAS for platforms not using nasm/yasm
+VPX_HOSTVARS += AS="$(CCAS)"
+endif
+
 endif
 endif
 
+VPX_CONF += --extra-cflags="$(VPX_CFLAGS)"
+
 .vpx: libvpx
 	rm -rf $(PREFIX)/include/vpx
-	cd $< && LDFLAGS="$(VPX_LDFLAGS)" CROSS=$(VPX_CROSS) $(VPX_HOSTVARS) ./configure --target=$(VPX_TARGET) \
-		$(VPX_CONF) --prefix=$(PREFIX)
-	cd $< && $(MAKE)
-	$(call pkg_static,"vpx.pc")
-	cd $< && $(MAKE) install
+	$(MAKEBUILDDIR)
+	cd $(BUILD_DIR) && LDFLAGS="$(VPX_LDFLAGS)" CROSS=$(VPX_CROSS) $(VPX_HOSTVARS) $(BUILD_SRC)/configure $(VPX_CONF)
+	+CONFIG_DEBUG=1 $(MAKEBUILD)
+	$(call pkg_static,"$(BUILD_DIRUNPACK)/vpx.pc")
+	+CONFIG_DEBUG=1 $(MAKEBUILD) install
 	touch $@

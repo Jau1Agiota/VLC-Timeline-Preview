@@ -93,6 +93,7 @@ public:
         RAISE_AUDIOVIDEO,
     };
     int getControlsVisibilityStatus();
+    bool isAdvancedWidgetAvailable();
     bool isPlDocked() { return ( b_plDocked != false ); }
     bool isInterfaceFullScreen() { return b_interfaceFullScreen; }
     bool isInterfaceAlwaysOnTop() { return b_interfaceOnTop; }
@@ -110,7 +111,7 @@ protected:
     void keyPressEvent( QKeyEvent *) Q_DECL_OVERRIDE;
     void wheelEvent( QWheelEvent * ) Q_DECL_OVERRIDE;
     bool eventFilter(QObject *, QEvent *) Q_DECL_OVERRIDE;
-    virtual void toggleUpdateSystrayMenuWhenVisible();
+    virtual void toggleUpdateSystrayMenuWhenVisible(bool requestActivate = false);
     void resizeWindow(int width, int height);
 
 protected:
@@ -183,9 +184,6 @@ protected:
     bool                 b_pauseOnMinimize;
     bool                 b_maximizedView;
     bool                 b_isWindowTiled;
-#ifdef QT5_HAS_WAYLAND
-    bool                 b_hasWayland;
-#endif
     /* States */
     bool                 playlistVisible;       ///< Is the playlist visible ?
 //    bool                 videoIsActive;       ///< Having a video now / THEMIM->hasV
@@ -202,7 +200,7 @@ public slots:
     void dockPlaylist( bool b_docked = true );
     void toggleMinimalView( bool );
     void togglePlaylist();
-    void toggleUpdateSystrayMenu();
+    void toggleUpdateSystrayMenu(bool requestActivate = false);
     void showUpdateSystrayMenu();
     void hideUpdateSystrayMenu();
     void toggleAdvancedButtons();
@@ -216,7 +214,7 @@ public slots:
     /* Manage the Video Functions from the vout threads */
     void getVideoSlot( struct vout_window_t *,
                        unsigned i_width, unsigned i_height, bool, bool * );
-    void releaseVideoSlot( void );
+    void releaseVideoSlot( bool forced );
 
     void emitBoss();
     void emitRaise();
@@ -235,8 +233,6 @@ protected slots:
     void showCryptedLabel( bool );
 
     void handleKeyPress( QKeyEvent * );
-
-    void showBuffering( float );
 
     void resizeStack( int w, int h )
     {
@@ -265,11 +261,12 @@ protected slots:
     void hideResumePanel();
     void resumePlayback();
     void onInputChanged( bool );
+    void onVOutChanged( bool );
 
 signals:
     void askGetVideo( struct vout_window_t *, unsigned, unsigned, bool,
                       bool * );
-    void askReleaseVideo( );
+    void askReleaseVideo( bool );
     void askVideoToResize( unsigned int, unsigned int );
     void askVideoSetFullScreen( bool );
     void askHideMouse( bool );

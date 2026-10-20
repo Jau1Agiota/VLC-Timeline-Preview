@@ -409,7 +409,7 @@ static int ScanParametersDvbC( vlc_object_t *p_access, dvb_sys_t *p_sys, scan_pa
 
     /* if frontend can do auto, don't scan them */
     p_scan->b_modulation_set = ( p_frontend->info.caps & FE_CAN_QAM_AUTO );
-    /* our scanning code flips modulation from 16..256 automaticly*/
+    /* our scanning code flips modulation from 16..256 automatically*/
 
     /* if user supplies symbolrate, don't scan those */
     p_scan->i_symbolrate = var_GetInteger( p_access, "dvb-srate" );
@@ -713,7 +713,7 @@ static int DoDiseqc( vlc_object_t *p_access, dvb_sys_t *p_sys )
             return VLC_EGENERIC;
         }
 
-        msleep(15000 + cmd.wait * 1000);
+        msleep(VLC_TICK_FROM_MS(15 + cmd.wait));
 
         /* A or B simple diseqc ("diseqc-compatible") */
         if( ioctl( p_sys->i_frontend_handle, FE_DISEQC_SEND_BURST,

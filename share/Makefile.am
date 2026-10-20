@@ -5,25 +5,25 @@ EXTRA_DIST =
 desktopdir = $(datadir)/applications
 if !HAVE_WIN32
 if !HAVE_DARWIN
-desktop_DATA = vlc.desktop
+desktop_DATA = vlc.desktop vlc-openbd.desktop vlc-opendvd.desktop vlc-openvcd.desktop vlc-opencda.desktop
 appdatadir = $(datarootdir)/metainfo
-appdata_DATA = $(appdata_in_files:.xml.in=.xml)
-appdata_in_files = vlc.appdata.xml.in
+appdata_DATA = org.videolan.vlc.appdata.xml
 endif
 endif
 
 EXTRA_DIST += vlc.desktop.in vlc.desktop.mimetypes
+EXTRA_DIST += vlc-openbd.desktop.in vlc-opendvd.desktop.in vlc-openvcd.desktop.in vlc-opencda.desktop.in
 CLEANFILES += $(desktop_DATA) $(appdata_DATA)
 
-vlc.desktop: vlc.desktop.in $(top_builddir)/config.status
-	$(AM_V_GEN)mimetypes="$$(sed 's/\s*#.*$$//g' $(srcdir)/vlc.desktop.mimetypes | egrep -v '^$$' | tr "\n" ';')"; \
+%.desktop: %.desktop.in $(top_builddir)/config.status
+	$(AM_V_GEN)mimetypes="$$(sed 's/\s*#.*$$//g' $(srcdir)/vlc.desktop.mimetypes | $(EGREP) -v '^$$' | tr "\n" ';')"; \
 	sed \
 		-e 's,\@bindir\@,$(bindir),g' \
 		 -e "s,\@MIMETYPES\@,$$mimetypes,g" < "$<" > tmp-$@
 	$(AM_V_at)$(DESKTOP_FILE_VALIDATE) tmp-$@
 	$(AM_V_at)mv -f tmp-$@ $@
 
-vlc.appdata.xml: vlc.appdata.xml.in
+org.videolan.vlc.appdata.xml: org.videolan.vlc.appdata.xml.in
 	$(AM_V_GEN)$(MSGFMT) --xml --template $< -d $(top_srcdir)/po -o $@ || cp $< $@
 
 iconsdatadir = $(datadir)/icons/hicolor
@@ -90,7 +90,7 @@ skins2_default_vlt_FILES = \
 	skins2/default/subX/vol_slider.png
 
 skins2/default.vlt: $(skins2_default_vlt_FILES)
-	$(AM_V_at)mkdir -p skins2
+	$(AM_V_at)$(MKDIR_P) "skins2"
 	$(AM_V_at)rm -f -- skins2/default.vlt.tmp
 	$(AM_V_GEN)tarsort= ; \
 	tar --help|grep -q sort=ORDER && tarsort=--sort=name ; \
@@ -117,7 +117,7 @@ luac_verbose_0 = @echo "  LUAC   $@";
 	done; \
 	echo "Attempt to byte-compile unknown file: $(<)!"; \
 	exit 1
-	$(AM_V_at)mkdir -p "$$(dirname '$@')"
+	$(AM_V_at)$(MKDIR_P) "$$(dirname '$@')"
 	$(luac_verbose)$(LUAC) -o $@ $<
 
 if BUILD_LUA
@@ -154,7 +154,6 @@ nobase_vlclib_DATA += \
 	lua/playlist/soundcloud.luac \
 	lua/playlist/vimeo.luac \
 	lua/playlist/vocaroo.luac \
-	lua/playlist/youtube.luac \
 	lua/playlist/twitch.luac \
 	lua/sd/icecast.luac \
 	lua/sd/jamendo.luac \
@@ -174,7 +173,6 @@ nobase_doc_DATA = \
 	lua/meta/reader/filename.lua \
 	lua/playlist/README.txt \
 	lua/playlist/liveleak.lua \
-	lua/playlist/youtube.lua \
 	lua/sd/README.txt \
 	lua/sd/icecast.lua \
 	lua/sd/icast.lua \
@@ -292,7 +290,6 @@ EXTRA_DIST += \
 	lua/playlist/soundcloud.lua \
 	lua/playlist/vimeo.lua \
 	lua/playlist/vocaroo.lua \
-	lua/playlist/youtube.lua \
 	lua/playlist/twitch.lua \
 	lua/playlist/zapiks.lua \
 	lua/sd/README.txt \

@@ -150,7 +150,7 @@ subpicture_t *subpicture_NewFromPicture( vlc_object_t *p_obj,
 void subpicture_Update( subpicture_t *p_subpicture,
                         const video_format_t *p_fmt_src,
                         const video_format_t *p_fmt_dst,
-                        mtime_t i_ts )
+                        vlc_tick_t i_ts )
 {
     subpicture_updater_t *p_upd = &p_subpicture->updater;
     subpicture_private_t *p_private = p_subpicture->p_private;
@@ -242,6 +242,22 @@ subpicture_region_t *subpicture_region_New( const video_format_t *p_fmt )
         free( p_region );
         return NULL;
     }
+
+    if (p_region->fmt.transfer == TRANSFER_FUNC_UNDEF)
+        p_region->fmt.transfer = TRANSFER_FUNC_SRGB;
+    if (p_region->fmt.primaries == COLOR_PRIMARIES_UNDEF)
+        p_region->fmt.primaries = COLOR_PRIMARIES_SRGB;
+    if (p_region->fmt.space == COLOR_SPACE_UNDEF)
+        p_region->fmt.space = COLOR_SPACE_SRGB;
+    p_region->fmt.b_color_range_full = true;
+
+    if (p_region->p_picture->format.transfer == TRANSFER_FUNC_UNDEF)
+        p_region->p_picture->format.transfer = TRANSFER_FUNC_SRGB;
+    if (p_region->p_picture->format.primaries == COLOR_PRIMARIES_UNDEF)
+        p_region->p_picture->format.primaries = COLOR_PRIMARIES_SRGB;
+    if (p_region->p_picture->format.space == COLOR_SPACE_UNDEF)
+        p_region->p_picture->format.space = COLOR_SPACE_SRGB;
+    p_region->p_picture->format.b_color_range_full = true;
 
     return p_region;
 }

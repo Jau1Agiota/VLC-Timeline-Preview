@@ -356,6 +356,11 @@ static int Start(mc_api *api, union mc_api_args *p_args)
         syms.AMediaFormat.setInt32(p_sys->p_format, "width", p_args->video.i_width);
         syms.AMediaFormat.setInt32(p_sys->p_format, "height", p_args->video.i_height);
         syms.AMediaFormat.setInt32(p_sys->p_format, "rotation-degrees", p_args->video.i_angle);
+
+        syms.AMediaFormat.setInt32(p_sys->p_format, "color-range", p_args->video.color_range);
+        syms.AMediaFormat.setInt32(p_sys->p_format, "color-standard", p_args->video.color_standard);
+        syms.AMediaFormat.setInt32(p_sys->p_format, "color-transfer", p_args->video.color_transfer);
+
         if (p_args->video.p_surface)
         {
             p_anw = p_args->video.p_surface;
@@ -412,7 +417,7 @@ static int Flush(mc_api *api)
 /*****************************************************************************
  * DequeueInput
  *****************************************************************************/
-static int DequeueInput(mc_api *api, mtime_t i_timeout)
+static int DequeueInput(mc_api *api, vlc_tick_t i_timeout)
 {
     mc_api_sys *p_sys = api->p_sys;
     ssize_t i_index;
@@ -433,7 +438,7 @@ static int DequeueInput(mc_api *api, mtime_t i_timeout)
  * QueueInput
  *****************************************************************************/
 static int QueueInput(mc_api *api, int i_index, const void *p_buf,
-                      size_t i_size, mtime_t i_ts, bool b_config)
+                      size_t i_size, vlc_tick_t i_ts, bool b_config)
 {
     mc_api_sys *p_sys = api->p_sys;
     uint8_t *p_mc_buf;
@@ -472,7 +477,7 @@ static int32_t GetFormatInteger(AMediaFormat *p_format, const char *psz_name)
 /*****************************************************************************
  * DequeueOutput
  *****************************************************************************/
-static int DequeueOutput(mc_api *api, mtime_t i_timeout)
+static int DequeueOutput(mc_api *api, vlc_tick_t i_timeout)
 {
     mc_api_sys *p_sys = api->p_sys;
     ssize_t i_index;

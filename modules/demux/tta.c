@@ -169,6 +169,9 @@ static int Open( vlc_object_t * p_this )
     p_fullheader += 4;
 
     p_sys->p_es = es_out_Add( p_demux->out, &fmt );
+    if( unlikely(!p_sys->p_es) )
+        goto error;
+
     p_sys->i_start = p_fullheader - (uint8_t *)fmt.p_extra;
     es_format_Clean( &fmt );
 
@@ -207,7 +210,7 @@ static int Demux( demux_t *p_demux )
     p_data = vlc_stream_Block( p_demux->s,
                                p_sys->pi_seektable[p_sys->i_currentframe] );
     if( p_data == NULL ) return 0;
-    p_data->i_dts = p_data->i_pts = VLC_TS_0 + (int64_t)(INT64_C(1000000) * p_sys->i_currentframe) * TTA_FRAMETIME;
+    p_data->i_dts = p_data->i_pts = VLC_TICK_0 + (int64_t)(INT64_C(1000000) * p_sys->i_currentframe) * TTA_FRAMETIME;
 
     p_sys->i_currentframe++;
 

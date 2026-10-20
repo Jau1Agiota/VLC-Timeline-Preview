@@ -1,5 +1,5 @@
 DAALA_VERSION := e248823a04292a8c2f56aa260f5c0b369d41d64e
-DAALA_GITURL := http://git.xiph.org/daala.git
+DAALA_GITURL := http://gitlab.xiph.org/xiph/daala.git
 
 # Default disabled for now
 # PKGS += daala
@@ -16,11 +16,12 @@ $(TARBALLS)/daala-$(DAALA_VERSION).tar.xz:
 
 daala: daala-$(DAALA_VERSION).tar.xz .sum-daala
 	$(UNPACK)
+	$(UPDATE_AUTOCONFIG) && cd $(UNPACK_DIR) && mv config.guess config.sub build-aux
 	$(call pkg_static,"daaladec.pc.in")
 	$(call pkg_static,"daalaenc.pc.in")
 	$(MOVE)
 
-DAALACONF := $(HOSTCONF) \
+DAALACONF := \
 	--disable-tools \
 	--disable-unit-tests \
 	--disable-examples \
@@ -29,6 +30,8 @@ DAALACONF := $(HOSTCONF) \
 .daala: daala
 	mkdir -p daala/m4
 	$(RECONF)
-	cd $< && $(HOSTVARS) ./configure $(DAALACONF)
-	cd $< && $(MAKE) install
+	$(MAKEBUILDDIR)
+	$(MAKECONFIGURE) $(DAALACONF)
+	+$(MAKEBUILD)
+	+$(MAKEBUILD) install
 	touch $@

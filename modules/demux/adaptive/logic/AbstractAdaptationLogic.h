@@ -44,15 +44,17 @@ namespace adaptive
                                         public SegmentTrackerListenerInterface
         {
             public:
+                AbstractAdaptationLogic             () = delete;
                 AbstractAdaptationLogic             (vlc_object_t *);
-                virtual ~AbstractAdaptationLogic    ();
+                virtual ~AbstractAdaptationLogic    () = default;
 
                 virtual BaseRepresentation* getNextRepresentation(BaseAdaptationSet *, BaseRepresentation *) = 0;
-                virtual void                updateDownloadRate     (const ID &, size_t, mtime_t);
-                virtual void                trackerEvent           (const SegmentTrackerEvent &) {}
+                virtual void                updateDownloadRate     (const ID &, size_t,
+                                                                    mtime_t, mtime_t) override;
+                virtual void                trackerEvent           (const TrackerEvent &) override {}
                 void                        setMaxDeviceResolution (int, int);
 
-                enum LogicType
+                enum class LogicType
                 {
                     Default = 0,
                     AlwaysBest,

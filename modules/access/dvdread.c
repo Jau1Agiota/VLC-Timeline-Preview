@@ -129,14 +129,14 @@ struct demux_sys_t
     int i_title_end_block;
     int i_title_blocks;
     int i_title_offset;
-    mtime_t i_title_cur_time;
+    vlc_tick_t i_title_cur_time;
 
     int i_title_start_cell;
     int i_title_end_cell;
     int i_cur_cell;
     int i_next_cell;
-    mtime_t i_cell_cur_time;
-    mtime_t i_cell_duration;
+    vlc_tick_t i_cell_cur_time;
+    vlc_tick_t i_cell_duration;
 
     /* Track */
     ps_track_t    tk[PS_TK_COUNT];
@@ -212,7 +212,14 @@ static int Open( vlc_object_t *p_this )
     }
 
     /* Open dvdread */
+#if DVDREAD_VERSION < DVDREAD_VERSION_CODE(6, 1, 2)
+    /* In libdvdread prior to 6.1.2, UTF8 is not supported for windows and
+     * requires a prior conversion.
+     * For non win32/os2 platforms, this is just a no-op */
     const char *psz_path = ToLocale( psz_file );
+#else
+    const char *psz_path = psz_file;
+#endif
 #if DVDREAD_VERSION >= DVDREAD_VERSION_CODE(6, 1, 0)
     dvd_logger_cb cbs;
     cbs.pf_log = DvdReadLog;
@@ -220,7 +227,9 @@ static int Open( vlc_object_t *p_this )
 #else
     dvd_reader_t *p_dvdread = DVDOpen( psz_path );
 #endif
+#if DVDREAD_VERSION < DVDREAD_VERSION_CODE(6, 1, 2)
     LocaleFree( psz_path );
+#endif
     if( p_dvdread == NULL )
     {
         msg_Err( p_demux, "DVDRead cannot open source: %s", psz_file );
@@ -256,9 +265,9 @@ static int Open( vlc_object_t *p_this )
     ps_track_init( p_sys->tk );
     p_sys->i_sar_num = 0;
     p_sys->i_sar_den = 0;
-    p_sys->i_title_cur_time = (mtime_t) 0;
-    p_sys->i_cell_cur_time = (mtime_t) 0;
-    p_sys->i_cell_duration = (mtime_t) 0;
+    p_sys->i_title_cur_time = (vlc_tick_t) 0;
+    p_sys->i_cell_cur_time = (vlc_tick_t) 0;
+    p_sys->i_cell_duration = (vlc_tick_t) 0;
 
     p_sys->p_dvdread = p_dvdread;
     p_sys->p_vmg_file = p_vmg_file;
@@ -634,7 +643,7 @@ static int DemuxBlock( demux_t *p_demux, const uint8_t *p, int len )
             int i_mux_rate;
             if( !ps_pkt_parse_pack( p_pkt, &i_scr, &i_mux_rate ) )
             {
-                es_out_SetPCR( p_demux->out, VLC_TS_0 + i_scr );
+                es_out_SetPCR( p_demux->out, VLC_TICK_0 + i_scr );
                 if( i_mux_rate > 0 ) p_sys->i_mux_rate = i_mux_rate;
             }
             block_Release( p_pkt );
@@ -642,7 +651,7 @@ static int DemuxBlock( demux_t *p_demux, const uint8_t *p, int len )
         }
         default:
         {
-            int i_id = ps_pkt_id( p_pkt );
+            int i_id = ps_pkt_id( p_pkt, /*p_sys->type == DVD_A ? PS_SOURCE_AOB :*/ PS_SOURCE_VOB );
             if( i_id >= 0xc0 )
             {
                 ps_track_t *tk = &p_sys->tk[ps_id_to_tk(i_id)];
@@ -687,7 +696,7 @@ static void ESNew( demux_t *p_demux, int i_id, int i_lang )
 
     if( tk->b_configured ) return;
 
-    if( ps_track_fill( tk, 0, i_id, NULL, true ) )
+    if( ps_track_fill( tk, NULL, i_id, NULL, true ) )
     {
         msg_Warn( p_demux, "unknown codec for id=0x%x", i_id );
         return;
@@ -959,17 +968,17 @@ static int DvdReadSetArea( demux_t *p_demux, int i_title, int i_chapter,
                 switch( p_vts->vtsi_mat->vts_audio_attr[i - 1].audio_format )
                 {
                 case 0x00: /* A52 */
-                    i_id = (0x80 + i_position) | 0xbd00;
+                    i_id = (0x80 + i_position) | PS_PACKET_ID_MASK_VOB;
                     break;
                 case 0x02:
                 case 0x03: /* MPEG audio */
                     i_id = 0xc000 + i_position;
                     break;
                 case 0x04: /* LPCM */
-                    i_id = (0xa0 + i_position) | 0xbd00;
+                    i_id = (0xa0 + i_position) | PS_PACKET_ID_MASK_VOB;
                     break;
                 case 0x06: /* DTS */
-                    i_id = (0x88 + i_position) | 0xbd00;
+                    i_id = (0x88 + i_position) | PS_PACKET_ID_MASK_VOB;
                     break;
                 default:
                     i_id = 0;
@@ -1025,7 +1034,7 @@ static int DvdReadSetArea( demux_t *p_demux, int i_title, int i_chapter,
                     i_position = ( spu_control >> 24 ) & 0x7F;
                 }
 
-                i_id = (0x20 + i_position) | 0xbd00;
+                i_id = (0x20 + i_position) | PS_PACKET_ID_MASK_VOB;
 
                 ESNew( p_demux, i_id, p_sys->p_vts_file->vtsi_mat->
                        vts_subp_attr[i - 1].lang_code );
@@ -1213,8 +1222,8 @@ static void DvdReadHandleDSI( demux_t *p_demux, uint8_t *p_data )
         /*
          * Store the timecodes so we can get the current time
          */
-        p_sys->i_title_cur_time = (mtime_t) p_sys->dsi_pack.dsi_gi.nv_pck_scr / 90 * 1000;
-        p_sys->i_cell_cur_time = (mtime_t) dvdtime_to_time( &p_sys->dsi_pack.dsi_gi.c_eltm, 0 );
+        p_sys->i_title_cur_time = (vlc_tick_t) p_sys->dsi_pack.dsi_gi.nv_pck_scr / 90 * 1000;
+        p_sys->i_cell_cur_time = (vlc_tick_t) dvdtime_to_time( &p_sys->dsi_pack.dsi_gi.c_eltm, 0 );
 
         /*
          * Determine where we go next.  These values are the ones we mostly
@@ -1298,7 +1307,7 @@ static void DvdReadHandleDSI( demux_t *p_demux, uint8_t *p_data )
         p_sys->i_next_vobu =
             p_sys->p_cur_pgc->cell_playback[p_sys->i_cur_cell].first_sector;
 
-        p_sys->i_cell_duration = (mtime_t)dvdtime_to_time( &p_sys->p_cur_pgc->cell_playback[p_sys->i_cur_cell].playback_time, 0 );
+        p_sys->i_cell_duration = (vlc_tick_t)dvdtime_to_time( &p_sys->p_cur_pgc->cell_playback[p_sys->i_cur_cell].playback_time, 0 );
     }
 
 
@@ -1312,7 +1321,7 @@ static void DvdReadHandleDSI( demux_t *p_demux, uint8_t *p_data )
              dvdtime_to_time( &p_sys->dsi_pack.dsi_gi.c_eltm, 0 ) );
 
     msg_Dbg( p_demux, "cell duration: %lld",
-             (mtime_t)dvdtime_to_time( &p_sys->p_cur_pgc->cell_playback[p_sys->i_cur_cell].playback_time, 0 ) );
+             (vlc_tick_t)dvdtime_to_time( &p_sys->p_cur_pgc->cell_playback[p_sys->i_cur_cell].playback_time, 0 ) );
 
     msg_Dbg( p_demux, "cat 0x%02x ilvu_ea %d ilvu_sa %d size %d",
              p_sys->dsi_pack.sml_pbi.category,

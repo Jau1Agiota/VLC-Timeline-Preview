@@ -64,6 +64,7 @@ struct libvlc_media_list_player_t
     vlc_mutex_t                 object_lock;
     /* Protect access to this structure and from callback execution. */
     vlc_mutex_t                 mp_callback_lock;
+    vlc_mutex_t                 media_player_lock;
     vlc_cond_t                  seek_pending;
     libvlc_media_list_path_t    current_playing_item_path;
     libvlc_media_t *            p_current_playing_item;
@@ -171,7 +172,11 @@ get_next_path(libvlc_media_list_player_t * p_mlp, bool b_loop)
 
     int depth = libvlc_media_list_path_depth(p_mlp->current_playing_item_path);
     if (depth < 1 || !p_parent_of_playing_item)
+    {
+        if (p_parent_of_playing_item)
+            libvlc_media_list_release(p_parent_of_playing_item);
         return NULL;
+    }
 
     ret = libvlc_media_list_path_copy(p_mlp->current_playing_item_path);
     ret[depth - 1]++; /* set to next element */
@@ -197,6 +202,7 @@ get_next_path(libvlc_media_list_player_t * p_mlp, bool b_loop)
         }
         ret[depth] = -1;
         ret[depth-1]++;
+        libvlc_media_list_release(p_parent_of_playing_item);
         p_parent_of_playing_item  = libvlc_media_list_parentlist_at_path(
                                         p_mlp->p_mlist,
                                         ret);
@@ -436,7 +442,7 @@ uninstall_media_player_observer(libvlc_media_list_player_t * p_mlp)
  *
  * Playlist lock should be held
  **************************************************************************/
-static void
+static int
 set_current_playing_item(libvlc_media_list_player_t * p_mlp, libvlc_media_list_path_t path)
 {
     assert_locked(p_mlp);
@@ -449,12 +455,12 @@ set_current_playing_item(libvlc_media_list_player_t * p_mlp, libvlc_media_list_p
     }
 
     if (!path)
-        return;
+        return -1;
 
     libvlc_media_t * p_md;
     p_md = libvlc_media_list_item_at_path(p_mlp->p_mlist, path);
     if (!p_md)
-        return;
+        return -1;
 
     /* Make sure media_player_reached_end() won't get called */
     uninstall_media_player_observer(p_mlp);
@@ -463,6 +469,8 @@ set_current_playing_item(libvlc_media_list_player_t * p_mlp, libvlc_media_list_p
 
     install_media_player_observer(p_mlp);
     libvlc_media_release(p_md); /* for libvlc_media_list_item_at_index */
+
+    return 0;
 }
 
 /*
@@ -487,6 +495,7 @@ libvlc_media_list_player_new(libvlc_instance_t * p_instance)
     p_mlp->seek_offset = 0;
     vlc_mutex_init(&p_mlp->object_lock);
     vlc_mutex_init(&p_mlp->mp_callback_lock);
+    vlc_mutex_init(&p_mlp->media_player_lock);
     vlc_cond_init(&p_mlp->seek_pending);
     libvlc_event_manager_init(&p_mlp->event_manager, p_mlp);
 
@@ -507,6 +516,7 @@ libvlc_media_list_player_new(libvlc_instance_t * p_instance)
 error:
     libvlc_event_manager_destroy(&p_mlp->event_manager);
     vlc_cond_destroy(&p_mlp->seek_pending);
+    vlc_mutex_destroy(&p_mlp->media_player_lock);
     vlc_mutex_destroy(&p_mlp->mp_callback_lock);
     vlc_mutex_destroy(&p_mlp->object_lock);
     free(p_mlp);
@@ -550,6 +560,7 @@ void libvlc_media_list_player_release(libvlc_media_list_player_t * p_mlp)
 
     libvlc_event_manager_destroy(&p_mlp->event_manager);
     vlc_cond_destroy(&p_mlp->seek_pending);
+    vlc_mutex_destroy(&p_mlp->media_player_lock);
     vlc_mutex_destroy(&p_mlp->mp_callback_lock);
     vlc_mutex_destroy(&p_mlp->object_lock);
 
@@ -591,8 +602,10 @@ void libvlc_media_list_player_set_media_player(libvlc_media_list_player_t * p_ml
 
     lock(p_mlp);
     uninstall_media_player_observer(p_mlp);
+    vlc_mutex_lock(&p_mlp->media_player_lock);
     p_oldmi = p_mlp->p_mi;
     p_mlp->p_mi = p_mi;
+    vlc_mutex_unlock(&p_mlp->media_player_lock);
     install_media_player_observer(p_mlp);
     unlock(p_mlp);
 
@@ -604,8 +617,11 @@ void libvlc_media_list_player_set_media_player(libvlc_media_list_player_t * p_ml
  **************************************************************************/
 libvlc_media_player_t * libvlc_media_list_player_get_media_player(libvlc_media_list_player_t * p_mlp)
 {
-    libvlc_media_player_retain(p_mlp->p_mi);
-    return p_mlp->p_mi;
+    vlc_mutex_lock(&p_mlp->media_player_lock);
+    libvlc_media_player_t *p_mi = p_mlp->p_mi;
+    libvlc_media_player_retain(p_mi);
+    vlc_mutex_unlock(&p_mlp->media_player_lock);
+    return p_mi;
 }
 
 /**************************************************************************
@@ -690,8 +706,8 @@ int libvlc_media_list_player_play_item_at_index(libvlc_media_list_player_t * p_m
 {
     lock(p_mlp);
     libvlc_media_list_path_t path = libvlc_media_list_path_with_root_index(i_index);
-    set_current_playing_item(p_mlp, path);
     libvlc_media_t *p_md = libvlc_media_player_get_media(p_mlp->p_mi);
+    int ret = set_current_playing_item(p_mlp, path);
     libvlc_media_player_play(p_mlp->p_mi);
     unlock(p_mlp);
 
@@ -704,7 +720,7 @@ int libvlc_media_list_player_play_item_at_index(libvlc_media_list_player_t * p_m
     event.u.media_list_player_next_item_set.item = p_md;
     libvlc_event_send(&p_mlp->event_manager, &event);
     libvlc_media_release(p_md);
-    return 0;
+    return ret;
 }
 
 /**************************************************************************
@@ -721,10 +737,10 @@ int libvlc_media_list_player_play_item(libvlc_media_list_player_t * p_mlp, libvl
         return -1;
     }
 
-    set_current_playing_item(p_mlp, path);
+    int ret = set_current_playing_item(p_mlp, path);
     libvlc_media_player_play(p_mlp->p_mi);
     unlock(p_mlp);
-    return 0;
+    return ret;
 }
 
 /**************************************************************************
@@ -783,6 +799,7 @@ static int set_relative_playlist_position_and_play(
 
     libvlc_media_list_path_t path = p_mlp->current_playing_item_path;
 
+    int ret;
     if(p_mlp->e_playback_mode != libvlc_playback_mode_repeat)
     {
         bool b_loop = (p_mlp->e_playback_mode == libvlc_playback_mode_loop);
@@ -790,20 +807,20 @@ static int set_relative_playlist_position_and_play(
         while (i_relative_position > 0)
         {
             path = get_next_path(p_mlp, b_loop);
-            set_current_playing_item(p_mlp, path);
+            ret = set_current_playing_item(p_mlp, path);
             --i_relative_position;
         }
 
         while (i_relative_position < 0)
         {
             path = get_previous_path(p_mlp, b_loop);
-            set_current_playing_item(p_mlp, path);
+            ret = set_current_playing_item(p_mlp, path);
             ++i_relative_position;
         }
     }
     else
     {
-        set_current_playing_item(p_mlp, path);
+        ret = set_current_playing_item(p_mlp, path);
     }
 
 #ifdef DEBUG_MEDIA_LIST_PLAYER
@@ -811,7 +828,7 @@ static int set_relative_playlist_position_and_play(
     libvlc_media_list_path_dump(path);
 #endif
 
-    if (!path)
+    if (!path || ret != 0)
     {
         libvlc_media_list_unlock(p_mlp->p_mlist);
         /* Send list played event */
@@ -826,9 +843,12 @@ static int set_relative_playlist_position_and_play(
     libvlc_media_list_unlock(p_mlp->p_mlist);
 
     /* Send the next item event */
+    libvlc_media_t * p_md;
+    p_md = libvlc_media_list_item_at_path(p_mlp->p_mlist, path);
+    if (!p_md)
+        return -1;
     libvlc_event_t event;
     event.type = libvlc_MediaListPlayerNextItemSet;
-    libvlc_media_t * p_md = libvlc_media_list_item_at_path(p_mlp->p_mlist, path);
     event.u.media_list_player_next_item_set.item = p_md;
     libvlc_event_send(&p_mlp->event_manager, &event);
     libvlc_media_release(p_md);

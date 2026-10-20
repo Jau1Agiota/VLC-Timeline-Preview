@@ -114,12 +114,12 @@ static int SetupRTPReceptionHintTrack( demux_t *p_demux, mp4_track_t *p_track, M
 {
     p_track->fmt.i_original_fourcc = p_sample->i_type;
 
-    if( !p_track->p_sdp )
+    const MP4_Box_t *p_sdp = p_track->p_sdp;
+    if( !p_sdp || !BOXDATA(p_sdp)->psz_text )
     {
         msg_Err(p_demux, "Required 'sdp '-box not found");
         return 0;
     }
-    MP4_Box_t *p_sdp = p_track->p_sdp;
     char *strtok_state;
     char * pch = strtok_r(BOXDATA(p_sdp)->psz_text, " =\n", &strtok_state); /* media entry */
     if( pch && pch[0] != 'm' )
@@ -171,7 +171,7 @@ static int SetupRTPReceptionHintTrack( demux_t *p_demux, mp4_track_t *p_track, M
     {
         if( !( pch = strtok_r(NULL, " :=\n", &strtok_state) ) ) /* attribute type */
             return 0;
-        msg_Dbg(p_demux, "sdp: atrribute type:%s", pch);
+        msg_Dbg(p_demux, "sdp: attribute type:%s", pch);
 
         if( !strcmp(pch, "rtpmap") )
         {
@@ -545,6 +545,26 @@ int SetupVideoES( demux_t *p_demux, mp4_track_t *p_track, MP4_Box_t *p_sample )
                                 BOXDATA(p_av1C)->i_av1C );
                         p_track->fmt.i_extra = BOXDATA(p_av1C)->i_av1C;
                     }
+                    if (p_track->fmt.i_extra <= 4)
+                        p_track->fmt.b_packetized = false; // force full extradata by the packetizer
+                }
+            }
+            break;
+        }
+
+        case ATOM_apv1:
+        {
+            const MP4_Box_t *p_binary = MP4_BoxGet(  p_sample, "apvC" );
+            if( p_binary && p_binary->data.p_binary->i_blob > 4 &&
+                GetDWBE(p_binary->data.p_binary->p_blob) == 0 ) /* fullbox header */
+            {
+                size_t i_extra = p_binary->data.p_binary->i_blob - 4;
+                uint8_t *p_extra = malloc(i_extra);
+                if( likely( p_extra ) )
+                {
+                    p_track->fmt.i_extra = i_extra;
+                    p_track->fmt.p_extra = p_extra;
+                    memcpy( p_extra, ((uint8_t *)p_binary->data.p_binary->p_blob) + 4, i_extra);
                 }
             }
             break;
@@ -691,7 +711,7 @@ int SetupVideoES( demux_t *p_demux, mp4_track_t *p_track, MP4_Box_t *p_sample )
         case ATOM_H264:
         case VLC_FOURCC('W','V','C','1'):
         {
-            MP4_Box_t *p_strf = MP4_BoxGet(  p_sample, "strf", 0 );
+            MP4_Box_t *p_strf = MP4_BoxGet(  p_sample, "strf" );
             if ( p_strf && BOXDATA(p_strf) )
             {
                 p_track->fmt.video.i_width = BOXDATA(p_strf)->bmiHeader.biWidth;
@@ -807,11 +827,6 @@ int SetupAudioES( demux_t *p_demux, mp4_track_t *p_track, MP4_Box_t *p_sample )
                 p_track->fmt.i_codec = p_sample->i_type;
                 break;
             }
-
-        }
-        else if( p_soun->i_qt_version == 1 && p_soun->i_sample_per_packet <= 0 )
-        {
-            p_soun->i_qt_version = 0;
         }
     }
     else if( p_sample->data.p_sample_soun->i_qt_version == 1 )
@@ -838,12 +853,22 @@ int SetupAudioES( demux_t *p_demux, mp4_track_t *p_track, MP4_Box_t *p_sample )
         {
             /* redefined sample tables for vbr audio */
         }
-        else if ( p_track->i_sample_size != 0 && p_soun->i_sample_per_packet == 0 )
+        else if ( p_track->i_sample_size != 0 &&
+                  ( p_soun->i_sample_per_packet == 0 || p_soun->i_bytes_per_frame == 0 ) )
         {
             msg_Err( p_demux, "Invalid sample per packet value for qt_version 1. Broken muxer! %u %u",
                      p_track->i_sample_size, p_soun->i_sample_per_packet );
             p_soun->i_qt_version = 0;
         }
+    }
+
+    if( p_sample->data.p_sample_soun->i_qt_version == 1 &&
+        ( p_soun->i_sample_per_packet == 0 || /* >0,  1 for uncompressed formats */
+          p_soun->i_bytes_per_frame == 0 /* bytes_per_packet * channels */ ) )
+    {
+        msg_Warn( p_demux, "Invalid sample values for qtff v1. Broken muxer! sz %u spp %u bpf %u",
+                  p_track->i_sample_size, p_soun->i_sample_per_packet, p_soun->i_bytes_per_frame );
+        p_soun->i_qt_version = 0;
     }
 
     /* Endianness atom */
@@ -924,7 +949,7 @@ int SetupAudioES( demux_t *p_demux, mp4_track_t *p_track, MP4_Box_t *p_sample )
         }
         case ATOM_fLaC:
         {
-            const MP4_Box_t *p_dfLa = MP4_BoxGet(  p_sample, "dfLa", 0 );
+            const MP4_Box_t *p_dfLa = MP4_BoxGet(  p_sample, "dfLa" );
             if( p_dfLa && p_dfLa->data.p_binary->i_blob > 4 &&
                 GetDWBE(p_dfLa->data.p_binary->p_blob) == 0 ) /* fullbox header, avoids creating dedicated parser */
             {
@@ -941,6 +966,35 @@ int SetupAudioES( demux_t *p_demux, mp4_track_t *p_track, MP4_Box_t *p_sample )
             }
             break;
         }
+        case ATOM_Opus:
+        {
+            const MP4_Box_t *p_dOps = MP4_BoxGet(  p_sample, "dOps" );
+            if( p_dOps && p_dOps->data.p_binary->i_blob > 10 )
+            {
+                size_t i_src = p_dOps->data.p_binary->i_blob;
+                const uint8_t *p_src = p_dOps->data.p_binary->p_blob;
+                if(p_src[0] != 0x00 || (SIZE_MAX - p_dOps->data.p_binary->i_blob < 26))
+                    break;
+                size_t i_dst = 2 + 8 + p_dOps->data.p_binary->i_blob + 8 + 8;
+                uint8_t *p_dst = malloc(i_dst);
+                if( likely( p_dst ) )
+                {
+                    p_dst[0] = 0x01;
+                    p_dst[1] = 8 + i_src;
+                    memcpy(&p_dst[2], "OpusHead", 8);
+                    memcpy(&p_dst[10], p_src, i_src);
+                    p_dst[10] = 0x01; // set version != ISOBMFF mapping
+                    SetWLE(&p_dst[12], GetWBE(&p_dst[12])); // swap endianness for PreSkip
+                    SetDWLE(&p_dst[14], GetDWBE(&p_dst[14])); // swap endianness for InputSampleRate
+                    SetWLE(&p_dst[18], GetWBE(&p_dst[18])); // swap endianness for OutputGain
+                    memcpy(&p_dst[10 + i_src], "OpusTags\x00\x00\x00\x00\x00\x00\x00", 16);
+                    p_track->fmt.i_extra = i_dst;
+                    p_track->fmt.p_extra = p_dst;
+                    p_track->fmt.i_codec = VLC_CODEC_OPUS;
+                }
+            }
+            break;
+        }
         case( ATOM_eac3 ):
         {
             p_track->fmt.i_codec = VLC_CODEC_EAC3;
@@ -949,7 +1003,7 @@ int SetupAudioES( demux_t *p_demux, mp4_track_t *p_track, MP4_Box_t *p_sample )
             p_track->fmt.audio.i_channels = 0;
             p_track->fmt.audio.i_bitspersample = 0;
 
-            const MP4_Box_t *p_dec3 = MP4_BoxGet(  p_sample, "dec3", 0 );
+            const MP4_Box_t *p_dec3 = MP4_BoxGet(  p_sample, "dec3" );
             if( p_dec3 && BOXDATA(p_dec3) )
             {
                 p_track->fmt.i_bitrate = BOXDATA(p_dec3)->i_data_rate * 1000;
@@ -965,7 +1019,7 @@ int SetupAudioES( demux_t *p_demux, mp4_track_t *p_track, MP4_Box_t *p_sample )
             p_track->fmt.audio.i_channels = 0;
             p_track->fmt.audio.i_bitspersample = 0;
 
-            MP4_Box_t *p_dac3 = MP4_BoxGet(  p_sample, "dac3", 0 );
+            MP4_Box_t *p_dac3 = MP4_BoxGet(  p_sample, "dac3" );
             if( p_dac3 && BOXDATA(p_dac3) )
             {
                 static const int pi_bitrate[] = {
@@ -1029,6 +1083,35 @@ int SetupAudioES( demux_t *p_demux, mp4_track_t *p_track, MP4_Box_t *p_sample )
                     p_track->i_timescale = p_soun->i_sampleratehi;
                 else
                     p_soun->i_sampleratehi = p_track->i_timescale;
+            }
+            break;
+        }
+
+        case ATOM_ipcm:
+        case ATOM_fpcm:
+        {
+            const MP4_Box_t *p_pcmC = MP4_BoxGet( p_sample, "pcmC" );
+            if( p_pcmC )
+            {
+                const vlc_fourcc_t lookup = p_sample->i_type +
+                        BOXDATA(p_pcmC)->i_sample_size +
+                       (BOXDATA(p_pcmC)->i_format_flags & 0x01);
+                const vlc_fourcc_t lookuptable[10][2] =
+                {
+                    { ATOM_fpcm + 32 + 0, VLC_CODEC_F32B },
+                    { ATOM_fpcm + 32 + 1, VLC_CODEC_F32L },
+                    { ATOM_fpcm + 64 + 0, VLC_CODEC_F64B },
+                    { ATOM_fpcm + 64 + 1, VLC_CODEC_F64L },
+                    { ATOM_ipcm + 16 + 0, VLC_CODEC_S16B },
+                    { ATOM_ipcm + 16 + 1, VLC_CODEC_S16L },
+                    { ATOM_ipcm + 24 + 0, VLC_CODEC_S24B },
+                    { ATOM_ipcm + 24 + 1, VLC_CODEC_S24L },
+                    { ATOM_ipcm + 32 + 0, VLC_CODEC_S32B },
+                    { ATOM_ipcm + 32 + 1, VLC_CODEC_S32L },
+                };
+                for( size_t i = 0; i<10; i++ )
+                    if( lookuptable[i][0] == lookup )
+                        p_track->fmt.i_codec = lookuptable[i][1];
             }
             break;
         }
@@ -1145,11 +1228,12 @@ int SetupAudioES( demux_t *p_demux, mp4_track_t *p_track, MP4_Box_t *p_sample )
                 }
             }
             rgi_chans_sequence[i_channels] = 0;
-            if( aout_CheckChannelReorder( rgi_chans_sequence, NULL, i_vlc_mapping,
-                                          p_track->rgi_chans_reordering ) &&
-                aout_BitsPerSample( p_track->fmt.i_codec ) )
+            if( aout_BitsPerSample( p_track->fmt.i_codec ) )
             {
-                p_track->b_chans_reorder = true;
+                p_track->i_chans_to_reorder =
+                    aout_CheckChannelReorder( rgi_chans_sequence, NULL,
+                                              i_vlc_mapping,
+                                              p_track->rgi_chans_reordering );
                 p_track->fmt.audio.i_channels = i_channels;
                 p_track->fmt.audio.i_physical_channels = i_vlc_mapping;
             }
@@ -1165,7 +1249,10 @@ int SetupAudioES( demux_t *p_demux, mp4_track_t *p_track, MP4_Box_t *p_sample )
     if ( !p_esds ) p_esds = MP4_BoxGet( p_sample, "wave/esds" );
     if ( p_esds && BOXDATA(p_esds) && BOXDATA(p_esds)->es_descriptor.p_decConfigDescr )
     {
-        assert(p_sample->i_type == ATOM_mp4a);
+        if( p_sample->i_type != ATOM_mp4a )
+        {
+            msg_Warn( p_demux, "Unexpected ESDS for %4.4s", (char *)&p_sample->i_type );
+        }
         SetupESDS( p_demux, p_track, BOXDATA(p_esds)->es_descriptor.p_decConfigDescr );
     }
     else switch( p_sample->i_type )
@@ -1241,6 +1328,10 @@ int SetupAudioES( demux_t *p_demux, mp4_track_t *p_track, MP4_Box_t *p_sample )
         p_soun->i_qt_version = 1;
         p_soun->i_compressionid = 0xFFFE;
     }
+
+    /* Sanity check for raw audio */
+    if( aout_BitsPerSample(p_track->fmt.i_codec) && p_soun->i_channelcount == 0 )
+        return 0;
 
     return 1;
 }

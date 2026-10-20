@@ -29,9 +29,10 @@
 #include "recents.hpp"
 #include "util/qt_dirs.hpp"
 
-#include <QTabWidget>
-#include <QRegExp>
+#include <QRegularExpression>
 #include <QMenu>
+
+#include <cstddef>
 
 #ifndef NDEBUG
 # define DEBUG_QT 1
@@ -131,39 +132,39 @@ OpenDialog::OpenDialog( QWidget *parent,
     setMenuAction();
 
     /* Force MRL update on tab change */
-    CONNECT( ui.Tab, currentChanged( int ), this, signalCurrent( int ) );
+    connect( ui.Tab, &QTabWidget::currentChanged, this, &OpenDialog::signalCurrent );
 
-    CONNECT( fileOpenPanel, mrlUpdated( const QStringList&, const QString& ),
-             this, updateMRL( const QStringList&, const QString& ) );
-    CONNECT( netOpenPanel, mrlUpdated( const QStringList&, const QString& ),
-             this, updateMRL( const QStringList&, const QString& ) );
-    CONNECT( discOpenPanel, mrlUpdated( const QStringList&, const QString& ),
-             this, updateMRL( const QStringList&, const QString& ) );
-    CONNECT( captureOpenPanel, mrlUpdated( const QStringList&, const QString& ),
-             this, updateMRL( const QStringList&, const QString& ) );
+    connect( fileOpenPanel, &FileOpenPanel::mrlUpdated,
+             this, QOverload<const QStringList &, const QString &>::of(&OpenDialog::updateMRL) );
+    connect( netOpenPanel, &NetOpenPanel::mrlUpdated,
+             this, QOverload<const QStringList &, const QString &>::of(&OpenDialog::updateMRL) );
+    connect( discOpenPanel, &DiscOpenPanel::mrlUpdated,
+             this, QOverload<const QStringList &, const QString &>::of(&OpenDialog::updateMRL) );
+    connect( captureOpenPanel, &CaptureOpenPanel::mrlUpdated,
+             this, QOverload<const QStringList &, const QString &>::of(&OpenDialog::updateMRL) );
 
-    CONNECT( fileOpenPanel, methodChanged( const QString& ),
-             this, newCachingMethod( const QString& ) );
-    CONNECT( netOpenPanel, methodChanged( const QString& ),
-             this, newCachingMethod( const QString& ) );
-    CONNECT( discOpenPanel, methodChanged( const QString& ),
-             this, newCachingMethod( const QString& ) );
-    CONNECT( captureOpenPanel, methodChanged( const QString& ),
-             this, newCachingMethod( const QString& ) );
+    connect( fileOpenPanel, &FileOpenPanel::methodChanged,
+             this, &OpenDialog::newCachingMethod );
+    connect( netOpenPanel, &NetOpenPanel::methodChanged,
+             this, &OpenDialog::newCachingMethod );
+    connect( discOpenPanel, &DiscOpenPanel::methodChanged,
+             this, &OpenDialog::newCachingMethod );
+    connect( captureOpenPanel, &CaptureOpenPanel::methodChanged,
+             this, &OpenDialog::newCachingMethod );
 
     /* Advanced frame Connects */
-    CONNECT( ui.slaveCheckbox, toggled( bool ), this, updateMRL() );
-    CONNECT( ui.slaveText, textChanged( const QString& ), this, updateMRL() );
-    CONNECT( ui.cacheSpinBox, valueChanged( int ), this, updateMRL() );
-    CONNECT( ui.startTimeTimeEdit, timeChanged ( const QTime& ), this, updateMRL() );
-    CONNECT( ui.stopTimeTimeEdit, timeChanged ( const QTime& ), this, updateMRL() );
-    BUTTONACT( ui.advancedCheckBox, toggleAdvancedPanel() );
-    BUTTONACT( ui.slaveBrowseButton, browseInputSlave() );
+    connect( ui.slaveCheckbox, &QCheckBox::toggled, this, QOverload<>::of(&OpenDialog::updateMRL) );
+    connect( ui.slaveText, &QLineEdit::textChanged, this, QOverload<>::of(&OpenDialog::updateMRL) );
+    connect( ui.cacheSpinBox, QOverload<int>::of(&QSpinBox::valueChanged), this, QOverload<>::of(&OpenDialog::updateMRL) );
+    connect( ui.startTimeTimeEdit, &QTimeEdit::timeChanged, this, QOverload<>::of(&OpenDialog::updateMRL) );
+    connect( ui.stopTimeTimeEdit, &QTimeEdit::timeChanged, this, QOverload<>::of(&OpenDialog::updateMRL) );
+    BUTTONACT( ui.advancedCheckBox, toggleAdvancedPanel );
+    BUTTONACT( ui.slaveBrowseButton, browseInputSlave );
 
     /* Buttons action */
-    BUTTONACT( playButton, selectSlots() );
-    BUTTONACT( selectButton, close() );
-    BUTTONACT( cancelButton, cancel() );
+    BUTTONACT( playButton, selectSlots );
+    BUTTONACT( selectButton, close );
+    BUTTONACT( cancelButton, cancel );
 
     /* Hide the advancedPanel */
     if( !getSettings()->value( "OpenDialog/advanced", false ).toBool())
@@ -412,7 +413,7 @@ void OpenDialog::stream( bool b_transcode_only )
     toggleVisible();
 
     /* Dbg and send :D */
-    msg_Dbg( p_intf, "MRL(s) passed to the Sout: %i", soutMRLS.length() );
+    msg_Dbg( p_intf, "MRL(s) passed to the Sout: %zu", static_cast<size_t>( soutMRLS.length() ) );
     for(int i = 0; i < soutMRLS.length(); i++)
     {
         msg_Dbg( p_intf, "MRL(s) passed to the Sout: %s", qtu( soutMRLS[i] ) );
@@ -477,7 +478,7 @@ QStringList OpenDialog::SeparateEntries( const QString& entries )
     int index = 0;
     while( index < entries.count() )
     {
-        int delim_pos = entries.indexOf( QRegExp( "\\s+|\"" ), index );
+        int delim_pos = entries.indexOf( QRegularExpression( "\\s+|\"" ), index );
         if( delim_pos < 0 ) delim_pos = entries.count() - 1;
         entry += entries.mid( index, delim_pos - index + 1 );
         index = delim_pos + 1;

@@ -58,7 +58,7 @@ vlc_module_end()
  * but we only use the "Password" category. *
  * It is juste a simple Entry name ( or key ) *
  * associated with a secret. *
- * Keys are urls formated with : *
+ * Keys are urls formatted with : *
  *     _ Protocol *
  *     _ User ( optional ) *
  *     _ Server *
@@ -109,7 +109,7 @@ typedef struct vlc_keystore_sys
 
 /* takes all values in the values of vlc_keystore_entry *
  * and formats them in a url key */
-static char*
+VLC_MALLOC static char*
 values2key( const char* const* ppsz_values, bool b_search )
 {
     char* psz_b64_realm = NULL;
@@ -160,10 +160,9 @@ values2key( const char* const* ppsz_values, bool b_search )
         vlc_memstream_printf( &ms, "*" );
 
     /* Realm and authtype section */
-    if ( ppsz_values[KEY_REALM] || ppsz_values[KEY_AUTHTYPE] || b_search )
+    if ( ppsz_values[KEY_REALM] || ppsz_values[KEY_AUTHTYPE] )
     {
-        vlc_memstream_printf( &ms, "?" );
-
+        vlc_memstream_printf( &ms, "\?" );
         /* Realm section */
         if ( ppsz_values[KEY_REALM] || b_search )
         {
@@ -199,6 +198,8 @@ values2key( const char* const* ppsz_values, bool b_search )
         }
 
     }
+    else if ( b_search )
+        vlc_memstream_printf( &ms, "*" );
 
     b_state = true;
 

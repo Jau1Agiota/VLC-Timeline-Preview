@@ -61,8 +61,8 @@ public slots:
     friend class    Singleton<AboutDialog>;
 
 protected:
-    virtual bool eventFilter(QObject *obj, QEvent *event) Q_DECL_OVERRIDE;
-    virtual void showEvent ( QShowEvent * ) Q_DECL_OVERRIDE;
+    bool eventFilter(QObject *obj, QEvent *event) Q_DECL_OVERRIDE;
+    void showEvent ( QShowEvent * ) Q_DECL_OVERRIDE;
 
 private:
     bool b_advanced;
@@ -73,7 +73,7 @@ private slots:
     void showCredit();
 };
 
-#ifdef UPDATE_CHECK
+#if defined(UPDATE_CHECK)
 
 class UpdateDialog : public QVLCFrame, public Singleton<UpdateDialog>
 {
@@ -89,7 +89,7 @@ private:
 
     Ui::updateWidget ui;
     update_t *p_update;
-    void customEvent( QEvent * );
+    void customEvent( QEvent * ) override;
     bool b_checked;
 
 private slots:

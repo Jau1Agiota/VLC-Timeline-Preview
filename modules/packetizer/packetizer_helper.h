@@ -33,7 +33,8 @@ enum
     STATE_HEADER,
     STATE_NEXT_SYNC,
     STATE_GET_DATA,
-    STATE_SEND_DATA
+    STATE_SEND_DATA,
+    STATE_CUSTOM_FIRST,
 };
 
 typedef void (*packetizer_reset_t)( void *p_private, bool b_broken );
@@ -170,7 +171,7 @@ static block_t *packetizer_PacketizeBlock( packetizer_t *p_pack, block_t **pp_bl
                 if( pp_block /* not flushing */ || !p_pack->bytestream.p_chain )
                     return NULL; /* Need more data */
 
-                /* When flusing and we don't find a startcode, suppose that
+                /* When flushing and we don't find a startcode, suppose that
                  * the data extend up to the end */
                 p_pack->i_offset = block_BytestreamRemaining(&p_pack->bytestream);
                 if( p_pack->i_offset == 0 )
@@ -207,8 +208,8 @@ static block_t *packetizer_PacketizeBlock( packetizer_t *p_pack, block_t **pp_bl
                 p_pic = p_pack->pf_parse( p_pack->p_private, &b_used_ts, p_pic );
                 if( b_used_ts )
                 {
-                    p_block_bytestream->i_dts = VLC_TS_INVALID;
-                    p_block_bytestream->i_pts = VLC_TS_INVALID;
+                    p_block_bytestream->i_dts = VLC_TICK_INVALID;
+                    p_block_bytestream->i_pts = VLC_TICK_INVALID;
                 }
             }
 

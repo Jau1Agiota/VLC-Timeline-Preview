@@ -48,10 +48,20 @@
 #endif
 
 #define HAS_QT56 ( QT_VERSION >= 0x050600 )
+#define HAS_QT57 ( QT_VERSION >= 0x050700 )
 #define HAS_QT510 ( QT_VERSION >= 0x051000 )
 
+#if ( QT_VERSION < QT_VERSION_CHECK(5, 15, 0) )
+# define QSIGNALMAPPER_MAPPEDINT_SIGNAL QOverload<int>::of(&QSignalMapper::mapped)
+# define QSIGNALMAPPER_MAPPEDSTR_SIGNAL QOverload<const QString &>::of(&QSignalMapper::mapped)
+# define QSIGNALMAPPER_MAPPEDOBJ_SIGNAL QOverload<QObject *>::of(&QSignalMapper::mapped)
+#else
+# define QSIGNALMAPPER_MAPPEDINT_SIGNAL &QSignalMapper::mappedInt
+# define QSIGNALMAPPER_MAPPEDSTR_SIGNAL &QSignalMapper::mappedString
+# define QSIGNALMAPPER_MAPPEDOBJ_SIGNAL &QSignalMapper::mappedObject
+#endif
+
 enum {
-    DialogEventTypeOffset = 0,
     IMEventTypeOffset     = 100,
     PLEventTypeOffset     = 200,
     MsgEventTypeOffset    = 300,
@@ -62,6 +72,9 @@ enum{
     NOTIFICATION_MINIMIZED = 1,
     NOTIFICATION_ALWAYS = 2,
 };
+
+bool isDarkPaletteEnabled(intf_thread_t *);
+void applyDarkPalette();
 
 struct intf_sys_t
 {
@@ -116,19 +129,20 @@ struct vlc_playlist_locker {
 #define qtr( i ) QString::fromUtf8( vlc_gettext(i) )
 #define qtu( i ) ((i).toUtf8().constData())
 
-#define CONNECT( a, b, c, d ) \
-        connect( a, SIGNAL(b), c, SLOT(d) )
-#define DCONNECT( a, b, c, d ) \
-        connect( a, SIGNAL(b), c, SLOT(d), Qt::DirectConnection )
-#define BUTTONACT( b, a ) connect( b, SIGNAL(clicked()), this, SLOT(a) )
+#if QT_VERSION < QT_VERSION_CHECK(5, 7, 0)
+template<typename... Args> struct QOverload {
+    template<typename T, typename Ret> static Ret(T::*of(Ret(T::*f)(Args...)))(Args...)
+    {
+        return f;
+    }
+};
+#endif
+
+#define BUTTONACT( b, a ) connect( b, &QPushButton::clicked, this, QOverload<>::of(&std::remove_pointer<decltype(this)>::type::a) )
 
 #define BUTTON_SET( button, text, tooltip )  \
     button->setText( text );                 \
     button->setToolTip( tooltip );
-
-#define BUTTON_SET_ACT( button, text, tooltip, thisslot ) \
-    BUTTON_SET( button, text, tooltip );                  \
-    BUTTONACT( button, thisslot );
 
 #define BUTTON_SET_IMG( button, text, image, tooltip )    \
     BUTTON_SET( button, text, tooltip );                  \

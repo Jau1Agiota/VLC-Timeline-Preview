@@ -69,6 +69,10 @@ static void PacketizeFlush( decoder_t * );
 static void PacketizeReset(void *p_private, bool b_broken);
 static block_t *PacketizeParse(void *p_private, bool *pb_ts_used, block_t *);
 static block_t *ParseNALBlock(decoder_t *, bool *pb_ts_used, block_t *);
+static inline block_t *ParseNALBlockW( void *opaque, bool *pb_ts_used, block_t *p_frag )
+{
+    return ParseNALBlock( (decoder_t *) opaque, pb_ts_used, p_frag );
+}
 static int PacketizeValidate(void *p_private, block_t *);
 static block_t * PacketizeDrain(void *);
 static bool ParseSEICallback( const hxxx_sei_data_t *, void * );
@@ -102,7 +106,7 @@ struct decoder_sys_t
     bool b_init_sequence_complete;
 
     date_t dts;
-    mtime_t pts;
+    vlc_tick_t pts;
     bool b_need_ts;
 
     /* */
@@ -170,6 +174,9 @@ static int Open(vlc_object_t *p_this)
     decoder_t     *p_dec = (decoder_t*)p_this;
     decoder_sys_t *p_sys;
 
+    if (p_dec->fmt_in.i_cat != VIDEO_ES)
+        return VLC_EGENERIC;
+
     if (p_dec->fmt_in.i_codec != VLC_CODEC_HEVC)
         return VLC_EGENERIC;
 
@@ -206,8 +213,8 @@ static int Open(vlc_object_t *p_this)
                                 p_dec->fmt_in.video.i_frame_rate_base );
     else
         date_Init( &p_sys->dts, 2 * 30000, 1001 );
-    date_Set( &p_sys->dts, VLC_TS_INVALID );
-    p_sys->pts = VLC_TS_INVALID;
+    date_Set( &p_sys->dts, VLC_TICK_INVALID );
+    p_sys->pts = VLC_TICK_INVALID;
     p_sys->b_need_ts = true;
 
     /* Set callbacks */
@@ -297,8 +304,9 @@ static block_t *PacketizeHVC1(decoder_t *p_dec, block_t **pp_block)
 {
     decoder_sys_t *p_sys = p_dec->p_sys;
 
-    return PacketizeXXC1( p_dec, p_sys->i_nal_length_size,
-                          pp_block, ParseNALBlock );
+    return PacketizeXXC1( p_dec, VLC_OBJECT(p_dec),
+                          p_sys->i_nal_length_size, pp_block,
+                          ParseNALBlockW, PacketizeDrain );
 }
 
 static block_t *PacketizeAnnexB(decoder_t *p_dec, block_t **pp_block)
@@ -339,7 +347,7 @@ static void PacketizeReset(void *p_private, bool b_broken)
 
     p_sys->b_init_sequence_complete = false;
     p_sys->b_need_ts = true;
-    date_Set(&p_sys->dts, VLC_TS_INVALID);
+    date_Set(&p_sys->dts, VLC_TICK_INVALID);
 }
 
 static bool InsertXPS(decoder_t *p_dec, uint8_t i_nal_type, uint8_t i_id,
@@ -840,13 +848,13 @@ static void SetOutputBlockProperties(decoder_t *p_dec, block_t *p_output)
     {
         uint8_t i_num_clock_ts = hevc_get_num_clock_ts(p_sys->p_active_sps,
                                                        p_sys->p_timing);
-        const mtime_t i_start = date_Get(&p_sys->dts);
-        if( i_start != VLC_TS_INVALID )
+        const vlc_tick_t i_start = date_Get(&p_sys->dts);
+        if( i_start != VLC_TICK_INVALID )
         {
             date_Increment(&p_sys->dts, i_num_clock_ts);
             p_output->i_length = date_Get(&p_sys->dts) - i_start;
         }
-        p_sys->pts = VLC_TS_INVALID;
+        p_sys->pts = VLC_TICK_INVALID;
     }
     hevc_release_sei_pic_timing(p_sys->p_timing);
     p_sys->p_timing = NULL;
@@ -863,10 +871,10 @@ static block_t *ParseNALBlock(decoder_t *p_dec, bool *pb_ts_used, block_t *p_fra
 
     if(p_sys->b_need_ts)
     {
-        if(p_frag->i_dts > VLC_TS_INVALID)
+        if(p_frag->i_dts > VLC_TICK_INVALID)
             date_Set(&p_sys->dts, p_frag->i_dts);
         p_sys->pts = p_frag->i_pts;
-        if(date_Get( &p_sys->dts ) != VLC_TS_INVALID)
+        if(date_Get( &p_sys->dts ) != VLC_TICK_INVALID)
             p_sys->b_need_ts = false;
         *pb_ts_used = true;
     }
@@ -886,7 +894,7 @@ static block_t *ParseNALBlock(decoder_t *p_dec, bool *pb_ts_used, block_t *p_fra
     }
 
     /* Get NALU type */
-    const mtime_t dts = p_frag->i_dts, pts = p_frag->i_pts;
+    const vlc_tick_t dts = p_frag->i_dts, pts = p_frag->i_pts;
     block_t * p_output = NULL;
     uint8_t i_nal_type = hevc_getNALType(&p_frag->p_buffer[4]);
 
@@ -906,7 +914,7 @@ static block_t *ParseNALBlock(decoder_t *p_dec, bool *pb_ts_used, block_t *p_fra
     if(p_output)
     {
         SetOutputBlockProperties( p_dec, p_output );
-        if (dts > VLC_TS_INVALID)
+        if (dts > VLC_TICK_INVALID)
             date_Set(&p_sys->dts, dts);
         p_sys->pts = pts;
         *pb_ts_used = true;

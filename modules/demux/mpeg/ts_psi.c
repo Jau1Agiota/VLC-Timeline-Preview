@@ -271,8 +271,11 @@ static void ParsePMTRegistrations( demux_t *p_demux, const dvbpsi_descriptor_t  
             case 0x09:
             {
                 dvbpsi_ca_dr_t *p_cadr = dvbpsi_DecodeCADr( (dvbpsi_descriptor_t *) p_dr );
-                msg_Dbg( p_demux, PMT_DESC_INDENT "CA System ID 0x%x", p_cadr->i_ca_system_id );
-                i_arib_score_flags |= (p_cadr->i_ca_system_id == 0x05);
+                if( p_cadr )
+                {
+                    msg_Dbg( p_demux, PMT_DESC_INDENT "CA System ID 0x%x", p_cadr->i_ca_system_id );
+                    i_arib_score_flags |= (p_cadr->i_ca_system_id == 0x05);
+                }
             }
             break;
 
@@ -850,6 +853,7 @@ static int vlc_ceil_log2( const unsigned int val )
 static void OpusSetup(demux_t *demux, uint8_t *p, size_t len, es_format_t *p_fmt)
 {
     OpusHeader h;
+    opus_header_init(&h);
 
     /* default mapping */
     static const unsigned char map[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
@@ -930,6 +934,7 @@ static void OpusSetup(demux_t *demux, uint8_t *p, size_t len, es_format_t *p_fmt
 
     if (!channels) {
         msg_Err(demux, "Opus channel configuration 0x%.2x not supported yet", p[1]);
+        opus_header_clean(&h);
         return;
     }
 
@@ -952,10 +957,12 @@ static void OpusSetup(demux_t *demux, uint8_t *p, size_t len, es_format_t *p_fmt
             p_fmt->audio.i_rate = 48000;
         }
     }
+    opus_header_clean(&h);
 
     return;
 
 explicit_config_too_short:
+    opus_header_clean(&h);
     msg_Err(demux, "Opus descriptor too short");
 }
 
@@ -1146,8 +1153,8 @@ static void PMTSetupEs0x06( demux_t *p_demux, ts_stream_t *p_pes,
     {
         dvbpsi_descriptor_t *p_dr = PMTEsFindDescriptor( p_dvbpsies, 0x52 );
         dvbpsi_stream_identifier_dr_t *p_si = dvbpsi_DecodeStreamIdentifierDr( p_dr );
-
-        msg_Dbg( p_demux, "    * Stream Component Identifier: %d", p_si->i_component_tag );
+        if( p_si )
+            msg_Dbg( p_demux, "    * Stream Component Identifier: %d", p_si->i_component_tag );
     }
 }
 
@@ -1181,7 +1188,7 @@ static void PMTSetupEs0xD1( demux_t *p_demux, ts_es_t *p_es,
     }
 
     /* registration descriptor for Dirac
-     * (backwards compatable with VC-2 (SMPTE Sxxxx:2008)) */
+     * (backwards compatible with VC-2 (SMPTE Sxxxx:2008)) */
     es_format_Change( &p_es->fmt, VIDEO_ES, VLC_CODEC_DIRAC );
 }
 
@@ -2024,11 +2031,14 @@ static void PMTCallBack( void *data, dvbpsi_pmt_t *p_dvbpsipmt )
     UpdatePESFilters( p_demux, p_demux->p_sys->seltype == PROGRAM_ALL );
 
     /* Probe Boundaries */
-    if( p_sys->b_canfastseek && p_pmt->i_last_dts == -1 )
+    if( p_sys->b_canfastseek && p_pmt->i_last_dts == VLC_TICK_INVALID )
     {
-        p_pmt->i_last_dts = 0;
+        p_pmt->i_last_dts = VLC_TICK_INVALID;
         ProbeStart( p_demux, p_pmt->i_number );
         ProbeEnd( p_demux, p_pmt->i_number );
+        if( p_pmt->i_last_dts != VLC_TICK_INVALID &&
+            p_pmt->i_last_dts < p_pmt->pcr.i_first_dts )
+            p_pmt->i_last_dts = TimeStampWrapAround( p_pmt->pcr.i_first_dts, p_pmt->i_last_dts );
     }
 
     dvbpsi_pmt_delete( p_dvbpsipmt );
@@ -2073,6 +2083,8 @@ int UserPmt( demux_t *p_demux, const char *psz_fmt )
     }
 
     ARRAY_APPEND( GetPID(p_sys, 0)->u.p_pat->programs, pmtpid );
+    ARRAY_APPEND( p_sys->programs, pmtpid->i_pid );
+    p_sys->b_default_selection = true;
 
     psz = strchr( psz, '=' );
     if( psz )

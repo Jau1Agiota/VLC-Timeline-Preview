@@ -156,11 +156,18 @@ export CC="`xcrun --find clang`"
 export CXX="`xcrun --find clang++`"
 export NM="`xcrun --find nm`"
 export OBJC="`xcrun --find clang`"
+export OBJCXX="`xcrun --find clang++`"
 export RANLIB="`xcrun --find ranlib`"
 export STRINGS="`xcrun --find strings`"
 export STRIP="`xcrun --find strip`"
 export SDKROOT
 export PATH="${vlcroot}/extras/tools/build/bin:${vlcroot}/contrib/${BUILD_TRIPLET}/bin:$python3Path:${VLC_PATH}:/bin:/sbin:/usr/bin:/usr/sbin"
+
+SDK_VERSION="$(xcrun --show-sdk-version)"
+XCODE_VERSION="$(xcodebuild -version)"
+
+info "Building with minimum macOS version $MINIMAL_OSX_VERSION and SDK $SDK_VERSION at $SDKROOT using $XCODE_VERSION"
+
 
 # Select avcodec flavor to compile contribs with
 export USE_FFMPEG=1
@@ -204,6 +211,8 @@ export ac_cv_func_fdopendir=no
 export ac_cv_func_openat=no
 export ac_cv_func_fstatat=no
 export ac_cv_func_readlinkat=no
+export ac_cv_func_linkat=no
+export ac_cv_func_unlinkat=no
 
 # Added symbols between 10.7 and 10.9
 export ac_cv_func_memset_s=no
@@ -222,7 +231,7 @@ if [ "$REBUILD" = "yes" ]; then
     make clean
     ./bootstrap > $out
 fi
-make > $out
+make -j$JOBS > $out
 spopd
 
 #
@@ -245,16 +254,25 @@ export EXTRA_LDFLAGS="-Wl,-syslibroot,$SDKROOT -mmacosx-version-min=$MINIMAL_OSX
 # xcodebuild only allows to set a build-in sdk, not a custom one. Therefore use the default included SDK here
 export XCODE_FLAGS="MACOSX_DEPLOYMENT_TARGET=$MINIMAL_OSX_VERSION -sdk macosx WARNING_CFLAGS=-Werror=partial-availability"
 
+CONTRIBFLAGS=
+if [ "$PACKAGETYPE" = "u" ]; then
+    # release package should have sparkle, breakpad, growl
+    CONTRIBFLAGS="$CONTRIBFLAGS --enable-sparkle --enable-breakpad --enable-growl"
+elif [ "$PACKAGETYPE" = "n" ]; then
+    # nightly package should have growl
+    CONTRIBFLAGS="$CONTRIBFLAGS --enable-growl"
+fi
+
 info "Building contribs"
 spushd "${vlcroot}/contrib"
 mkdir -p contrib-$HOST_TRIPLET && cd contrib-$HOST_TRIPLET
-../bootstrap --build=$BUILD_TRIPLET --host=$HOST_TRIPLET > $out
+../bootstrap --build=$BUILD_TRIPLET --host=$HOST_TRIPLET $CONTRIBFLAGS > $out
 if [ "$REBUILD" = "yes" ]; then
     make clean
 fi
+make list
 if [ "$CONTRIBFROMSOURCE" = "yes" ]; then
     make fetch
-    make -j$JOBS .gettext
     make -j$JOBS -k || make -j1
 
     if [ "$PACKAGE" = "yes" ]; then
@@ -281,6 +299,12 @@ unset OBJCFLAGS
 unset EXTRA_CFLAGS
 unset EXTRA_LDFLAGS
 unset XCODE_FLAGS
+
+TOOLCHAIN_FLAGS="-isysroot ${SDKROOT} -mmacosx-version-min=${MINIMAL_OSX_VERSION}"
+export CC="${CC} ${TOOLCHAIN_FLAGS}"
+export CXX="${CXX} ${TOOLCHAIN_FLAGS} -stdlib=libc++ -std=c++11"
+export OBJC="${OBJC} ${TOOLCHAIN_FLAGS}"
+export OBJCXX="${OBJCXX} ${TOOLCHAIN_FLAGS} -stdlib=libc++ -std=c++11"
 
 # Enable debug symbols by default
 export CFLAGS="-g -arch $ACTUAL_ARCH"
@@ -311,6 +335,13 @@ fi
 CONFIGFLAGS=""
 if [ ! -z "$BREAKPAD" ]; then
      CONFIGFLAGS="$CONFIGFLAGS --with-breakpad=$BREAKPAD"
+fi
+if [ "$PACKAGETYPE" = "u" ]; then
+    # release package should have sparkle, breakpad, growl
+    CONFIGFLAGS="$CONFIGFLAGS --enable-sparkle --enable-breakpad --enable-growl"
+elif [ "$PACKAGETYPE" = "n" ]; then
+    # nightly package should have growl
+    CONFIGFLAGS="$CONFIGFLAGS --enable-growl"
 fi
 
 if [ "${vlcroot}/configure" -nt Makefile ]; then

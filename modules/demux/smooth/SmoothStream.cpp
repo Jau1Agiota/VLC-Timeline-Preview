@@ -24,18 +24,21 @@
 #include "SmoothStream.hpp"
 #include <vlc_demux.h>
 
+#include <new>
+
 using namespace smooth;
 
 SmoothStream::SmoothStream(demux_t *demux)
     :AbstractStream(demux)
 {
+    mightalwaysstartfromzero = true;
 }
 
 AbstractDemuxer *SmoothStream::newDemux(vlc_object_t *p_obj, const StreamFormat &format,
                                         es_out_t *out, AbstractSourceStream *source) const
 {
-    if((unsigned)format != StreamFormat::MP4)
-        return NULL;
+    if(format != StreamFormat::Type::MP4)
+        return nullptr;
     return AbstractStream::newDemux(p_obj, format, out, source);
 }
 
@@ -45,13 +48,13 @@ block_t * SmoothStream::checkBlock(block_t *p_block, bool)
 }
 
 AbstractStream * SmoothStreamFactory::create(demux_t *realdemux, const StreamFormat &format,
-                                             SegmentTracker *tracker, AbstractConnectionManager *manager) const
+                                             SegmentTracker *tracker) const
 {
     SmoothStream *stream = new (std::nothrow) SmoothStream(realdemux);
-    if(stream && !stream->init(format,tracker, manager))
+    if(stream && !stream->init(format,tracker))
     {
         delete stream;
-        return NULL;
+        return nullptr;
     }
     return stream;
 }

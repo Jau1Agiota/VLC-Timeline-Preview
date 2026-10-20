@@ -1,108 +1,159 @@
-# POSTPROC
+# libpostproc
 
-POSTPROC_URL := http://git.videolan.org/git/libpostproc.git
-POSTPROC_HASH := 3b7053f46dbfe4662063345245cb00b6acbbe969
-POSTPROC_VERSION := $(POSTPROC_HASH)
+POSTPROC_GITURL:=$(GITHUB)/michaelni/libpostproc
+POSTPROC_GITVERSION:=e4982b227779f24f7c54d699d2e247652f69c475
 
-POSTPROCCONF = \
+POSTPROC_CONF = --prefix="$(PREFIX)" --enable-static --disable-shared \
+	--extra-ldflags="$(LDFLAGS)" \
 	--cc="$(CC)" \
+	--pkg-config="$(PKG_CONFIG)" \
+	--disable-doc \
 	--disable-debug \
-	--enable-gpl \
-	--enable-postproc
+	--disable-devices \
+	--disable-bsfs \
+	--disable-nvenc \
+	--disable-linux-perf
 
-DEPS_postproc = ffmpeg
-
-ifdef ENABLE_SMALL
-POSTPROCCONF += --enable-small
+ifdef ENABLE_PDB
+POSTPROC_CONF += --ln_s=false
 endif
+
+DEPS_postproc = ffmpeg $(DEPS_ffmpeg)
+
+POSTPROC_CONF += --disable-network
+POSTPROC_CONF += --disable-encoders --disable-muxers
+
+# Small size
+ifdef WITH_OPTIMIZATION
+ifdef ENABLE_SMALL
+POSTPROC_CONF += --enable-small
+endif
+ifeq ($(ARCH),arm)
 ifdef HAVE_ARMV7A
-POSTPROCCONF += --enable-thumb
+POSTPROC_CONF += --enable-thumb
+endif
+endif
+else
+POSTPROC_CONF += --optflags=-Og
 endif
 
 ifdef HAVE_CROSS_COMPILE
-POSTPROCCONF += --enable-cross-compile
+POSTPROC_CONF += --enable-cross-compile --disable-programs
 ifndef HAVE_DARWIN_OS
-POSTPROCCONF += --cross-prefix=$(HOST)-
+POSTPROC_CONF += --cross-prefix=$(HOST)-
 endif
 endif
 
 # ARM stuff
 ifeq ($(ARCH),arm)
-POSTPROCCONF += --disable-runtime-cpudetect --arch=arm
+POSTPROC_CONF += --arch=arm
 ifdef HAVE_ARMV7A
-POSTPROCCONF += --cpu=cortex-a8
+POSTPROC_CONF += --cpu=cortex-a8
 endif
-ifdef HAVE_NEON
-POSTPROCCONF += --enable-neon
+ifdef HAVE_ARMV6
+POSTPROC_CONF += --cpu=armv6 --disable-neon
 endif
 endif
 
 # ARM64 stuff
 ifeq ($(ARCH),aarch64)
-POSTPROCCONF += --arch=aarch64
+POSTPROC_CONF += --arch=aarch64
 endif
 
 # MIPS stuff
 ifeq ($(ARCH),mipsel)
-POSTPROCCONF += --arch=mips
+POSTPROC_CONF += --arch=mips
 endif
 ifeq ($(ARCH),mips64el)
-POSTPROCCONF += --arch=mips64
+POSTPROC_CONF += --arch=mips64
+endif
+
+# RISC-V stuff
+ifneq ($(findstring $(ARCH),riscv32 riscv64),)
+POSTPROC_CONF += --arch=riscv
 endif
 
 # x86 stuff
 ifeq ($(ARCH),i386)
-POSTPROCCONF += --arch=x86
+ifndef HAVE_DARWIN_OS
+POSTPROC_CONF += --arch=x86
+endif
 endif
 
 # x86_64 stuff
 ifeq ($(ARCH),x86_64)
-POSTPROCCONF += --arch=x64_64
+ifndef HAVE_DARWIN_OS
+POSTPROC_CONF += --arch=x86_64
+endif
 endif
 
 # Darwin
 ifdef HAVE_DARWIN_OS
-POSTPROCCONF += --arch=$(ARCH) --target-os=darwin
+ifeq ($(ARCH),arm64_32)
+# TODO remove when FFMpeg supports arm64_32
+POSTPROC_CONF += --arch=aarch64_32
+else
+POSTPROC_CONF += --arch=$(ARCH)
 endif
+POSTPROC_CONF += --target-os=darwin --extra-cflags="$(CFLAGS)"
 ifeq ($(ARCH),x86_64)
-POSTPROCCONF += --cpu=core2
+POSTPROC_CONF += --cpu=core2
 endif
 ifdef HAVE_IOS
-ifeq ($(ARCH),arm)
-POSTPROCCONF += --as="$(AS)"
+POSTPROC_CONF += --enable-pic --extra-ldflags="$(EXTRA_CFLAGS) -isysroot $(IOS_SDK)"
 endif
 endif
 
 # Linux
 ifdef HAVE_LINUX
-POSTPROCCONF += --target-os=linux --enable-pic
+POSTPROC_CONF += --target-os=linux --enable-pic
+
 endif
 
 ifdef HAVE_ANDROID
+# broken text relocations
 ifeq ($(ANDROID_ABI), x86)
-POSTPROCCONF +=  --disable-mmx --disable-mmxext
+POSTPROC_CONF +=  --disable-mmx --disable-mmxext --disable-inline-asm
 endif
 endif
+
+POSTPROC_CONF += --disable-autodetect
+# use the real maintained libavutil, only headers should be used
+# DO NOT install this libavutil in place of the FFmpeg one
+POSTPROC_CONF += --disable-avutil
+POSTPROC_CONF += --enable-postproc
 
 # Windows
 ifdef HAVE_WIN32
-POSTPROCCONF += --target-os=mingw32
+POSTPROC_CONF += --target-os=mingw32
+POSTPROC_CONF += --disable-w32threads --enable-pthreads --extra-libs="-lpthread"
+DEPS_postproc += winpthreads $(DEPS_winpthreads)
+
 ifeq ($(ARCH),x86_64)
-POSTPROCCONF += --cpu=athlon64 --arch=x86_64
-endif
-ifeq ($(ARCH),i386)
-POSTPROCCONF+= --cpu=i686 --arch=x86
-endif
+POSTPROC_CONF += --cpu=athlon64 --arch=x86_64
 else
-POSTPROCCONF += --enable-pthreads
+ifeq ($(ARCH),i386) # 32bits intel
+POSTPROC_CONF+= --cpu=i686 --arch=x86
+else
+ifdef HAVE_ARMV7A
+POSTPROC_CONF+= --arch=arm
+endif
+endif
 endif
 
+else # !Windows
+POSTPROC_CONF += --enable-pthreads
+endif
+
+# Solaris
 ifdef HAVE_SOLARIS
-POSTPROCCONF += --enable-pic
+ifeq ($(ARCH),x86_64)
+POSTPROC_CONF += --cpu=core2
+endif
+POSTPROC_CONF += --target-os=sunos --enable-pic
 endif
 
 # Build
-
 ifdef GPL
 PKGS += postproc
 endif
@@ -110,23 +161,25 @@ ifeq ($(call need_pkg,"libpostproc"),)
 PKGS_FOUND += postproc
 endif
 
-$(TARBALLS)/postproc-$(POSTPROC_VERSION).tar.xz:
-	$(call download_git,$(POSTPROC_URL),,$(POSTPROC_HASH))
+POSTPROC_CONF += --nm="$(NM)" --ar="$(AR)" --ranlib="$(RANLIB)"
 
-.sum-postproc: $(TARBALLS)/postproc-$(POSTPROC_VERSION).tar.xz
-	$(call check_githash,$(POSTPROC_HASH))
+$(TARBALLS)/postproc-$(POSTPROC_GITVERSION).tar.xz:
+	$(call download_git,$(POSTPROC_GITURL),,$(POSTPROC_GITVERSION))
+
+.sum-postproc: $(TARBALLS)/postproc-$(POSTPROC_GITVERSION).tar.xz
+	$(call check_githash,$(POSTPROC_GITVERSION))
 	touch $@
 
-postproc: postproc-$(POSTPROC_VERSION).tar.xz .sum-postproc
+postproc: postproc-$(POSTPROC_GITVERSION).tar.xz .sum-postproc
 	$(UNPACK)
-	$(APPLY) $(SRC)/postproc/win-pic.patch
+	$(APPLY) $(SRC)/postproc/0001-force-using-external-libavutil.patch
+	$(APPLY) $(SRC)/postproc/0002-add-missing-libavcodec-headers.patch
 	$(MOVE)
 
 .postproc: postproc
 	$(REQUIRE_GPL)
-	cd $< && $(HOSTVARS) ./configure \
-		--extra-cflags="$(EXTRA_CFLAGS)"  \
-		--extra-ldflags="$(LDFLAGS)" $(POSTPROCCONF) \
-		--prefix="$(PREFIX)" --enable-static --disable-shared
-	cd $< && $(MAKE) install-libs install-headers
+	$(MAKEBUILDDIR)
+	$(MAKECONFDIR)/configure $(POSTPROC_CONF)
+	+$(MAKEBUILD)
+	+$(MAKEBUILD) install-libs install-headers
 	touch $@

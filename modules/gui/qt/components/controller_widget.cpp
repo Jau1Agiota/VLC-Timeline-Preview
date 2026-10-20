@@ -49,7 +49,7 @@ SoundWidget::SoundWidget( QWidget *_parent, intf_thread_t * _p_intf,
 {
     /* We need a layout for this widget */
     QHBoxLayout *layout = new QHBoxLayout( this );
-    layout->setSpacing( 0 ); layout->setMargin( 0 );
+    layout->setSpacing( 0 ); layout->setContentsMargins( 0, 0, 0, 0 );
 
     /* We need a Label for the pix */
     volMuteLabel = new QLabel;
@@ -119,10 +119,10 @@ SoundWidget::SoundWidget( QWidget *_parent, intf_thread_t * _p_intf,
 
     /* Volume control connection */
     volumeSlider->setTracking( true );
-    CONNECT( volumeSlider, valueChanged( int ), this, valueChangedFilter( int ) );
-    CONNECT( this, valueReallyChanged( int ), this, userUpdateVolume( int ) );
-    CONNECT( THEMIM, volumeChanged( float ), this, libUpdateVolume( float ) );
-    CONNECT( THEMIM, soundMuteChanged( bool ), this, updateMuteStatus( bool ) );
+    connect( volumeSlider, &QAbstractSlider::valueChanged, this, &SoundWidget::valueChangedFilter );
+    connect( this, &SoundWidget::valueReallyChanged, this, &SoundWidget::userUpdateVolume );
+    connect( THEMIM, &MainInputManager::volumeChanged, this, &SoundWidget::libUpdateVolume );
+    connect( THEMIM, &MainInputManager::soundMuteChanged, this, &SoundWidget::updateMuteStatus );
 }
 
 void SoundWidget::refreshLabels()

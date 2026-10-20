@@ -123,7 +123,7 @@ noinst_HEADERS = \
 
 ../include/vlc_about.h: Makefile.am $(top_srcdir)/COPYING $(top_srcdir)/THANKS $(top_srcdir)/AUTHORS
 	$(AM_V_at)rm -f -- "$@.tmp"
-	$(AM_V_at)mkdir -p -- ../include
+	$(AM_V_at)$(MKDIR_P) "../include"
 	$(AM_V_GEN)(echo "/* Automatically generated file - DO NOT EDIT */" && \
 	echo "static const char psz_license[] =" && \
 	sed 's/"/\\"/g;s/^.*$$/\"&\\n\"/' "$(top_srcdir)/COPYING" && \
@@ -419,6 +419,7 @@ libvlccore_la_SOURCES += \
 	darwin/specific.c \
 	darwin/thread.c
 else
+libvlccore_la_LIBADD += $(LIBEXECINFO)
 libvlccore_la_SOURCES += \
 	posix/dirs.c \
 	posix/error.c \
@@ -467,7 +468,7 @@ libvlccore_la_LDFLAGS = \
 	$(LDFLAGS_libvlccore) \
 	-no-undefined \
 	-export-symbols $(srcdir)/libvlccore.sym \
-	-version-info 9:0:0
+	-version-info 9:1:0
 libvlccore_la_DEPENDENCIES = libvlccore.sym
 if HAVE_WIN32
 libvlccore_la_DEPENDENCIES += libvlc_win32_rc.$(OBJEXT)
@@ -481,6 +482,9 @@ libvlccore_la_LIBADD += $(DBUS_LIBS)
 endif
 if HAVE_DARWIN
 libvlccore_la_LDFLAGS += -Xlinker -install_name -Xlinker @rpath/libvlccore.dylib
+if !HAVE_OSX
+libvlccore_la_LDFLAGS += -Wl,-framework,CFNetwork
+endif
 endif
 
 libvlc_win32_rc.$(OBJEXT): libvlc_win32_rc.rc $(top_srcdir)/extras/package/win32/libvlc.dll.manifest
@@ -559,8 +563,8 @@ $(srcdir)/revision.txt:
 
 stamp-revision:
 	$(AM_V_at)rm -f -- revision.tmp
-	$(AM_V_GEN)if ! git \
-			--git-dir="$(top_srcdir)/.git/" describe \
+	$(AM_V_GEN)if ! git -c safe.directory='*' \
+			-C "$(top_srcdir)" describe \
 			--tags --long --match '?.*.*' --always; then \
 		cat $(srcdir)/revision.txt ; \
 	fi > revision.tmp

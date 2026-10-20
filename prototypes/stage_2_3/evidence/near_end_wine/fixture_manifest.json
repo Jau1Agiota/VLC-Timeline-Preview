@@ -1,0 +1,224 @@
+{
+  "ffmpeg": "ffmpeg version 7.1.5-0+deb13u1 Copyright (c) 2000-2026 the FFmpeg developers",
+  "duration_s": 30,
+  "fixtures": [
+    {
+      "keyframe_indices": [
+        0,
+        30,
+        60,
+        90,
+        120,
+        150,
+        180,
+        210,
+        240,
+        270,
+        300,
+        330,
+        360,
+        390,
+        420,
+        450,
+        480,
+        510,
+        540,
+        570,
+        600,
+        630,
+        660,
+        690,
+        720,
+        750,
+        780,
+        810,
+        840,
+        870
+      ],
+      "file": "ordinary.mp4",
+      "sha256": "a2c92ca2b820f015b6a2006b3bf9ead6896d2caba28a94d8a7e203c994a61cb9",
+      "frames": 900,
+      "first_pts_s": 0.0,
+      "last_pts_s": 29.966667,
+      "presentation_gaps_s": [
+        0.0333
+      ],
+      "b_frames": 0
+    },
+    {
+      "keyframe_indices": [
+        0,
+        30,
+        60,
+        90,
+        120,
+        150,
+        180,
+        210,
+        240,
+        270,
+        300,
+        330,
+        360,
+        390,
+        420,
+        450,
+        480,
+        510,
+        540,
+        570,
+        600,
+        630,
+        660,
+        690,
+        720,
+        750,
+        780,
+        810,
+        840,
+        870
+      ],
+      "file": "ordinary.mkv",
+      "sha256": "2e4bc70512ec9b094aa2b3d4b5a0cdd9c1d7c33363f8450e595733186fe9ddd6",
+      "frames": 900,
+      "first_pts_s": 0.021,
+      "last_pts_s": 29.988,
+      "presentation_gaps_s": [
+        0.033,
+        0.034
+      ],
+      "b_frames": 0
+    },
+    {
+      "keyframe_indices": [
+        0,
+        60,
+        120,
+        180,
+        240,
+        300,
+        360,
+        420,
+        480,
+        540,
+        600,
+        660,
+        720,
+        780,
+        840
+      ],
+      "file": "bframes.mp4",
+      "sha256": "3e74dc3cb7664af4b43a10a2d15e202adf5366f20285327282deff5964b03a82",
+      "frames": 900,
+      "first_pts_s": 0.0,
+      "last_pts_s": 29.966667,
+      "presentation_gaps_s": [
+        0.0333
+      ],
+      "b_frames": 620
+    },
+    {
+      "keyframe_indices": [
+        0,
+        60,
+        120,
+        180,
+        240,
+        300,
+        360,
+        420,
+        480,
+        540,
+        600,
+        660,
+        720,
+        780,
+        840
+      ],
+      "file": "bframes.mkv",
+      "sha256": "e55d21a0900736f0a20361c3e0d75f4c0f4a5fff904472dec5cff650cec22eca",
+      "frames": 900,
+      "first_pts_s": 0.021,
+      "last_pts_s": 29.988,
+      "presentation_gaps_s": [
+        0.033,
+        0.034
+      ],
+      "b_frames": 620
+    },
+    {
+      "keyframe_indices": [
+        0,
+        300,
+        600
+      ],
+      "file": "long_gop.mp4",
+      "sha256": "22109777fb840dd0912f7137b6129a21734adf3d591dc0ce6b82cfdc57f2e2db",
+      "frames": 900,
+      "first_pts_s": 0.0,
+      "last_pts_s": 29.966667,
+      "presentation_gaps_s": [
+        0.0333
+      ],
+      "b_frames": 623
+    },
+    {
+      "keyframe_indices": [
+        0,
+        300,
+        600
+      ],
+      "file": "long_gop.mkv",
+      "sha256": "4d15069b7d0c2fec48eb2d7301e3fe58a0f37e549f90fe3a8f8330ebd4a6bb37",
+      "frames": 900,
+      "first_pts_s": 0.021,
+      "last_pts_s": 29.988,
+      "presentation_gaps_s": [
+        0.033,
+        0.034
+      ],
+      "b_frames": 623
+    },
+    {
+      "keyframe_indices": [
+        0,
+        90,
+        180,
+        270,
+        360
+      ],
+      "file": "vfr.mp4",
+      "sha256": "eaf482d771061ac7ebe601bee9954ee48d1b2611e704703c6ee7947f5bc94006",
+      "frames": 420,
+      "first_pts_s": 0.0,
+      "last_pts_s": 29.9,
+      "presentation_gaps_s": [
+        0.0333,
+        0.0667,
+        0.1
+      ],
+      "b_frames": 267
+    },
+    {
+      "keyframe_indices": [
+        0,
+        90,
+        180,
+        270,
+        360
+      ],
+      "file": "vfr.mkv",
+      "sha256": "bb18e7e9d577784e3a4753bbd9747d2efd2ab21904da179650fb921e67c91413",
+      "frames": 420,
+      "first_pts_s": 0.021,
+      "last_pts_s": 29.921,
+      "presentation_gaps_s": [
+        0.033,
+        0.067,
+        0.1
+      ],
+      "b_frames": 267
+    }
+  ],
+  "note": "Burned PTS is the source image truth; container remux can offset its timestamps."
+}

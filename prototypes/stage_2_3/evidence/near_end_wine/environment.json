@@ -1,0 +1,29 @@
+{
+  "compiler": "x86_64-w64-mingw32-gcc (GCC) 6.4.0",
+  "wine": "wine-11.0",
+  "runtime": "official VLC 3.0.24 Windows x64 portable",
+  "native_windows": false,
+  "delivery_executable_sha256": "19ce2b893adf1f5ca24da123d812c979fe003efa23fa37da6b18add5a6e61103",
+  "source_sha256": "ef9da8a020271444107c8dda06ed2f2403534a47cc3535c65f0ae9f2fc026c03",
+  "original_prototype_commit": "73d6c8f455a64fb2a83482fc58ee226c387619a7",
+  "normal_control_image_comparisons": [
+    {
+      "case": "ordinary.mp4-14750-1.bmp",
+      "original_sha256": "28816192e193c21d1706b2ba86b43d7f33d08fa70791ba425f391ce985942367",
+      "modified_sha256": "28816192e193c21d1706b2ba86b43d7f33d08fa70791ba425f391ce985942367",
+      "identical": true
+    },
+    {
+      "case": "vfr.mp4-29500-1.bmp",
+      "original_sha256": "6cc7e3ba532a9739c963d84fc588f253ed9056589c1adaf5a1e065891f0abcfd",
+      "modified_sha256": "6cc7e3ba532a9739c963d84fc588f253ed9056589c1adaf5a1e065891f0abcfd",
+      "identical": true
+    },
+    {
+      "case": "vfr.mkv-29500-1.bmp",
+      "original_sha256": "6cc7e3ba532a9739c963d84fc588f253ed9056589c1adaf5a1e065891f0abcfd",
+      "modified_sha256": "6cc7e3ba532a9739c963d84fc588f253ed9056589c1adaf5a1e065891f0abcfd",
+      "identical": true
+    }
+  ]
+}

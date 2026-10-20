@@ -2,7 +2,9 @@
 
 Research code only. No timeline/tooltip integration or VLC production files change. See [the results report](../../docs/STAGE_2_3_EXTRACTION_RESULTS.md) before interpreting an exit code of zero.
 
-`thumbnail_helper.c` creates a private LibVLC 3.0.24 instance/player, requests `:start-time` and copies the **first displayed candidate** through memory-video callbacks. It saves an uncompressed, bounded 32-bit BMP. There is no fixed sleep and no claim that the candidate belongs to the requested timestamp. The source-visible timecode experiment is the only accuracy evidence. This intentionally simple candidate rule is what Stage 2.3 tests, not a proven association algorithm.
+The [near-end investigation](../../docs/STAGE_2_3_1_NEAR_END.md) adds a single, explicitly reported tail retry after narrowly gated EOF-without-video. It retains the last delivered candidate, which is not guaranteed to be the final frame. Use new results directories; preserve the original `results-run1`. `run_matrix.ps1 -Mode NearEnd` collects targeted regressions; the default `Full` mode still collects 168 video attempts.
+
+`thumbnail_helper.c` creates a private LibVLC 3.0.24 instance/player, requests `:start-time` and copies the **first displayed candidate** through memory-video callbacks. It saves an uncompressed, bounded 32-bit BMP. There is no fixed sleep and no claim that the candidate belongs to the requested timestamp. The source-visible timecode experiment is the only accuracy evidence. The ordinary path keeps this first-display rule; recovery uses the documented tail rule. Neither proves frame association.
 
 ## Incremental build in the existing WSL2 environment
 
@@ -99,7 +101,7 @@ The scorer enforces ≤250 ms absolute error, reports every failure/unreviewed r
 - Run the helper with a 100 ms deadline on a fixture. A fast machine might finish within it; if not, expect 124. Confirm it exits and no VLC helper child remains. Run repeated success/failure cycles and external cancellation; inspect process/handle/memory behavior. The watchdog terminates **only this helper**, not foreground VLC. It bounds blocking stop at the cost of abrupt private-process teardown.
 - Test UTF-8/Unicode, spaces, `%` and `#` in paths, renamed source, long paths and another cwd. Existing output must remain untouched. Long-path behavior depends on Windows configuration and the copied runtime; no guarantee is inferred from wide-character file APIs.
 
-Callbacks allocate three aligned, bounded RV32 slots per negotiated output format, copy the first display candidate to an owned image, signal completion and return. They never stop/release VLC or write disk/IPC. Stop/release and format cleanup happen on the main control path; the watchdog covers hangs. Maximum negotiated frame is 320×180, but this does not cap full-resolution decoder memory. Cropping, SAR, HDR/color fidelity, dynamic format changes and audio-only EOF/stop races need actual device coverage. No cache, UI or persistent helper protocol is implemented in this stage.
+Callbacks allocate three aligned, bounded RV32 slots per negotiated output format, copy the first display candidate to an owned image and signal completion on the ordinary path. A gated tail retry replaces the owned image on each display until EOF; its last delivered candidate may precede the final stream frame. They never stop/release VLC or write disk/IPC. Stop/release and format cleanup happen on the main control path; the watchdog covers hangs. Maximum negotiated frame is 320×180, but this does not cap full-resolution decoder memory. Cropping, SAR, HDR/color fidelity, dynamic format changes and audio-only EOF/stop races need actual device coverage. No cache, UI or persistent helper protocol is implemented in this stage.
 
 ## Decision after measurements
 

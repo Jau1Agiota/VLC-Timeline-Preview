@@ -1,0 +1,10 @@
+fixture,requested_ms,repeat,exit_code,image_created,status,capture_latency_ms,total_latency_ms,fallback_used,attempts,effective_start_ms,initial_length_ms,initial_extraction_status,observed_ms,observation_method
+vfr.mp4,29950,1,3,False,ended_without_video,0,1482,,,,,,,
+vfr.mp4,29950,2,3,False,ended_without_video,0,1673,,,,,,,
+vfr.mp4,29950,3,3,False,ended_without_video,0,1524,,,,,,,
+vfr.mkv,29950,1,3,False,ended_without_video,0,1777,,,,,,,
+vfr.mkv,29950,2,3,False,ended_without_video,0,1368,,,,,,,
+vfr.mkv,29950,3,3,False,ended_without_video,0,1673,,,,,,,
+vfr.mp4,29500,1,0,True,candidate_captured,1769,1931,,,,,,,
+vfr.mkv,29500,1,0,True,candidate_captured,1808,1972,,,,,,,
+ordinary.mp4,14750,1,0,True,candidate_captured,1540,1592,,,,,,,

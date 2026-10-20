@@ -54,3 +54,34 @@ The repository owner reported that the validated VideoLAN compiler rejects liter
 Actual follow-up verification: Debian's signed package repository supplied an isolated MinGW-w64 GCC 14-posix toolchain under `/tmp` (GCC package `14.2.0-19+27+b1`, headers `12.0.0-5`). The complete corrected helper compiled into Windows x64 COFF objects with `-std=c11 -O2 -Wall -Wextra -Werror` in both `__USE_MINGW_ANSI_STDIO=1` and `=0` modes. This newer compiler also accepted the original source in native mode, so the exact reported VideoLAN compiler failure was **not reproduced** here. No claim is made that this toolchain matches the validated Docker compiler.
 
 A host-compiled harness using the actual corrected formatting calls passed six targets (0, 80, 999, 1000, 14750 and 86400000 ms), verifying exact fractional padding, the unchanged JSON schema and `UINT64_MAX` latency output without truncation. These are formatting/compiler checks, not extraction measurements. Linking against the validated baseline DLL/import library, the exact VideoLAN Docker build and Windows execution remain unverified in this follow-up. Rerun the existing standalone `build.sh` command with a new output directory in the validated local container; no full VLC rebuild or documentation-command change is needed. No timeline or playback code was modified.
+
+## Stage 2.3.2 — exact GCC 6.4 checker diagnosis and fix
+
+The Stage 2.3.1 `PRIu64` change was insufficient for the confirmed legacy compiler. This follow-up **reproduced** its errors using GCC 6.4.0 and the headers extracted from the pinned VideoLAN image, rather than relying on GCC 14.
+
+### Checker versus runtime
+
+GCC 6.4's [`gcc/builtins.def`](https://github.com/gcc-mirror/gcc/blob/releases/gcc-6.4.0/gcc/builtins.def) assigns the built-in `printf`/`snprintf` functions `format(printf, ...)` attributes. Its MinGW target maps that dialect to `ms_printf`; [`gcc/config/i386/msformat-c.c`](https://github.com/gcc-mirror/gcc/blob/releases/gcc-6.4.0/gcc/config/i386/msformat-c.c) lists `h`, `l`, `I32`, `I64` and `I` length modifiers, but no `ll`. The resulting check parses the second `l` as an invalid conversion and then reports misleading argument-count/type errors.
+
+In this exact image, preprocessing confirms `PRIu64="llu"`, `__USE_MINGW_ANSI_STDIO=1`, and `__MINGW_PRINTF_FORMAT=__gnu_printf__`. Its header even declares GNU-attributed `printf`/`snprintf` names with assembler aliases to `__mingw_printf`/`__mingw_snprintf`. Those runtime aliases and header attributes do not remove the legacy compiler's built-in Microsoft-format checking on the standard names. A minimal standard-name probe failed, while an explicit GNU-attributed probe and direct `__mingw_*` probe accepted the same `llu` conversion under identical warning flags. This is a **compile-time checker/runtime-dialect mismatch**, not evidence that the ANSI runtime cannot print a 64-bit value. Windows execution of these probes was not performed.
+
+### Narrow fix
+
+`thumbnail_helper.c` now converts unsigned 64-bit values to decimal with a bounded, locale-independent `u64_decimal` routine (20 digits plus NUL). Startup seconds use `%s`; milliseconds use `%03u` after a bounded 0–999 conversion. JSON numeric fields use unquoted `%s` containing only decimal digits. Full `uint64_t` precision, three-digit milliseconds and the exact JSON field names/types are preserved. This avoids both legacy 64-bit printf dialects without depending on internal `__mingw_*` entry points. No warning suppression, built-in disabling, attribute changes, extraction changes or build-flag changes were made.
+
+### Actual verification and remaining limit
+
+The image manifest was verified against `sha256:b8e61c83d248cfb8fc3432d347f07f24de5a2ea6b0060cfe3053243e3674e6e7`. The compiler-containing layer verified as `sha256:72ffc864bced46cb695698eb90efcc92999c3ee4ae50138d5af094858fd4ed29`. Only `/opt/gcc-x86_64-w64-mingw32` was extracted into `/tmp`; its GCC 6.4.0 binary and matching headers were run on the cloud Linux host. No full Docker writable layer was created, no compiler binary was patched, and VLC was not rebuilt.
+
+- Exact-image GCC 6.4.0: original helper from `e642c97d359526063abf24d2765baa8b8dc69adf` failed with the reported `unknown conversion type character 'l'` and format argument errors; corrected complete helper compiled successfully to a Windows x64 COFF object. Flags: `-std=c11 -O2 -Wall -Wextra -Werror -municode -D__USE_MINGW_ANSI_STDIO=1 -Iinclude -c`.
+- A harness extracted from the actual conversion and output calls passed **10,072 host-executed cases**, including zero, powers-of-ten boundaries, values above 2^53, and `UINT64_MAX`, with buffer canaries and undefined-behavior sanitization. Decimal output, fractional padding and exact parsed JSON values/schema matched the inputs.
+- The same formatting harness compiled and linked to a PE32+ Windows x64 executable with the exact-image GCC 6.4 toolchain. This verifies its CRT link, **not the complete helper's LibVLC link or Windows execution**.
+- The validated baseline's `libvlc.dll.a`/`libvlc.lib` is absent from this cloud checkout. Final helper linking against that existing library and native Windows execution remain **unverified**. No replacement/stub import library was used to manufacture a link result.
+
+In the existing validated local container, rerun the unchanged standalone build command with a fresh output directory:
+
+```sh
+bash prototypes/stage_2_3/build.sh /vlc/win64 /stage23/build-2.3.2
+```
+
+That command performs both compilation and linking against `/vlc/win64/lib/.libs/libvlc.dll.a` without rebuilding VLC. The output directory must not already exist. Extraction accuracy and device behavior remain separate Stage 2.3 experiments; this fix does not advance timeline integration.

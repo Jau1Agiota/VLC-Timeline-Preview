@@ -22,9 +22,13 @@
 #ifndef TIMETOOLTIP_H
 #define TIMETOOLTIP_H
 
-#include "qt.hpp"
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
+#include <QtGlobal>
 
 #include <QWidget>
+#include <QImage>
 #include <QPainterPath>
 
 class TimeTooltip : public QWidget
@@ -34,6 +38,7 @@ public:
     explicit TimeTooltip( QWidget *parent = 0 );
     void setTip( const QPoint& pos, const QString& time, const QString& text );
     virtual void show();
+    void setPreview( const QImage &, qint64 requestedMs, const QRect &windowBounds );
 
 protected:
     void paintEvent( QPaintEvent * ) Q_DECL_OVERRIDE;
@@ -49,6 +54,11 @@ private:
     QRect mBox;
     QPainterPath mPainterPath;
     int mTipX;
+    QImage mPreview;
+    QRect mWindowBounds;
+    QRect mPreviewTextBox;
+    QString mPreviewTime;
+    QString mPreviewLabel;
 };
 
 #endif // TIMETOOLTIP_H

@@ -20,6 +20,7 @@
  *****************************************************************************/
 
 #include "timetooltip.hpp"
+#include "thumbnailpreview.hpp"
 
 #include <QApplication>
 #include <QPainter>
@@ -64,9 +65,22 @@ void TimeTooltip::adjustPosition()
 
     // Get the bounding box required to print the text and add some padding
     QFontMetrics metrics( mFont );
-    QRect textbox = metrics.boundingRect( mDisplayedText );
+    mPreviewLabel = metrics.elidedText(mPreviewTime +
+        (mText.isEmpty() ? QString() : QStringLiteral(" - ") + mText),
+        Qt::ElideRight, qMax(140, mPreview.width()));
+    const QString label = mPreview.isNull() ? mDisplayedText : mPreviewLabel;
+    QRect textbox = metrics.boundingRect( label );
     textbox.adjust( -2, -2, 2, 2 );
     textbox.moveTo( 0, 0 );
+
+    mPreviewTextBox = QRect();
+    if( !mPreview.isNull() )
+    {
+        const int textHeight = textbox.height();
+        textbox.setWidth( qMax( textbox.width(), mPreview.width() + 8 ) );
+        textbox.setHeight( textHeight + mPreview.height() + 8 );
+        mPreviewTextBox = QRect( 0, mPreview.height() + 8, textbox.width(), textHeight );
+    }
 
     // Resize the widget to fit our needs
     QSize size( textbox.width() + 1, textbox.height() + TIP_HEIGHT + 1 );
@@ -93,6 +107,20 @@ void TimeTooltip::adjustPosition()
     position.setY( qMax( screen.top(), qMin( position.y(),
         screen.top() + screen.height() - size.height() ) ) );
 
+    if( !mPreview.isNull() )
+    {
+        const QRect placed = TimelinePreview::popupRect( size, mTarget,
+                                                        screen.intersected( mWindowBounds ) );
+        if( !placed.isValid() )
+        {
+            // A floating fullscreen toolbar/small window may have no room.
+            // Restore the original timestamp tooltip rather than leave bounds.
+            mPreview = QImage();
+            adjustPosition();
+            return;
+        }
+        position = placed.topLeft();
+    }
     move( position );
 
     int tipX = mTarget.x() - position.x();
@@ -144,6 +172,21 @@ void TimeTooltip::setTip( const QPoint& target, const QString& time, const QStri
     raise();
 }
 
+void TimeTooltip::setPreview( const QImage &image, qint64 requestedMs, const QRect &bounds )
+{
+    mPreview = image;
+    mWindowBounds = bounds;
+    const qint64 seconds = qMax<qint64>(0, requestedMs) / 1000;
+    // Approximate requested bucket, never a claim of delivered frame PTS.
+    mPreviewTime = QStringLiteral("~%1:%2:%3.%4")
+        .arg(seconds / 3600, 2, 10, QLatin1Char('0'))
+        .arg(seconds / 60 % 60, 2, 10, QLatin1Char('0'))
+        .arg(seconds % 60, 2, 10, QLatin1Char('0'))
+        .arg(qMax<qint64>(0, requestedMs) % 1000, 3, 10, QLatin1Char('0'));
+    adjustPosition();
+    update();
+}
+
 void TimeTooltip::show()
 {
     setVisible( true );
@@ -161,5 +204,10 @@ void TimeTooltip::paintEvent( QPaintEvent * )
 
     p.setFont( mFont );
     p.setPen( QPen( qApp->palette().text(), 1 ) );
-    p.drawText( mBox, Qt::AlignCenter, mDisplayedText );
+    if( mPreview.isNull() ) p.drawText( mBox, Qt::AlignCenter, mDisplayedText );
+    else
+    {
+        p.drawImage( QPoint((mBox.width() - mPreview.width()) / 2, 4), mPreview );
+        p.drawText( mPreviewTextBox, Qt::AlignCenter, mPreviewLabel );
+    }
 }

@@ -47,6 +47,7 @@ class SeekPoints;
 class QPropertyAnimation;
 class QCommonStyle;
 class TimeTooltip;
+namespace TimelinePreview { class Controller; }
 class QSequentialAnimationGroup;
 
 /* Input Slider derived from QSlider */
@@ -90,8 +91,11 @@ protected:
     int   getValueFromXPos( int );
 
 private:
-    void traceHover( const QPoint &, const char *event, bool hovering = true );
+    void updateHover( const QPoint &, const char *event, bool hovering = true );
     const bool hoverDiagnostics;
+    TimelinePreview::Controller *thumbnailPreview;
+    QString thumbnailToken() const;
+    bool thumbnailCurrent( const QString & ) const;
     intf_thread_t *p_intf;
     bool isSliding;        /* Whether we are currently sliding by user action */
     bool isJumping;              /* if we requested a jump to another chapter */
@@ -128,7 +132,7 @@ private:
 
 public slots:
     void setPosition( float, int64_t, int );
-    void setSeekable( bool b ) { b_seekable = b ; }
+    void setSeekable( bool b );
     void updateBuffering( float );
     void hideHandle();
 

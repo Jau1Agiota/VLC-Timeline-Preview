@@ -31,6 +31,9 @@
 
 #include "util/input_slider.hpp"
 #include "util/seekhover.hpp"
+#include "util/thumbnailpreview.hpp"
+#include <QUrl>
+#include <cstdlib>
 #include "util/timetooltip.hpp"
 #include "adapters/seekpoints.hpp"
 #include "input_manager.hpp"
@@ -68,7 +71,7 @@ namespace {
 
 SeekSlider::SeekSlider( intf_thread_t *p_intf, Qt::Orientation q, QWidget *_parent, bool _static )
           : QSlider( q, _parent ),
-            hoverDiagnostics( qgetenv( "VLC_TIMELINE_HOVER_DEBUG" ) == "1" ),
+            hoverDiagnostics( qgetenv( "VLC_TIMELINE_HOVER_DEBUG" ) == "1" ), thumbnailPreview( NULL ),
             p_intf( p_intf ), b_classic( _static ), animLoading( NULL )
 {
     isSliding = false;
@@ -118,6 +121,18 @@ SeekSlider::SeekSlider( intf_thread_t *p_intf, Qt::Orientation q, QWidget *_pare
     /* Tooltip bubble */
     mTimeTooltip = new TimeTooltip( NULL );
     mTimeTooltip->setMouseTracking( true );
+    thumbnailPreview = new TimelinePreview::Controller( this,
+        [this]( const QString &token ) { return thumbnailCurrent( token ); },
+        [this]( const QImage &image, qint64 time ) {
+            QWidget *owner = window();
+            mTimeTooltip->setPreview( image, time, QRect(owner->mapToGlobal(QPoint(0,0)), owner->size()) );
+        },
+        [this]( const QString &message ) {
+            if( hoverDiagnostics ) msg_Dbg( this->p_intf, "timeline-preview: %s", qUtf8Printable(message) );
+        } );
+    connect( THEMIM->getIM(), &InputManager::playingStatusChanged, this, [this]( int state ) {
+        if( state != PLAYING_S && state != PAUSE_S ) thumbnailPreview->cancel();
+    } );
 
     /* Properties */
     setRange( MIN_SLIDER_VALUE, MAX_SLIDER_VALUE );
@@ -203,6 +218,8 @@ SeekSlider::SeekSlider( intf_thread_t *p_intf, Qt::Orientation q, QWidget *_pare
 
 SeekSlider::~SeekSlider()
 {
+    delete thumbnailPreview;
+    thumbnailPreview = NULL;
     delete chapters;
     if ( alternativeStyle )
         delete alternativeStyle;
@@ -233,6 +250,7 @@ void SeekSlider::setPosition( float pos, int64_t time, int length )
     VLC_UNUSED(time);
     if( pos == -1.0  || ! b_seekable )
     {
+        if( thumbnailPreview ) thumbnailPreview->cancel();
         setEnabled( false );
         mTimeTooltip->hide();
         isSliding = false;
@@ -254,6 +272,12 @@ void SeekSlider::setPosition( float pos, int64_t time, int length )
     }
 
     inputLength = length;
+}
+
+void SeekSlider::setSeekable( bool b )
+{
+    b_seekable = b;
+    if( !b && thumbnailPreview ) thumbnailPreview->cancel();
 }
 
 void SeekSlider::startSeekTimer()
@@ -284,6 +308,7 @@ void SeekSlider::updateBuffering( float f_buffering_ )
 
 void SeekSlider::inputUpdated( bool b_has_input )
 {
+    thumbnailPreview->cancel( true );
     if ( b_has_input == false ) {
         animLoading->stop();
         startAnimLoadingTimer->stop();
@@ -322,6 +347,7 @@ void SeekSlider::mouseReleaseEvent( QMouseEvent *event )
 
 void SeekSlider::mousePressEvent( QMouseEvent* event )
 {
+    thumbnailPreview->cancel();
     /* Right-click */
     if ( !isEnabled() ||
          ( event->button() != Qt::LeftButton && event->button() != Qt::MiddleButton )
@@ -376,10 +402,34 @@ void SeekSlider::mousePressEvent( QMouseEvent* event )
     event->accept();
 }
 
-void SeekSlider::traceHover( const QPoint &pos, const char *event, bool hovering )
+QString SeekSlider::thumbnailToken() const
 {
-    if( !hoverDiagnostics ) return;
+    input_thread_t *input = THEMIM->getInput();
+    if( !input ) return QString();
+    char *uri = input_item_GetURI( input_GetItem(input) );
+    if( !uri ) return QString();
+    const QString token = QString::number(reinterpret_cast<quintptr>(input),16) +
+                          QLatin1Char(':') + QString::fromUtf8(uri);
+    free(uri);
+    return token;
+}
 
+bool SeekSlider::thumbnailCurrent( const QString &token ) const
+{
+    input_thread_t *input = THEMIM->getInput();
+    if( !input || token.isEmpty() || token != thumbnailToken() || !isVisible() ||
+        !underMouse() || isSliding || qApp->mouseButtons() != Qt::NoButton || !isEnabled() || !b_seekable ||
+        var_CountChoices(input,"video-es") < 2 || qApp->activePopupWidget() ||
+        qApp->applicationState() != Qt::ApplicationActive ) return false;
+    const int state = var_GetInteger(input,"state");
+    return (state == PLAYING_S || state == PAUSE_S) && var_GetBool(input,"can-seek") &&
+           var_GetInteger(input,"length") > 0;
+}
+
+void SeekSlider::updateHover( const QPoint &pos, const char *event, bool hovering )
+{
+    if( !hovering && thumbnailPreview ) thumbnailPreview->cancel();
+    if( !hovering && !hoverDiagnostics ) return;
     // Qt owns the current-input reference; this runs only on its GUI thread.
     // Read current values rather than the whole-second positionUpdated duration.
     input_thread_t *input = THEMIM->getInput();
@@ -404,6 +454,20 @@ void SeekSlider::traceHover( const QPoint &pos, const char *event, bool hovering
                                                      first.isValid() && last.isValid() );
     const bool valid = hovering && hover.inside && durationMs > 0 && active &&
                        seekable && isEnabled() && !isSliding && !qApp->activePopupWidget();
+    if( thumbnailPreview && hovering )
+    {
+        const QString token = thumbnailToken();
+        if( valid && thumbnailCurrent(token) )
+        {
+            char *uri = input_item_GetURI( input_GetItem(input) );
+            const QUrl url = QUrl::fromEncoded( QByteArray(uri ? uri : "") );
+            free(uri);
+            if( url.isLocalFile() ) thumbnailPreview->hover(url.toLocalFile(), token, hover.timestampMs);
+            else thumbnailPreview->cancel();
+        }
+        else thumbnailPreview->cancel();
+    }
+    if( !hoverDiagnostics ) return;
     const QString message = QStringLiteral(
         "event=%1 x=%2 y=%3 width=%4 height=%5 start_x=%6 end_x=%7 span=%8 "
         "timestamp_ms=%9 duration_ms=%10 inside=%11 valid=%12 "
@@ -419,7 +483,7 @@ void SeekSlider::traceHover( const QPoint &pos, const char *event, bool hovering
 
 void SeekSlider::mouseMoveEvent( QMouseEvent *event )
 {
-    traceHover( event->pos(), "move" );
+    updateHover( event->pos(), "move" );
     if ( ! ( event->buttons() & ( Qt::LeftButton | Qt::MiddleButton ) ) )
     {
         /* Handle button release when mouserelease has been hijacked by popup */
@@ -487,7 +551,7 @@ void SeekSlider::enterEvent( QEnterEvent * )
 void SeekSlider::enterEvent( QEvent * )
 #endif
 {
-    traceHover( mapFromGlobal( QCursor::pos() ), "enter" );
+    updateHover( mapFromGlobal( QCursor::pos() ), "enter" );
     /* Cancel the fade-out timer */
     hideHandleTimer->stop();
     /* Only start the fade-in if needed */
@@ -506,7 +570,7 @@ void SeekSlider::enterEvent( QEvent * )
 
 void SeekSlider::leaveEvent( QEvent * )
 {
-    traceHover( mapFromGlobal( QCursor::pos() ), "leave", false );
+    updateHover( mapFromGlobal( QCursor::pos() ), "leave", false );
     hideHandleTimer->start();
     /* Hide the tooltip
        - if the mouse leave the slider rect (Note: it can still be
@@ -549,7 +613,7 @@ void SeekSlider::paintEvent( QPaintEvent *ev )
 
 void SeekSlider::hideEvent( QHideEvent * )
 {
-    traceHover( mapFromGlobal( QCursor::pos() ), "hide", false );
+    updateHover( mapFromGlobal( QCursor::pos() ), "hide", false );
     mTimeTooltip->hide();
 }
 

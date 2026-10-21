@@ -238,7 +238,8 @@ bool TimeTooltip::event( QEvent *event )
             "event=%1 visible_before=%2 visible_after=%3 hidden=%4 active=%5 active_window=%6 app_state=%7 flags=%8 rect=%9")
             .arg(QString::fromLatin1(name)).arg(before).arg(isVisible()).arg(isHidden()).arg(isActiveWindow())
             .arg(TimelinePreview::diagnosticId(qApp->activeWindow())).arg(int(qApp->applicationState()))
-            .arg(QString::number(quint32(windowFlags()),16)).arg(TimelinePreview::diagnosticRect(geometry())), 0 );
+            .arg(QString::number(quint32(windowFlags()),16)).arg(TimelinePreview::diagnosticRect(geometry())),
+            type == QEvent::ZOrderChange ? 250 : 0 );
     }
     return result;
 }

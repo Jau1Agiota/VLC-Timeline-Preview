@@ -431,7 +431,8 @@ void SeekSlider::traceEligibility( const QString &token, bool accepted ) const
     const int videoChoices = input ? var_CountChoices(input,"video-es") : -1;
     const int state = input ? var_GetInteger(input,"state") : static_cast<int>(END_S);
     const bool canSeek = input && var_GetBool(input,"can-seek");
-    const qlonglong length = input ? MS_FROM_VLC_TICK(var_GetInteger(input,"length")) : 0;
+    const qlonglong lengthTicks = input ? var_GetInteger(input,"length") : 0;
+    const qlonglong length = MS_FROM_VLC_TICK(lengthTicks);
     QStringList reasons;
     if( !input ) reasons << QStringLiteral("no-input");
     if( token.isEmpty() ) reasons << QStringLiteral("empty-token");
@@ -447,7 +448,7 @@ void SeekSlider::traceEligibility( const QString &token, bool accepted ) const
     if( qApp->applicationState() != Qt::ApplicationActive ) reasons << QStringLiteral("app-not-active");
     if( state != PLAYING_S && state != PAUSE_S ) reasons << QStringLiteral("not-playing-or-paused");
     if( !canSeek ) reasons << QStringLiteral("input-not-seekable");
-    if( length <= 0 ) reasons << QStringLiteral("no-duration");
+    if( lengthTicks <= 0 ) reasons << QStringLiteral("no-duration");
     hoverTrace.record( QStringLiteral("eligibility"), QStringLiteral(
         "component=slider stage=eligibility accepted=%1 reasons=%2 inputLength_s=%3 "
         "under_mouse=%4 visible=%5 enabled=%6 app_state=%7 buttons=%8 popup=%9 "

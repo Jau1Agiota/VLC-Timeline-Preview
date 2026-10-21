@@ -142,6 +142,8 @@ Controller::Controller(QWidget *widget, Current check, Present update, Log logge
 Controller::~Controller()
 {
     closing = true;
+    // Stop observations before Diagnostics and QProcess members are destroyed.
+    qApp->removeEventFilter(this);
     disconnect(&process, nullptr, this, nullptr);
     cancel(true);
     deadline.stop();

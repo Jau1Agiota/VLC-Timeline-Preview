@@ -128,7 +128,6 @@ SeekSlider::SeekSlider( intf_thread_t *p_intf, Qt::Orientation q, QWidget *_pare
                      static_cast<void *>(window()), window()->metaObject()->className(), qUtf8Printable(message) );
     };
     hoverTrace.setLogger( diagnosticLog );
-    if( hoverDiagnostics ) qApp->installEventFilter( this );
     mTimeTooltip->setDiagnosticLogger( diagnosticLog );
     thumbnailPreview = new TimelinePreview::Controller( this,
         [this]( const QString &token ) { return thumbnailCurrent( token ); },
@@ -228,7 +227,6 @@ SeekSlider::SeekSlider( intf_thread_t *p_intf, Qt::Orientation q, QWidget *_pare
 
 SeekSlider::~SeekSlider()
 {
-    if( hoverDiagnostics ) qApp->removeEventFilter( this );
     delete thumbnailPreview;
     thumbnailPreview = NULL;
     delete chapters;
@@ -685,19 +683,6 @@ void SeekSlider::hideEvent( QHideEvent * )
 
 bool SeekSlider::eventFilter( QObject *obj, QEvent *event )
 {
-    if( hoverTrace.isEnabled() &&
-        ((obj == qApp && (event->type() == QEvent::ApplicationActivate ||
-                          event->type() == QEvent::ApplicationDeactivate ||
-                          event->type() == QEvent::ApplicationStateChange)) ||
-         (obj == window() && (event->type() == QEvent::WindowActivate ||
-                              event->type() == QEvent::WindowDeactivate ||
-                              event->type() == QEvent::WindowStateChange ||
-                              event->type() == QEvent::Show || event->type() == QEvent::Hide))))
-        hoverTrace.record( QStringLiteral("window-event"), QStringLiteral(
-            "component=slider stage=window-event event=%1 object=%2 visible=%3 under_mouse=%4 app_state=%5 tooltip_visible=%6 owner_rect=%7")
-            .arg(TimelinePreview::diagnosticEvent(event->type())).arg(TimelinePreview::diagnosticId(obj))
-            .arg(isVisible()).arg(underMouse()).arg(int(qApp->applicationState())).arg(mTimeTooltip->isVisible())
-            .arg(TimelinePreview::diagnosticRect(QRect(window()->mapToGlobal(QPoint(0,0)),window()->size()))), 0 );
     if( obj == mTimeTooltip )
     {
         if( event->type() == QEvent::MouseMove )

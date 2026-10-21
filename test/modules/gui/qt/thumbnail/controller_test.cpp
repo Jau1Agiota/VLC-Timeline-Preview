@@ -201,7 +201,7 @@ public:
             assert(contains("stage=hover") && contains("stage=launch") && contains("stage=spawn"));
             assert(contains("stage=finished") && contains("latest=1") && contains("controller="));
             QEvent deactivate(QEvent::WindowDeactivate);qApp->sendEvent(&host,&deactivate);
-            assert(!traced.showing() && contains("stage=window-event") && contains("stage=cancel"));
+            assert(!traced.showing() && contains("stage=activation") && contains("stage=window-event") && contains("stage=cancel"));
         }
         if(savedDebug.isNull()) qunsetenv("VLC_TIMELINE_HOVER_DEBUG");
         else qputenv("VLC_TIMELINE_HOVER_DEBUG",savedDebug);

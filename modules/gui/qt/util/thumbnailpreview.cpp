@@ -189,6 +189,21 @@ void Controller::failed(const QString &reason)
 }
 bool Controller::eventFilter(QObject *object, QEvent *event)
 {
+    // Reuse the existing global observer even before the first eligible hover.
+    // Do not install SeekSlider globally: its local tooltip filter has actions.
+    if(trace.isEnabled() &&
+       ((object == qApp && (event->type() == QEvent::ApplicationActivate ||
+                           event->type() == QEvent::ApplicationDeactivate ||
+                           event->type() == QEvent::ApplicationStateChange)) ||
+        (object == host->window() && (event->type() == QEvent::WindowActivate ||
+                                     event->type() == QEvent::WindowDeactivate ||
+                                     event->type() == QEvent::WindowStateChange ||
+                                     event->type() == QEvent::Show || event->type() == QEvent::Hide))))
+        diagnose(QStringLiteral("activation"), QStringLiteral(
+            "event=%1 object=%2 host_visible=%3 under_mouse=%4 app_state=%5 owner_rect=%6")
+            .arg(diagnosticEvent(event->type())).arg(diagnosticId(object)).arg(host->isVisible())
+            .arg(host->underMouse()).arg(int(qApp->applicationState()))
+            .arg(diagnosticRect(QRect(host->window()->mapToGlobal(QPoint(0,0)),host->window()->size()))), 0);
     if((object == qApp && event->type() == QEvent::ApplicationDeactivate) ||
        (object == ownerWindow && (event->type() == QEvent::Hide || event->type() == QEvent::Close ||
          event->type() == QEvent::WindowDeactivate || event->type() == QEvent::Move || event->type() == QEvent::Resize)))

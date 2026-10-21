@@ -65,7 +65,11 @@ EXTRA_DIST = \
 	samples/subitems \
 	samples/slaves \
 	$(check_SCRIPTS) \
-	modules/gui/qt/run.sh
+	modules/gui/qt/run.sh \
+	modules/gui/qt/thumbnail/controller_test.cpp \
+	modules/gui/qt/thumbnail/fake_helper.cpp \
+	modules/gui/qt/thumbnail/real_helper_test.cpp \
+	modules/gui/qt/thumbnail/run.sh
 
 check_HEADERS = libvlc/test.h libvlc/libvlc_additions.h
 

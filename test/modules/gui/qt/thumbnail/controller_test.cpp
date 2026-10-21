@@ -147,7 +147,66 @@ public:
             return dying.directory->path();
         }();
         assert(!QDir(temp).exists()); // destructor kills/reaps before deleting session files
+        // Diagnostics observe the same real controller/tooltip; they never show
+        // a hidden tooltip or alter the placement fallback being investigated.
+        const QByteArray savedDebug = qgetenv("VLC_TIMELINE_HOVER_DEBUG");
+        qunsetenv("VLC_TIMELINE_HOVER_DEBUG");
+        QStringList records;
+        auto collect = [&](const QString &message) { records.append(message); };
+        Diagnostics quiet;quiet.setLogger(collect);
+        quiet.record(QStringLiteral("test"),QStringLiteral("must-not-log"),0);
+        assert(records.isEmpty());
+        qputenv("VLC_TIMELINE_HOVER_DEBUG","true");
+        Diagnostics exact;exact.setLogger(collect);
+        exact.record(QStringLiteral("test"),QStringLiteral("must-not-log"),0);
+        assert(records.isEmpty());
+        qputenv("VLC_TIMELINE_HOVER_DEBUG","1");
+        Diagnostics trace;trace.setLogger(collect);
+        trace.record(QStringLiteral("sample"),QStringLiteral("first"));
+        trace.record(QStringLiteral("sample"),QStringLiteral("first"),0);
+        trace.record(QStringLiteral("sample"),QStringLiteral("rate-limited"));
+        assert(records.size()==1);
+        spin(260);trace.record(QStringLiteral("sample"),QStringLiteral("second"));
+        assert(records.size()==2);
+        const auto contains = [&](const char *text) {
+            return records.join(QLatin1Char('\n')).contains(QString::fromLatin1(text));
+        };
+        records.clear();
+        {
+            TimeTooltip observed;observed.setDiagnosticLogger(collect);
+            observed.setTip(QPoint(300,550),QStringLiteral("00:01"),QString());
+            observed.setPreview(preview,1000,window);
+            assert(!observed.isVisible()); // setTip/setPreview must not fix visibility
+            assert(contains("stage=set-tip") && contains("stage=set-preview"));
+            assert(contains("stage=preview-placement") && contains("fallback=0"));
+            assert(contains("owner_bounds=0,0,800,600") && contains("screen="));
+            assert(contains("stage=placement-final") && contains("final_rect="));
+            observed.show();spin(5);assert(observed.isVisible());
+            observed.hide();spin(5);assert(!observed.isVisible());
+            assert(contains("event=show") && contains("event=hide") && contains("stage=show-call"));
+            QEvent deactivate(QEvent::WindowDeactivate);qApp->sendEvent(&observed,&deactivate);
+            assert(contains("event=deactivate"));
+            observed.setTip(QPoint(300,20),QStringLiteral("00:01"),QString());
+            observed.setPreview(preview,1000,window);
+            assert(observed.height()<100 && !observed.isVisible());
+            assert(contains("fallback=1")); // original timestamp-only fallback retained
+        }
+        records.clear();
+        {
+            Controller traced(&host,[](const QString &){return true;},[](const QImage &,qint64){},
+                              [](const QString &){},helper,1,700);
+            traced.setDiagnosticLogger(collect);
+            traced.hover(normal,QStringLiteral("diagnostic-session"),6500);
+            assert(until([&]{return traced.showing();}));
+            assert(contains("stage=hover") && contains("stage=launch") && contains("stage=spawn"));
+            assert(contains("stage=finished") && contains("latest=1") && contains("controller="));
+            QEvent deactivate(QEvent::WindowDeactivate);qApp->sendEvent(&host,&deactivate);
+            assert(!traced.showing() && contains("stage=window-event") && contains("stage=cancel"));
+        }
+        if(savedDebug.isNull()) qunsetenv("VLC_TIMELINE_HOVER_DEBUG");
+        else qputenv("VLC_TIMELINE_HOVER_DEBUG",savedDebug);
         std::puts("Qt preview mapping/debounce/stale/cache/cancellation/lifecycle tests passed");
+        std::puts("Diagnostics opt-in/rate-limit/controller/visibility/placement tests passed");
     }
 };
 }

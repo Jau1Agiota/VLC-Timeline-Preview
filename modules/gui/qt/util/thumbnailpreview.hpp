@@ -14,6 +14,7 @@
 #include <QPointer>
 #include <QSharedPointer>
 #include <functional>
+#include "previewdiagnostics.hpp"
 class QWidget;
 
 namespace TimelinePreview {
@@ -49,6 +50,7 @@ public:
     ~Controller();
     void hover(const QString &path, const QString &mediaToken, qint64 milliseconds);
     void cancel(bool clearCache = false);
+    void setDiagnosticLogger(Diagnostics::Log logger) { trace.setLogger(logger); }
     bool showing() const { return visible; }
 protected:
     bool eventFilter(QObject *, QEvent *) override;
@@ -75,6 +77,8 @@ private:
     bool pending = false, visible = false, closing = false;
     void *job = nullptr;
     int launches = 0;
+    Diagnostics trace;
+    void diagnose(const QString &, const QString &, int intervalMs = 250) const;
     void launch();
     void finished(int, QProcess::ExitStatus);
     void failed(const QString &);

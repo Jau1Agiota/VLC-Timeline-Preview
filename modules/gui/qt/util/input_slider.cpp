@@ -121,6 +121,15 @@ SeekSlider::SeekSlider( intf_thread_t *p_intf, Qt::Orientation q, QWidget *_pare
     /* Tooltip bubble */
     mTimeTooltip = new TimeTooltip( NULL );
     mTimeTooltip->setMouseTracking( true );
+    const auto diagnosticLog = [this]( const QString &message ) {
+        if( hoverDiagnostics )
+            msg_Dbg( this->p_intf, "timeline-diagnostic slider=%p tooltip=%p owner=%p owner_class=%s %s",
+                     static_cast<void *>(this), static_cast<void *>(mTimeTooltip),
+                     static_cast<void *>(window()), window()->metaObject()->className(), qUtf8Printable(message) );
+    };
+    hoverTrace.setLogger( diagnosticLog );
+    if( hoverDiagnostics ) qApp->installEventFilter( this );
+    mTimeTooltip->setDiagnosticLogger( diagnosticLog );
     thumbnailPreview = new TimelinePreview::Controller( this,
         [this]( const QString &token ) { return thumbnailCurrent( token ); },
         [this]( const QImage &image, qint64 time ) {
@@ -130,6 +139,7 @@ SeekSlider::SeekSlider( intf_thread_t *p_intf, Qt::Orientation q, QWidget *_pare
         [this]( const QString &message ) {
             if( hoverDiagnostics ) msg_Dbg( this->p_intf, "timeline-preview: %s", qUtf8Printable(message) );
         } );
+    thumbnailPreview->setDiagnosticLogger( diagnosticLog );
     connect( THEMIM->getIM(), &InputManager::playingStatusChanged, this, [this]( int state ) {
         if( state != PLAYING_S && state != PAUSE_S ) thumbnailPreview->cancel();
     } );
@@ -218,6 +228,7 @@ SeekSlider::SeekSlider( intf_thread_t *p_intf, Qt::Orientation q, QWidget *_pare
 
 SeekSlider::~SeekSlider()
 {
+    if( hoverDiagnostics ) qApp->removeEventFilter( this );
     delete thumbnailPreview;
     thumbnailPreview = NULL;
     delete chapters;
@@ -414,16 +425,57 @@ QString SeekSlider::thumbnailToken() const
     return token;
 }
 
+void SeekSlider::traceEligibility( const QString &token, bool accepted ) const
+{
+    if( !hoverTrace.isEnabled() ) return;
+    input_thread_t *input = THEMIM->getInput();
+    const bool tokenMatches = !token.isEmpty() && token == thumbnailToken();
+    const int videoChoices = input ? var_CountChoices(input,"video-es") : -1;
+    const int state = input ? var_GetInteger(input,"state") : static_cast<int>(END_S);
+    const bool canSeek = input && var_GetBool(input,"can-seek");
+    const qlonglong length = input ? MS_FROM_VLC_TICK(var_GetInteger(input,"length")) : 0;
+    QStringList reasons;
+    if( !input ) reasons << QStringLiteral("no-input");
+    if( token.isEmpty() ) reasons << QStringLiteral("empty-token");
+    if( !tokenMatches ) reasons << QStringLiteral("token-mismatch");
+    if( !isVisible() ) reasons << QStringLiteral("not-visible");
+    if( !underMouse() ) reasons << QStringLiteral("not-under-mouse");
+    if( isSliding ) reasons << QStringLiteral("dragging");
+    if( qApp->mouseButtons() != Qt::NoButton ) reasons << QStringLiteral("mouse-buttons");
+    if( !isEnabled() ) reasons << QStringLiteral("disabled");
+    if( !b_seekable ) reasons << QStringLiteral("slider-not-seekable");
+    if( videoChoices < 2 ) reasons << QStringLiteral("no-video-choice");
+    if( qApp->activePopupWidget() ) reasons << QStringLiteral("active-popup");
+    if( qApp->applicationState() != Qt::ApplicationActive ) reasons << QStringLiteral("app-not-active");
+    if( state != PLAYING_S && state != PAUSE_S ) reasons << QStringLiteral("not-playing-or-paused");
+    if( !canSeek ) reasons << QStringLiteral("input-not-seekable");
+    if( length <= 0 ) reasons << QStringLiteral("no-duration");
+    hoverTrace.record( QStringLiteral("eligibility"), QStringLiteral(
+        "component=slider stage=eligibility accepted=%1 reasons=%2 inputLength_s=%3 "
+        "under_mouse=%4 visible=%5 enabled=%6 app_state=%7 buttons=%8 popup=%9 "
+        "token_match=%10 video_choices=%11 input_state=%12 can_seek=%13 length_ms=%14 slider_seekable=%15 dragging=%16")
+        .arg(accepted).arg(reasons.isEmpty() ? QStringLiteral("none") : reasons.join(QLatin1Char('|')))
+        .arg(inputLength).arg(underMouse()).arg(isVisible()).arg(isEnabled())
+        .arg(int(qApp->applicationState())).arg(int(qApp->mouseButtons()))
+        .arg(TimelinePreview::diagnosticId(qApp->activePopupWidget())).arg(tokenMatches)
+        .arg(videoChoices).arg(state).arg(canSeek).arg(length).arg(b_seekable).arg(isSliding), 0 );
+}
+
 bool SeekSlider::thumbnailCurrent( const QString &token ) const
 {
     input_thread_t *input = THEMIM->getInput();
     if( !input || token.isEmpty() || token != thumbnailToken() || !isVisible() ||
         !underMouse() || isSliding || qApp->mouseButtons() != Qt::NoButton || !isEnabled() || !b_seekable ||
         var_CountChoices(input,"video-es") < 2 || qApp->activePopupWidget() ||
-        qApp->applicationState() != Qt::ApplicationActive ) return false;
+        qApp->applicationState() != Qt::ApplicationActive ) {
+        traceEligibility( token, false );
+        return false;
+    }
     const int state = var_GetInteger(input,"state");
-    return (state == PLAYING_S || state == PAUSE_S) && var_GetBool(input,"can-seek") &&
-           var_GetInteger(input,"length") > 0;
+    const bool accepted = (state == PLAYING_S || state == PAUSE_S) && var_GetBool(input,"can-seek") &&
+                          var_GetInteger(input,"length") > 0;
+    traceEligibility( token, accepted );
+    return accepted;
 }
 
 void SeekSlider::updateHover( const QPoint &pos, const char *event, bool hovering )
@@ -477,8 +529,14 @@ void SeekSlider::updateHover( const QPoint &pos, const char *event, bool hoverin
         .arg( static_cast<qlonglong>( hover.timestampMs ) )
         .arg( static_cast<qlonglong>( durationMs ) ).arg( hover.inside ).arg( valid )
         .arg( active ).arg( seekable ).arg( isSliding );
-    msg_Dbg( p_intf, "timeline-hover widget=%p %s", static_cast<void *>( this ),
-             qUtf8Printable( message ) );
+    hoverTrace.record( QStringLiteral("hover"), QStringLiteral(
+        "component=slider stage=hover %1 inputLength_s=%2 under_mouse=%3 visible=%4 "
+        "app_state=%5 buttons=%6 popup=%7 tooltip_visible=%8 slider_active=%9 tooltip_active=%10")
+        .arg(message).arg(inputLength).arg(underMouse()).arg(isVisible())
+        .arg(int(qApp->applicationState())).arg(int(qApp->mouseButtons()))
+        .arg(TimelinePreview::diagnosticId(qApp->activePopupWidget())).arg(mTimeTooltip->isVisible())
+        .arg(isActiveWindow()).arg(mTimeTooltip->isActiveWindow()),
+        hovering && !qstrcmp(event,"move") ? 250 : 0 );
 }
 
 void SeekSlider::mouseMoveEvent( QMouseEvent *event )
@@ -564,6 +622,10 @@ void SeekSlider::enterEvent( QEvent * )
         animHandle->start();
     }
     /* Don't show the tooltip if the slider is disabled or a menu is open */
+    if( hoverTrace.isEnabled() ) hoverTrace.record( QStringLiteral("enter-show"),
+        QStringLiteral("component=slider stage=enter-show allowed=%1 inputLength_s=%2 enabled=%3 popup=%4 tooltip_visible=%5")
+        .arg(isEnabled() && inputLength > 0 && !qApp->activePopupWidget()).arg(inputLength)
+        .arg(isEnabled()).arg(TimelinePreview::diagnosticId(qApp->activePopupWidget())).arg(mTimeTooltip->isVisible()), 0 );
     if( isEnabled() && inputLength > 0 && !qApp->activePopupWidget() )
         mTimeTooltip->show();
 }
@@ -576,6 +638,10 @@ void SeekSlider::leaveEvent( QEvent * )
        - if the mouse leave the slider rect (Note: it can still be
          over the tooltip!)
        - if another window is on the way of the cursor */
+    if( hoverTrace.isEnabled() ) hoverTrace.record( QStringLiteral("leave-hide"),
+        QStringLiteral("component=slider stage=leave-hide outside=%1 slider_active=%2 tooltip_active=%3 tooltip_visible=%4")
+        .arg(!rect().contains(mapFromGlobal(QCursor::pos()))).arg(isActiveWindow())
+        .arg(mTimeTooltip->isActiveWindow()).arg(mTimeTooltip->isVisible()), 0 );
     if( !rect().contains( mapFromGlobal( QCursor::pos() ) ) ||
       ( !isActiveWindow() && !mTimeTooltip->isActiveWindow() ) )
     {
@@ -619,6 +685,19 @@ void SeekSlider::hideEvent( QHideEvent * )
 
 bool SeekSlider::eventFilter( QObject *obj, QEvent *event )
 {
+    if( hoverTrace.isEnabled() &&
+        ((obj == qApp && (event->type() == QEvent::ApplicationActivate ||
+                          event->type() == QEvent::ApplicationDeactivate ||
+                          event->type() == QEvent::ApplicationStateChange)) ||
+         (obj == window() && (event->type() == QEvent::WindowActivate ||
+                              event->type() == QEvent::WindowDeactivate ||
+                              event->type() == QEvent::WindowStateChange ||
+                              event->type() == QEvent::Show || event->type() == QEvent::Hide))))
+        hoverTrace.record( QStringLiteral("window-event"), QStringLiteral(
+            "component=slider stage=window-event event=%1 object=%2 visible=%3 under_mouse=%4 app_state=%5 tooltip_visible=%6 owner_rect=%7")
+            .arg(TimelinePreview::diagnosticEvent(event->type())).arg(TimelinePreview::diagnosticId(obj))
+            .arg(isVisible()).arg(underMouse()).arg(int(qApp->applicationState())).arg(mTimeTooltip->isVisible())
+            .arg(TimelinePreview::diagnosticRect(QRect(window()->mapToGlobal(QPoint(0,0)),window()->size()))), 0 );
     if( obj == mTimeTooltip )
     {
         if( event->type() == QEvent::MouseMove )

@@ -47,6 +47,7 @@ class SeekPoints;
 class QPropertyAnimation;
 class QCommonStyle;
 class TimeTooltip;
+#include "previewdiagnostics.hpp"
 namespace TimelinePreview { class Controller; }
 class QSequentialAnimationGroup;
 
@@ -93,6 +94,8 @@ protected:
 private:
     void updateHover( const QPoint &, const char *event, bool hovering = true );
     const bool hoverDiagnostics;
+    mutable TimelinePreview::Diagnostics hoverTrace;
+    void traceEligibility( const QString &, bool ) const;
     TimelinePreview::Controller *thumbnailPreview;
     QString thumbnailToken() const;
     bool thumbnailCurrent( const QString & ) const;

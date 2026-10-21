@@ -154,6 +154,11 @@ Controller::~Controller()
         process.kill(); process.waitForFinished(1000);
     }
 }
+void Controller::diagnose(const QString &stage, const QString &detail, int intervalMs) const
+{
+    if(trace.isEnabled()) trace.record(stage, QStringLiteral("component=controller controller=%1 stage=%2 %3")
+        .arg(diagnosticId(this)).arg(stage).arg(detail), intervalMs);
+}
 void Controller::hide() { visible = false; present(QImage(), -1); }
 void Controller::stopProcess()
 {
@@ -164,6 +169,8 @@ void Controller::stopProcess()
 }
 void Controller::cancel(bool clearCache)
 {
+    if(trace.isEnabled()) diagnose(QStringLiteral("cancel"), QStringLiteral("clear_cache=%1 pending=%2 visible=%3 process_state=%4")
+        .arg(clearCache).arg(pending).arg(visible).arg(int(process.state())), 0);
     ++generation; pending = false; wanted = Request();
     debounce.stop(); health.stop(); hide(); stopProcess();
     // Keep the deadline during Starting: started() also rejects canceled work.
@@ -176,6 +183,7 @@ void Controller::cancel(bool clearCache)
 }
 void Controller::failed(const QString &reason)
 {
+    diagnose(QStringLiteral("failure"), reason, 0);
     failedKey = running.key.isEmpty() ? wanted.key : running.key;
     failedAt.restart(); hide(); if(log) log(reason);
 }
@@ -184,7 +192,11 @@ bool Controller::eventFilter(QObject *object, QEvent *event)
     if((object == qApp && event->type() == QEvent::ApplicationDeactivate) ||
        (object == ownerWindow && (event->type() == QEvent::Hide || event->type() == QEvent::Close ||
          event->type() == QEvent::WindowDeactivate || event->type() == QEvent::Move || event->type() == QEvent::Resize)))
+    {
+        if(trace.isEnabled()) diagnose(QStringLiteral("window-event"), QStringLiteral("event=%1 object=%2 app_state=%3")
+            .arg(diagnosticEvent(event->type())).arg(diagnosticId(object)).arg(int(qApp->applicationState())), 0);
         cancel();
+    }
     return QObject::eventFilter(object,event);
 }
 void Controller::hover(const QString &path, const QString &token, qint64 ms)
@@ -192,6 +204,8 @@ void Controller::hover(const QString &path, const QString &token, qint64 ms)
     if(closing) return;
     const qint64 time = bucket(ms);
     const QString file = identity(path);
+    if(trace.isEnabled()) diagnose(QStringLiteral("hover"), QStringLiteral("requested_ms=%1 bucket_ms=%2 closing=%3 token_empty=%4 local_identity_ok=%5")
+        .arg(ms).arg(time).arg(closing).arg(token.isEmpty()).arg(!file.isEmpty()));
     if(time < 0 || token.isEmpty() || file.isEmpty() || !current(token)) { cancel(); return; }
     const QString source = token + QChar(0) + file;
     if(activePreview && activePreview != this) activePreview->cancel();
@@ -218,12 +232,18 @@ void Controller::hover(const QString &path, const QString &token, qint64 ms)
     wanted.time = time; wanted.key = key; wanted.generation = generation;
     pending = false; debounce.stop(); hide(); stopProcess();
     QImage image = cache->get(key);
-    if(!image.isNull()) { visible = true; present(image,time); return; }
+    if(!image.isNull()) {
+        diagnose(QStringLiteral("cache-hit"), QStringLiteral("bucket_ms=%1").arg(time));
+        visible = true; present(image,time); return;
+    }
     if(key == failedKey && failedAt.isValid() && failedAt.elapsed() < 2000) return;
     pending = true; debounce.start();
 }
 void Controller::launch()
 {
+    if(trace.isEnabled()) diagnose(QStringLiteral("launch"), QStringLiteral("closing=%1 pending=%2 debounce=%3 process_state=%4 other_controller=%5 bucket_ms=%6")
+        .arg(closing).arg(pending).arg(debounce.isActive()).arg(int(process.state()))
+        .arg(diagnosticId(extracting.data())).arg(wanted.time));
     if(closing || !pending || debounce.isActive()) return;
     if(process.state() != QProcess::NotRunning) return; // finish schedules latest work
     if(extracting && extracting != this && extracting->process.state() != QProcess::NotRunning) {
@@ -245,6 +265,7 @@ void Controller::launch()
     process.setProcessEnvironment(environment);
     process.setWorkingDirectory(QFileInfo(helper).absolutePath());
     deadline.start(); ++launches; extracting = this;
+    diagnose(QStringLiteral("spawn"), QStringLiteral("bucket_ms=%1 generation=%2").arg(wanted.time).arg(generation), 0);
     process.start(helper, QStringList() << wanted.path << QString::number(wanted.time) << output << QStringLiteral("5000"));
 }
 void Controller::drain()
@@ -266,6 +287,8 @@ void Controller::finished(int code, QProcess::ExitStatus status)
 #endif
     const bool latest = running.generation == generation && running.key == wanted.key &&
                         current(running.token) && identity(running.path) == running.identity;
+    if(trace.isEnabled()) diagnose(QStringLiteral("finished"), QStringLiteral("exit=%1 exit_status=%2 latest=%3 bucket_ms=%4 running_generation=%5 generation=%6 output_bytes=%7")
+        .arg(code).arg(int(status)).arg(latest).arg(running.time).arg(running.generation).arg(generation).arg(stdoutData.size()), 0);
     if(latest) {
         const QJsonObject record = QJsonDocument::fromJson(stdoutData).object();
         const QString result = record.value(QStringLiteral("status")).toString();

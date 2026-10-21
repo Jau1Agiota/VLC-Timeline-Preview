@@ -26,6 +26,7 @@
 #include <QPainter>
 #include <QBitmap>
 #include <QFontMetrics>
+#include <QEvent>
 #if QT_VERSION < QT_VERSION_CHECK(5, 10, 0)
 #include <QDesktopWidget>
 #else
@@ -60,6 +61,7 @@ void TimeTooltip::adjustPosition()
     if( mDisplayedText.isEmpty() )
     {
         resize( 0, 0 );
+        diagnose( QStringLiteral("placement-empty"), QStringLiteral("no-displayed-text"), 0 );
         return;
     }
 
@@ -111,6 +113,12 @@ void TimeTooltip::adjustPosition()
     {
         const QRect placed = TimelinePreview::popupRect( size, mTarget,
                                                         screen.intersected( mWindowBounds ) );
+        if( mTrace.isEnabled() ) diagnose( QStringLiteral("preview-placement"), QStringLiteral(
+            "target=%1,%2 requested_size=%3,%4 screen=%5 owner_bounds=%6 intersection=%7 placed=%8 fallback=%9 visible=%10")
+            .arg(mTarget.x()).arg(mTarget.y()).arg(size.width()).arg(size.height())
+            .arg(TimelinePreview::diagnosticRect(screen)).arg(TimelinePreview::diagnosticRect(mWindowBounds))
+            .arg(TimelinePreview::diagnosticRect(screen.intersected(mWindowBounds)))
+            .arg(TimelinePreview::diagnosticRect(placed)).arg(!placed.isValid()).arg(isVisible()), placed.isValid() ? 250 : 0 );
         if( !placed.isValid() )
         {
             // A floating fullscreen toolbar/small window may have no room.
@@ -132,6 +140,11 @@ void TimeTooltip::adjustPosition()
         resize( size );
         buildPath();
     }
+    if( mTrace.isEnabled() ) diagnose( QStringLiteral("placement-final"), QStringLiteral(
+        "target=%1,%2 final_rect=%3 screen=%4 owner_bounds=%5 preview=%6 visible=%7 hidden=%8")
+        .arg(mTarget.x()).arg(mTarget.y()).arg(TimelinePreview::diagnosticRect(geometry()))
+        .arg(TimelinePreview::diagnosticRect(screen)).arg(TimelinePreview::diagnosticRect(mWindowBounds))
+        .arg(!mPreview.isNull()).arg(isVisible()).arg(isHidden()) );
 }
 
 void TimeTooltip::buildPath()
@@ -170,6 +183,10 @@ void TimeTooltip::setTip( const QPoint& target, const QString& time, const QStri
 
     update();
     raise();
+    if( mTrace.isEnabled() ) diagnose( QStringLiteral("set-tip"), QStringLiteral(
+        "visible=%1 hidden=%2 target=%3,%4 time=%5 rect=%6")
+        .arg(isVisible()).arg(isHidden()).arg(target.x()).arg(target.y()).arg(time)
+        .arg(TimelinePreview::diagnosticRect(geometry())) );
 }
 
 void TimeTooltip::setPreview( const QImage &image, qint64 requestedMs, const QRect &bounds )
@@ -185,12 +202,45 @@ void TimeTooltip::setPreview( const QImage &image, qint64 requestedMs, const QRe
         .arg(qMax<qint64>(0, requestedMs) % 1000, 3, 10, QLatin1Char('0'));
     adjustPosition();
     update();
+    if( mTrace.isEnabled() ) diagnose( QStringLiteral("set-preview"), QStringLiteral(
+        "image=%1 requested_ms=%2 visible=%3 hidden=%4 rect=%5")
+        .arg(!image.isNull()).arg(requestedMs).arg(isVisible()).arg(isHidden())
+        .arg(TimelinePreview::diagnosticRect(geometry())) );
 }
 
 void TimeTooltip::show()
 {
+    if( mTrace.isEnabled() ) diagnose( QStringLiteral("show-call"), QStringLiteral("visible_before=%1 hidden_before=%2")
+        .arg(isVisible()).arg(isHidden()), 0 );
     setVisible( true );
     raise();
+}
+
+void TimeTooltip::diagnose( const QString &stage, const QString &detail, int intervalMs )
+{
+    if( mTrace.isEnabled() ) mTrace.record(stage, QStringLiteral("component=tooltip tooltip=%1 stage=%2 %3")
+        .arg(TimelinePreview::diagnosticId(this)).arg(stage).arg(detail), intervalMs);
+}
+
+bool TimeTooltip::event( QEvent *event )
+{
+    const QEvent::Type type = event->type();
+    const bool observe = mTrace.isEnabled() && (type == QEvent::Show || type == QEvent::Hide ||
+        type == QEvent::WindowActivate || type == QEvent::WindowDeactivate ||
+        type == QEvent::WindowStateChange || type == QEvent::ZOrderChange);
+    const bool before = isVisible();
+    const bool result = QWidget::event(event);
+    if( observe ) {
+        const char *name = type == QEvent::Show ? "show" : type == QEvent::Hide ? "hide" :
+            type == QEvent::WindowActivate ? "activate" : type == QEvent::WindowDeactivate ? "deactivate" :
+            type == QEvent::ZOrderChange ? "z-order" : "window-state";
+        diagnose( QStringLiteral("event-visibility"), QStringLiteral(
+            "event=%1 visible_before=%2 visible_after=%3 hidden=%4 active=%5 active_window=%6 app_state=%7 flags=%8 rect=%9")
+            .arg(QString::fromLatin1(name)).arg(before).arg(isVisible()).arg(isHidden()).arg(isActiveWindow())
+            .arg(TimelinePreview::diagnosticId(qApp->activeWindow())).arg(int(qApp->applicationState()))
+            .arg(QString::number(quint32(windowFlags()),16)).arg(TimelinePreview::diagnosticRect(geometry())), 0 );
+    }
+    return result;
 }
 
 void TimeTooltip::paintEvent( QPaintEvent * )

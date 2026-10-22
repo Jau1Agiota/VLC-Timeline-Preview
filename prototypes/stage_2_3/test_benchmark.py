@@ -48,6 +48,16 @@ for k in ('capture_latency_ms','total_latency_ms','libvlc_init_ms','media_player
             with self.assertRaises(ValueError):
                 self.run_fake(Path(tmp), "r['frame_timestamp_verified']=True")
 
+    def test_persistent_response_sequence_and_eof_cleanup(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);helper=root/'worker.py'
+            helper.write_text("#!/usr/bin/env python3\nimport json,sys,struct\nfrom pathlib import Path\nfor line in sys.stdin:\n    rid,target,timeout=map(int,line.split())\n    image=bytearray(58);image[:2]=b'BM';struct.pack_into('<ii',image,18,1,1)\n    Path(sys.argv[3]).write_bytes(image)\n    r=dict(request_id=rid,requested_ms=target,frame_timestamp_verified=False,exit_code=0,\n           capture_latency_ms=1,total_latency_ms=1,libvlc_init_ms=1 if rid==1 else 0)\n    print(json.dumps(r),flush=True)\n")
+            helper.chmod(0o700)
+            rows=benchmark.persistent_samples(helper,root/'media.mp4',root/'frame.bmp',3,'baseline',False)
+            self.assertEqual([r['mode'] for r in rows],['worker_cold','worker_warm','worker_warm'])
+            self.assertEqual([r['helper']['request_id'] for r in rows],[1,2,3])
+            self.assertFalse((root/'frame.bmp').exists())
+
     def test_refuse_existing_output(self):
         with tempfile.TemporaryDirectory() as tmp:
             output=Path(tmp)/'old.json';output.write_text('preserve')

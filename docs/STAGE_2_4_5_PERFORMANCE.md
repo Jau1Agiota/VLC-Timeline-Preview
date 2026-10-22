@@ -91,7 +91,7 @@ not prove which decoder was selected. LibVLC's own
 hardware acceleration or require GPU-to-CPU copies. No NVIDIA/RTX performance
 claim can follow from Wine on a GitHub-hosted CPU runner.
 
-Generate the existing burned-in-PTS fixtures, then benchmark (new output paths):
+Generate the existing burned-in-PTS fixtures, then benchmark the original profiles and persistent architecture (new output paths):
 
 ```powershell
 py prototypes\stage_2_3\generate_fixtures.py C:\VLC-Stage245\fixtures --font C:\Windows\Fonts\arial.ttf
@@ -100,7 +100,12 @@ py prototypes\stage_2_3\benchmark.py --helper C:\VLC-Stage245\portable\thumbnail
 
 Adjust `portable` to the extracted package root. Requires existing Python,
 FFmpeg/libx264/AAC/drawtext and ffprobe on PATH; no codec-pack download is needed.
-Targets cycle through 1,000/4,750/8,000 ms. Full mode covers ordinary, B-frame,
+For the profile comparison, omit `--profiles baseline --persistent` and use a
+new output JSON. Use `--profiles baseline --persistent` to compare fresh processes
+with the chosen persistent accurate configuration. Worker samples separately
+label the first request of each process and subsequent requests; only the latter
+amortize initialization. The worker benchmark's final EOF also tests clean
+instance release. Targets cycle through 1,000/4,750/8,000 ms. Full mode covers ordinary, B-frame,
 300-frame-GOP and VFR MP4/MKV. Files and targets are identical between profiles.
 Profiles run sequentially, so filesystem/plugin/OS caches are **not controlled**;
 the first sample is identifiable but is not a repeatable cold-disk experiment.
@@ -159,7 +164,7 @@ measurements and native Windows acceptance are still pending at this revision.
 ## Validation and delivery
 
 Available local results: pinned MinGW-w64 GCC 6.4.0 compile **and final link** of
-the instrumented helper against official 3.0.24 `libvlc.lib`; 20 prototype unit
+the instrumented helper against official 3.0.24 `libvlc.lib`; 21 prototype unit
 tests; Qt offscreen controller/tooltip regression suite. Final full Windows
 cross-build, packaging and independent readback will be recorded here.
 

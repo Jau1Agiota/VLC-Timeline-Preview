@@ -1,0 +1,29 @@
+/* Test subprocess, not a decoder. GPL-2.0-or-later. */
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <cstdlib>
+#include <chrono>
+#include <thread>
+#include <cstdint>
+static void put(unsigned char *p, uint32_t value, int n=4) {
+    for(int i=0;i<n;++i) p[i]=static_cast<unsigned char>(value>>(8*i));
+}
+int main(int argc,char **argv) {
+    if(argc!=5) return 2;
+    const std::string source(argv[1]);
+    if(source.find("slow")!=std::string::npos) std::this_thread::sleep_for(std::chrono::milliseconds(350));
+    if(source.find("timeout")!=std::string::npos) std::this_thread::sleep_for(std::chrono::seconds(3));
+    if(source.find("error")!=std::string::npos) return 3;
+    if(source.find("spam")!=std::string::npos) std::cout<<std::string(20000,'x');
+    unsigned char header[54]={}; header[0]='B';header[1]='M';
+    put(header+2,54+16*8*4);put(header+10,54);put(header+14,40);
+    put(header+18,16);put(header+22,8);put(header+26,1,2);put(header+28,32,2);
+    unsigned char pixels[16*8*4];
+    for(unsigned i=0;i<sizeof(pixels);i+=4) { pixels[i]=32;pixels[i+1]=128;pixels[i+2]=240;pixels[i+3]=255; }
+    std::ofstream out(argv[3],std::ios::binary);out.write(reinterpret_cast<char*>(header),54);
+    out.write(reinterpret_cast<char*>(pixels),sizeof(pixels));out.close();
+    std::cout<<"{\"status\":\"candidate_captured\",\"requested_ms\":"<<argv[2]
+             <<",\"width\":16,\"height\":8,\"frame_timestamp_verified\":false}\n";
+    return 0;
+}

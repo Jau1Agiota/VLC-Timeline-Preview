@@ -1,0 +1,100 @@
+name: Windows diagnostic pilot (CI-1)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      SOURCE_SHA: 2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc
+    steps:
+      - name: Set run-specific output directory
+        shell: bash
+        run: echo "CI_WORK=$RUNNER_TEMP/vlc-ci1-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - name: Check out CI driver
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: ci-driver
+          persist-credentials: false
+      - name: Check out pinned application source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Prepare, test, build and package
+        shell: bash
+        run: bash ci-driver/ci/windows/build-diagnostic.sh run "$GITHUB_WORKSPACE/source" "$CI_WORK"
+      - name: Upload pilot package
+        id: package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: vlc-stage243-win64-${{ env.SOURCE_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.CI_WORK }}/delivery/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+          overwrite: false
+      - name: Download pilot for independent readback
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          artifact-ids: ${{ steps.package.outputs.artifact-id }}
+          path: ${{ env.CI_WORK }}/readback
+          merge-multiple: true
+      - name: Verify downloaded ZIP against producer manifest
+        shell: bash
+        run: >-
+          python3 ci-driver/ci/windows/package-diagnostic.py verify
+          "$CI_WORK/readback" --expected-manifest "$CI_WORK/delivery/PACKAGE_MANIFEST.json"
+      - name: Final resource and container measurements
+        if: always()
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          if [[ -f ci-driver/ci/windows/build-diagnostic.sh ]]; then
+            bash ci-driver/ci/windows/build-diagnostic.sh finish "$CI_WORK"
+          else
+            df -h
+            free -m
+          fi
+      - name: Upload logs and measurements (including failures)
+        if: always()
+        id: evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: vlc-ci1-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.CI_WORK }}/logs/
+            ${{ env.CI_WORK }}/metrics/
+          if-no-files-found: warn
+          compression-level: 6
+          retention-days: 14
+          overwrite: false
+      - name: Pilot summary
+        if: always()
+        shell: bash
+        env:
+          PACKAGE_URL: ${{ steps.package.outputs.artifact-url }}
+          EVIDENCE_URL: ${{ steps.evidence.outputs.artifact-url }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          {
+            echo "CI-1 job status: $JOB_STATUS"
+            echo "Source: $SOURCE_SHA"
+            echo "Package: ${PACKAGE_URL:-not produced}"
+            echo "Evidence: ${EVIDENCE_URL:-not produced}"
+            echo 'Download the package artifact, then run: sha256sum -c SHA256SUMS'
+            echo 'This pilot does not publish Releases or establish native Windows GUI/PTS accuracy.'
+            if [[ -f "$CI_WORK/metrics/summary.json" ]]; then
+              echo '```json'
+              cat "$CI_WORK/metrics/summary.json"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

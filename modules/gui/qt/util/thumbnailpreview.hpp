@@ -19,7 +19,11 @@ class QWidget;
 
 namespace TimelinePreview {
 // Shared by the GUI and tests; coordinates remain Qt logical pixels.
-QRect popupRect(const QSize &size, const QPoint &anchor, const QRect &bounds);
+enum class PopupContext { Windowed, FullscreenController };
+PopupContext popupContext(const QWidget *owner, const QWidget *fullscreenController);
+QRect popupBounds(PopupContext, const QRect &owner, const QRect &availableScreen);
+QRect popupRect(const QSize &size, const QPoint &anchor, const QRect &bounds,
+                PopupContext context = PopupContext::Windowed);
 qint64 bucket(qint64 milliseconds);
 
 class Cache {

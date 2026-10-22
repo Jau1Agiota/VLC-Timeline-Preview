@@ -31,6 +31,7 @@
 #include <QImage>
 #include <QPainterPath>
 #include "previewdiagnostics.hpp"
+#include "thumbnailpreview.hpp"
 
 class TimeTooltip : public QWidget
 {
@@ -39,6 +40,7 @@ public:
     explicit TimeTooltip( QWidget *parent = 0 );
     void setTip( const QPoint& pos, const QString& time, const QString& text );
     virtual void show();
+    void setPlacementContext(QWidget *owner, TimelinePreview::PopupContext context);
     void setDiagnosticLogger( TimelinePreview::Diagnostics::Log logger ) { mTrace.setLogger(logger); }
     void setPreview( const QImage &, qint64 requestedMs, const QRect &windowBounds );
 
@@ -49,6 +51,9 @@ protected:
 private:
     TimelinePreview::Diagnostics mTrace;
     void diagnose( const QString &, const QString &, int intervalMs = 250 );
+    void presentFullscreen();
+    QPointer<QWidget> mPlacementOwner;
+    TimelinePreview::PopupContext mContext = TimelinePreview::PopupContext::Windowed;
     void adjustPosition();
     void buildPath();
     QPoint mTarget;

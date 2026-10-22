@@ -92,6 +92,7 @@ protected:
     int   getValueFromXPos( int );
 
 private:
+    void updateTooltipContext();
     void updateHover( const QPoint &, const char *event, bool hovering = true );
     const bool hoverDiagnostics;
     mutable TimelinePreview::Diagnostics hoverTrace;

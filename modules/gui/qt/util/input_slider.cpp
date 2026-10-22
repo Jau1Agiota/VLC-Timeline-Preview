@@ -37,6 +37,8 @@
 #include "util/timetooltip.hpp"
 #include "adapters/seekpoints.hpp"
 #include "input_manager.hpp"
+#include "main_interface.hpp"
+#include "components/controller.hpp"
 #include "imagehelper.hpp"
 #include "customwidgets.hpp"
 #include <vlc_actions.h>
@@ -132,6 +134,7 @@ SeekSlider::SeekSlider( intf_thread_t *p_intf, Qt::Orientation q, QWidget *_pare
     thumbnailPreview = new TimelinePreview::Controller( this,
         [this]( const QString &token ) { return thumbnailCurrent( token ); },
         [this]( const QImage &image, qint64 time ) {
+            updateTooltipContext();
             QWidget *owner = window();
             mTimeTooltip->setPreview( image, time, QRect(owner->mapToGlobal(QPoint(0,0)), owner->size()) );
         },
@@ -588,6 +591,7 @@ void SeekSlider::mouseMoveEvent( QMouseEvent *event )
                 QWidget::mapToGlobal( QPoint( 0, 0 ) ).y() );
         if( likely( size().width() > handleLength() ) ) {
             secstotimestr( psz_length, getValuePercentageFromXPos( event->x() ) * inputLength );
+            updateTooltipContext();
             mTimeTooltip->setTip( target, psz_length, chapterLabel );
         }
     }
@@ -626,7 +630,18 @@ void SeekSlider::enterEvent( QEvent * )
         .arg(isEnabled() && inputLength > 0 && !qApp->activePopupWidget()).arg(inputLength)
         .arg(isEnabled()).arg(TimelinePreview::diagnosticId(qApp->activePopupWidget())).arg(mTimeTooltip->isVisible()), 0 );
     if( isEnabled() && inputLength > 0 && !qApp->activePopupWidget() )
+    {
+        updateTooltipContext();
         mTimeTooltip->show();
+    }
+}
+
+void SeekSlider::updateTooltipContext()
+{
+    QWidget *owner = window();
+    MainInterface *main = p_intf->p_sys->p_mi;
+    QWidget *fullscreen = main ? main->getFullscreenControllerWidget() : NULL;
+    mTimeTooltip->setPlacementContext(owner, TimelinePreview::popupContext(owner, fullscreen));
 }
 
 void SeekSlider::leaveEvent( QEvent * )

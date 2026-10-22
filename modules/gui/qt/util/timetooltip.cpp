@@ -25,6 +25,13 @@
 #include <QApplication>
 #include <QPainter>
 #include <QBitmap>
+#include <QWindow>
+#ifdef Q_OS_WIN
+# ifndef NOMINMAX
+#  define NOMINMAX
+# endif
+# include <windows.h>
+#endif
 #include <QFontMetrics>
 #include <QEvent>
 #if QT_VERSION < QT_VERSION_CHECK(5, 10, 0)
@@ -104,21 +111,32 @@ void TimeTooltip::adjustPosition()
 #else
     QRect screen = QApplication::desktop()->screenGeometry( mTarget );
 #endif
-    position.setX( qMax( screen.left(), qMin( position.x(),
-        screen.left() + screen.width() - size.width() ) ) );
-    position.setY( qMax( screen.top(), qMin( position.y(),
-        screen.top() + screen.height() - size.height() ) ) );
+    QRect available = screen;
+    if(mContext == TimelinePreview::PopupContext::FullscreenController)
+    {
+#if QT_VERSION >= QT_VERSION_CHECK(5, 10, 0)
+        if(screenAt) available = screenAt->availableGeometry();
+#else
+        available = QApplication::desktop()->availableGeometry(mTarget);
+#endif
+    }
+    const QRect textScreen = mContext == TimelinePreview::PopupContext::FullscreenController ? available : screen;
+    position.setX( qMax( textScreen.left(), qMin( position.x(),
+        textScreen.left() + textScreen.width() - size.width() ) ) );
+    position.setY( qMax( textScreen.top(), qMin( position.y(),
+        textScreen.top() + textScreen.height() - size.height() ) ) );
 
     if( !mPreview.isNull() )
     {
         const QRect placed = TimelinePreview::popupRect( size, mTarget,
-                                                        screen.intersected( mWindowBounds ) );
+                                                        TimelinePreview::popupBounds(mContext, mWindowBounds, available), mContext );
         if( mTrace.isEnabled() ) diagnose( QStringLiteral("preview-placement"), QStringLiteral(
-            "target=%1,%2 requested_size=%3,%4 screen=%5 owner_bounds=%6 intersection=%7 placed=%8 fallback=%9 visible=%10")
+            "context=%11 target=%1,%2 requested_size=%3,%4 screen=%5 owner_bounds=%6 intersection=%7 placed=%8 fallback=%9 visible=%10")
             .arg(mTarget.x()).arg(mTarget.y()).arg(size.width()).arg(size.height())
             .arg(TimelinePreview::diagnosticRect(screen)).arg(TimelinePreview::diagnosticRect(mWindowBounds))
-            .arg(TimelinePreview::diagnosticRect(screen.intersected(mWindowBounds)))
-            .arg(TimelinePreview::diagnosticRect(placed)).arg(!placed.isValid()).arg(isVisible()), placed.isValid() ? 250 : 0 );
+            .arg(TimelinePreview::diagnosticRect(TimelinePreview::popupBounds(mContext, mWindowBounds, available)))
+            .arg(TimelinePreview::diagnosticRect(placed)).arg(!placed.isValid()).arg(isVisible())
+            .arg(mContext == TimelinePreview::PopupContext::FullscreenController ? QStringLiteral("fullscreen") : QStringLiteral("windowed")), placed.isValid() ? 250 : 0 );
         if( !placed.isValid() )
         {
             // A floating fullscreen toolbar/small window may have no room.
@@ -183,6 +201,7 @@ void TimeTooltip::setTip( const QPoint& target, const QString& time, const QStri
 
     update();
     raise();
+    presentFullscreen();
     if( mTrace.isEnabled() ) diagnose( QStringLiteral("set-tip"), QStringLiteral(
         "visible=%1 hidden=%2 target=%3,%4 time=%5 rect=%6")
         .arg(isVisible()).arg(isHidden()).arg(target.x()).arg(target.y()).arg(time)
@@ -202,6 +221,7 @@ void TimeTooltip::setPreview( const QImage &image, qint64 requestedMs, const QRe
         .arg(qMax<qint64>(0, requestedMs) % 1000, 3, 10, QLatin1Char('0'));
     adjustPosition();
     update();
+    presentFullscreen();
     if( mTrace.isEnabled() ) diagnose( QStringLiteral("set-preview"), QStringLiteral(
         "image=%1 requested_ms=%2 visible=%3 hidden=%4 rect=%5")
         .arg(!image.isNull()).arg(requestedMs).arg(isVisible()).arg(isHidden())
@@ -214,6 +234,55 @@ void TimeTooltip::show()
         .arg(isVisible()).arg(isHidden()), 0 );
     setVisible( true );
     raise();
+    presentFullscreen();
+}
+
+void TimeTooltip::setPlacementContext(QWidget *owner, TimelinePreview::PopupContext context)
+{
+    const bool changed = mPlacementOwner != owner || mContext != context;
+    mPlacementOwner = owner;
+    mContext = context;
+    if(owner) mWindowBounds = QRect(owner->mapToGlobal(QPoint(0,0)), owner->size());
+    if(changed)
+    {
+        setAttribute(Qt::WA_ShowWithoutActivating, context == TimelinePreview::PopupContext::FullscreenController);
+        // Do not reparent the widget or alter its flags/lifetime. Clear only our
+        // fullscreen transient association when returning to the original context.
+        if(windowHandle() && context == TimelinePreview::PopupContext::Windowed)
+            windowHandle()->setTransientParent(NULL);
+        adjustPosition();
+    }
+}
+
+void TimeTooltip::presentFullscreen()
+{
+    if(mContext != TimelinePreview::PopupContext::FullscreenController || !mPlacementOwner ||
+       !mPlacementOwner->isVisible() || !isVisible() || size().isEmpty()) return;
+    // Qt's visibility state is not proof of Win32 mapping/stacking. Associate
+    // with the floating controller, then refresh only this visible popup without
+    // activating any window. Device verification is still required.
+    mPlacementOwner->winId();
+    winId();
+    if(windowHandle() && windowHandle()->transientParent() != mPlacementOwner->windowHandle())
+        windowHandle()->setTransientParent(mPlacementOwner->windowHandle());
+#ifdef Q_OS_WIN
+    const HWND popup = reinterpret_cast<HWND>(winId());
+    const bool before = IsWindowVisible(popup) != FALSE;
+    const BOOL placed = SetWindowPos(popup, HWND_TOPMOST, 0, 0, 0, 0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_SHOWWINDOW);
+    const DWORD nativeError = placed ? 0 : GetLastError();
+    RECT nativeRect = {};
+    GetWindowRect(popup, &nativeRect);
+    if(mTrace.isEnabled()) diagnose(QStringLiteral("native-popup"), QStringLiteral(
+        "context=fullscreen hwnd=%1 native_owner=%2 foreground=%3 visible_before=%4 visible_after=%5 topmost=%6 placed=%7 error=%8 native_rect_px=%9,%10,%11,%12")
+        .arg(QString::number(quintptr(popup),16))
+        .arg(QString::number(quintptr(GetWindow(popup,GW_OWNER)),16))
+        .arg(QString::number(quintptr(GetForegroundWindow()),16))
+        .arg(before).arg(IsWindowVisible(popup) != FALSE)
+        .arg((GetWindowLongPtr(popup,GWL_EXSTYLE) & WS_EX_TOPMOST) != 0)
+        .arg(placed != FALSE).arg(nativeError)
+        .arg(nativeRect.left).arg(nativeRect.top).arg(nativeRect.right).arg(nativeRect.bottom));
+#endif
 }
 
 void TimeTooltip::diagnose( const QString &stage, const QString &detail, int intervalMs )

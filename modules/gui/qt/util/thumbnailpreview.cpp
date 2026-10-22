@@ -34,8 +34,26 @@ static QSharedPointer<Cache> sharedCache()
 }
 qint64 bucket(qint64 ms) { return ms < 0 || ms > 86400000 ? -1 : ms / 250 * 250; }
 
-QRect popupRect(const QSize &size, const QPoint &anchor, const QRect &bounds)
+PopupContext popupContext(const QWidget *owner, const QWidget *fullscreenController)
 {
+    return owner && owner == fullscreenController ? PopupContext::FullscreenController : PopupContext::Windowed;
+}
+QRect popupBounds(PopupContext context, const QRect &owner, const QRect &availableScreen)
+{
+    return context == PopupContext::FullscreenController ? availableScreen : owner.intersected(availableScreen);
+}
+QRect popupRect(const QSize &size, const QPoint &anchor, const QRect &bounds, PopupContext context)
+{
+    if(context == PopupContext::FullscreenController) {
+        // The toolbar may occupy the taskbar's reserved strip. Keep the image
+        // inside available geometry, above the actual timeline, without moving it below.
+        if(size.isEmpty() || !bounds.isValid() || size.width() > bounds.width() || size.height() > bounds.height())
+            return QRect();
+        const int y = qMin(anchor.y() - size.height() - 6, bounds.bottom() - size.height() + 1);
+        if(y < bounds.top()) return QRect();
+        return QRect(QPoint(qBound(bounds.left(), anchor.x() - size.width()/2,
+                                   bounds.right() - size.width() + 1), y), size);
+    }
     if(size.isEmpty() || !bounds.isValid() || !bounds.contains(anchor) || size.width() > bounds.width() ||
        size.height() + 6 > anchor.y() - bounds.top()) return QRect();
     return QRect(QPoint(qBound(bounds.left(), anchor.x() - size.width()/2,

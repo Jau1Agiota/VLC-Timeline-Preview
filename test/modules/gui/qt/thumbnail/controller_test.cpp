@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QDir>
 #include <QThread>
+#include <QWindow>
 #include <QElapsedTimer>
 #include <QEvent>
 #include <cstdio>
@@ -53,6 +54,53 @@ public:
         tooltip.setPreview(QImage(),-1,QRect());assert(tooltip.height()<100);
         tooltip.setTip(QPoint(300,20),QStringLiteral("00:01"),QString());
         tooltip.setPreview(preview,1000,window);assert(tooltip.height()<100);
+        // Stage 2.4.4: the actual fullscreen controller is a distinct top-level
+        // widget; ordinary small windows must never acquire fullscreen bounds.
+        QWidget ordinaryOwner, fullscreenOwner;
+        assert(popupContext(&ordinaryOwner, &fullscreenOwner) == PopupContext::Windowed);
+        assert(popupContext(&fullscreenOwner, &fullscreenOwner) == PopupContext::FullscreenController);
+        assert(popupContext(nullptr, nullptr) == PopupContext::Windowed);
+        const QRect monitor(0,0,1920,1040), toolbar(562,1013,800,64);
+        const QSize imageSize(326,210);
+        const QPoint hover(1000,1019);
+        assert(!popupRect(imageSize,hover,popupBounds(PopupContext::Windowed,toolbar,monitor)).isValid());
+        const QRect fullBounds = popupBounds(PopupContext::FullscreenController,toolbar,monitor);
+        const QRect full = popupRect(imageSize,hover,fullBounds,PopupContext::FullscreenController);
+        assert(monitor.contains(full) && full.bottom() < toolbar.top());
+        const QRect negativeMonitor(-1920,-1080,1920,1040);
+        for(const QRect &screen : {monitor, negativeMonitor}) {
+            for(int x : {screen.left(),screen.right()}) {
+                for(int y : {screen.top()+216, screen.bottom(), screen.bottom()+40}) {
+                    const QRect placed = popupRect(imageSize,QPoint(x,y),screen,PopupContext::FullscreenController);
+                    assert(placed.isValid() && screen.contains(placed) && placed.bottom()<y);
+                }
+            }
+            assert(!popupRect(imageSize,QPoint(screen.center().x(),screen.top()+100),screen,
+                              PopupContext::FullscreenController).isValid());
+            assert(!popupRect(QSize(screen.width()+1,100),screen.center(),screen,
+                              PopupContext::FullscreenController).isValid());
+        }
+        assert(!popupRect(imageSize,hover,QRect(),PopupContext::FullscreenController).isValid());
+        assert(popupBounds(PopupContext::Windowed,bounds,monitor)==bounds.intersected(monitor));
+        // Real tooltip context/transient ownership, not a claim about Windows z-order.
+        fullscreenOwner.resize(800,64); fullscreenOwner.show();
+        TimeTooltip fullscreenTip;
+        const Qt::WindowFlags originalFlags = fullscreenTip.windowFlags();
+        fullscreenTip.setPlacementContext(&fullscreenOwner, PopupContext::FullscreenController);
+        fullscreenTip.setTip(QPoint(300,550),QStringLiteral("00:01"),QString());
+        fullscreenTip.setPreview(preview,1000,QRect(0,530,800,64));
+        fullscreenTip.show();spin(5);
+        assert(fullscreenTip.height()>180 && fullscreenTip.geometry().bottom()<550);
+        assert(fullscreenTip.testAttribute(Qt::WA_ShowWithoutActivating));
+        assert(fullscreenTip.windowHandle()->transientParent()==fullscreenOwner.windowHandle());
+        assert(fullscreenTip.parentWidget()==nullptr && fullscreenTip.windowFlags()==originalFlags);
+        fullscreenTip.setPreview(QImage(),-1,QRect());
+        assert(fullscreenTip.height()<100 && fullscreenTip.isVisible());
+        fullscreenTip.setPlacementContext(&ordinaryOwner,PopupContext::Windowed);
+        assert(!fullscreenTip.testAttribute(Qt::WA_ShowWithoutActivating));
+        assert(fullscreenTip.windowHandle()->transientParent()==nullptr);
+        assert(fullscreenTip.windowFlags()==originalFlags);
+        fullscreenTip.hide();fullscreenOwner.hide();spin(5);
         Cache cache(2,1024);QImage small(8,8,QImage::Format_ARGB32);small.fill(Qt::red);
         cache.put(QStringLiteral("a"),small);cache.put(QStringLiteral("b"),small);
         assert(!cache.get(QStringLiteral("a")).isNull());cache.put(QStringLiteral("c"),small);

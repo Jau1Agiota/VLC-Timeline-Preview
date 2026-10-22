@@ -99,3 +99,88 @@ selection is committed separately. Final local validation passed the host Qt
 suite (including the fullscreen cases), standalone hover mapping, the 38 CI guard/
 packaging tests under each stage selection, Bash syntax, ShellCheck and actionlint.
 Build/device results will be recorded after the hosted attempt.
+
+Additional target checks: the existing pinned GCC 6.4.0 compiler compiled
+`timetooltip.cpp` and `thumbnailpreview.cpp` against the matching Qt 5.6.3 headers
+with `-Wall -Wextra -Werror`, including the Windows-only code. `input_slider.cpp`
+compiled with the established Qt build warning flags and prior generated config;
+it retains the pre-existing enum/non-enum conditional warning in updateHover.
+A trial with extra `-Werror` also rejected that existing warning; no suppression
+or production warning-policy change was introduced. These were isolated object
+checks under /tmp, not a package build and not native Windows execution.
+
+Qt API/behavior verification: the pinned QtGui/qwindow.h declares
+`setTransientParent`. Official Qt 5.6.3's
+[`qwindowswindow.cpp`](https://github.com/qt/qtbase/blob/v5.6.3/src/plugins/platforms/windows/qwindowswindow.cpp)
+implements transient ownership through GWL_HWNDPARENT, shows ToolTip windows
+without activation, and implements raise() using HWND_TOP (not HWND_TOPMOST).
+This supports the selected APIs and distinguishes the new presentation path;
+it does not prove why the old popup was invisible on the tested device.
+The 13 existing extraction-policy/accuracy-gate tests also passed unchanged.
+
+## Files in the Stage 2.4.4 correction
+
+- `modules/gui/qt/util/input_slider.cpp` and `.hpp`: select the actual fullscreen
+  controller context before tooltip presentation.
+- `modules/gui/qt/util/thumbnailpreview.cpp` and `.hpp`: shared context and bounds
+  policy; controller/extraction/cache code is unchanged.
+- `modules/gui/qt/util/timetooltip.cpp` and `.hpp`: fullscreen available geometry,
+  transient/nonactivating presentation and native diagnostics.
+- `test/modules/gui/qt/thumbnail/controller_test.cpp`: focused geometry, context
+  and real-tooltip ownership/fallback regressions.
+- `.github/workflows/windows-diagnostic-pilot.yml`,
+  `ci/windows/build-diagnostic.sh`, `ci/windows/package-diagnostic.py` and
+  `test/ci/windows-diagnostic-guards.sh`: optional, allowlisted stage selection and
+  matching source/filename verification. Existing Stage 2.4.3 remains the default.
+- `docs/WINDOWS_CI.md` and this report: operation and evidence.
+
+The separate history merge also brings the previously validated implementation,
+prototype fixtures/tests and reports into this master-based feature branch.
+
+## Hosted build result
+
+Run: https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39813320204
+
+- Application source: `e879ce656c218eddec13926f03b5f0615d14dc61`.
+- CI driver: `ec30a5f994e632a28a8dd984df4120d48d828f80`.
+- Prepare/test/build/package: **success**, 16:22:02–16:37:47 UTC, 2026-10-22.
+  This step includes the pinned Windows x64 compilation/link, Qt-plugin marker/PE
+  and Wine registration checks, private helper build/smoke and ZIP verification.
+- Upload, independent download and producer-manifest/ZIP checksum readback:
+  **all success** (readback verification finished 16:38:04 UTC).
+- Final resource/container reporting: **failure**, separately after readback.
+  Evidence upload and job-summary steps succeeded. This is not an overall green
+  workflow and not a compilation failure. No speculative CI-reporting fix is part
+  of Stage 2.4.4. The cloud cannot retrieve the evidence/log downloads because
+  their artifact redirect hosts return Forbidden; the exact reporting cause is
+  not diagnosed here. Check the evidence artifact on GitHub.
+
+Package artifact:
+`vlc-stage244-win64-e879ce656c218eddec13926f03b5f0615d14dc61-39813320204-1`
+
+[Download package artifact](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39813320204/artifacts/12441632578)
+
+It contains `VLC-3.0.24-stage244-ci1-win64-e879ce656c21-39813320204-1.zip`,
+`PACKAGE_MANIFEST.json` and `SHA256SUMS`. Verify the extracted delivery files before
+unpacking the portable ZIP. GitHub reports the **outer Actions artifact** digest
+`sha256:997bab5a1ae7a8327388984c8512fa91d12e2dd89bcdc7e96e6efcd53c86fe6f`;
+this is not the inner portable ZIP's SHA-256. Its actual checksum is supplied in
+SHA256SUMS and was verified by the independent hosted readback.
+
+[Evidence artifact](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39813320204/artifacts/12442346442)
+(`vlc-ci1-evidence-39813320204-1`). Artifacts retain the established 14-day policy.
+Download locally with the existing authenticated GitHub CLI:
+
+```sh
+gh run download 39813320204 --repo Jau1Agiota/VLC-Timeline-Preview \
+  --name vlc-stage244-win64-e879ce656c218eddec13926f03b5f0615d14dc61-39813320204-1 \
+  --dir ./stage244-delivery-39813320204
+cd ./stage244-delivery-39813320204
+sha256sum --check SHA256SUMS
+```
+
+**Windows fullscreen visual acceptance remains pending.** Neither the host Qt
+checks, target compilation, Wine smoke, native visibility APIs nor successful
+artifact verification prove that the thumbnail/timestamp is visible above the
+actual fullscreen video surface. Video-output modes, DPI, focus, controller
+hide/show and multiple-monitor behavior require the device tests above.

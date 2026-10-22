@@ -28,7 +28,7 @@ qint64 bucket(qint64 milliseconds);
 
 class Cache {
 public:
-    explicit Cache(int entries = 32, qint64 bytes = 8 * 1024 * 1024);
+    explicit Cache(int entries = 512, qint64 bytes = 256 * 1024 * 1024);
     QImage get(const QString &key);
     void put(const QString &key, const QImage &image);
     void clear();
@@ -49,7 +49,7 @@ public:
     typedef std::function<void(const QImage &, qint64)> Present;
     typedef std::function<void(const QString &)> Log;
     Controller(QWidget *host, Current current, Present present, Log log,
-               const QString &helper = QString(), int debounceMs = 150,
+               const QString &helper = QString(), int debounceMs = 35,
                int deadlineMs = 6500);
     ~Controller();
     void hover(const QString &path, const QString &mediaToken, qint64 milliseconds);
@@ -64,6 +64,7 @@ private:
         QString path, token, identity, key;
         qint64 time = -1;
         quint64 generation = 0;
+        QElapsedTimer clock;
     } wanted, running;
     QWidget *host;
     QPointer<QWidget> ownerWindow;

@@ -13,6 +13,8 @@
 #include <QEvent>
 #include <cstdio>
 #include <cstdlib>
+#include <algorithm>
+#include <vector>
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
@@ -110,6 +112,17 @@ public:
         QImage huge(321,180,QImage::Format_ARGB32);cache.put(QStringLiteral("oversized"),huge);
         cache.put(QString(65,QLatin1Char('x')),small);
         assert(cache.count()==2);cache.clear();assert(cache.bytes()==0);
+        // Default shared budget: exactly 512 LRU entries, independently byte bounded.
+        Cache large;
+        QImage frame(320,180,QImage::Format_ARGB32);frame.fill(Qt::green);
+        for(int i=0;i<513;++i) large.put(QString::number(i),frame);
+        assert(large.count()==512 && large.bytes()==qint64(512)*320*180*4);
+        assert(large.get(QStringLiteral("0")).isNull());
+        large.put(QStringLiteral("512"),small);
+        assert(large.count()==512 && large.bytes()==qint64(511)*320*180*4+256);
+        Cache strict(512,320*180*4);
+        strict.put(QStringLiteral("a"),frame);strict.put(QStringLiteral("b"),frame);
+        assert(strict.count()==1 && strict.bytes()==320*180*4);
         QTemporaryDir inputs; assert(inputs.isValid());
         auto file=[&](const char *name) { QString path=inputs.path()+QLatin1Char('/')+QString::fromLatin1(name);
             QFile f(path);assert(f.open(QIODevice::WriteOnly));f.write("test");return path; };
@@ -176,6 +189,13 @@ public:
             assert(control.process.state()==QProcess::NotRunning && !control.pending);
             assert(other.cache==control.cache);
         }
+        // Crash and timeout must not poison later requests or the process slot.
+        control.cancel(true);
+        control.hover(error,session,9000);assert(until([&]{return control.failedAt.isValid();}));
+        control.hover(normal,session,9250);assert(until([&]{return control.showing();}));
+        control.failedAt.invalidate();control.hover(timeout,session,9500);assert(until([&]{return control.failedAt.isValid();}));
+        assert(until([&]{return control.process.state()==QProcess::NotRunning;}));
+        control.hover(normal,session,9750);assert(until([&]{return control.showing();}));
         const QString missing = inputs.path()+QStringLiteral("/missing-helper");
         Controller absent(&host,[&](const QString &){return true;},[](const QImage &,qint64){},
                           [](const QString &){},missing,1,200);
@@ -197,6 +217,31 @@ public:
         assert(!QDir(temp).exists()); // destructor kills/reaps before deleting session files
         // Diagnostics observe the same real controller/tooltip; they never show
         // a hidden tooltip or alter the placement fallback being investigated.
+        // Real controller/event-loop timing with a fake decoder. This measures
+        // scheduling/cache mechanics only; it is explicitly not a media benchmark.
+        std::vector<qint64> cold, cached;
+        Controller timing(&host,[](const QString &){return true;},[](const QImage &,qint64){},
+                          [](const QString &){},helper);
+        assert(timing.debounce.interval()==35);
+        timing.cancel(true);
+        for(int i=0;i<12;++i) {
+            QElapsedTimer elapsed;elapsed.start();
+            timing.hover(normal,session,i*250);
+            assert(until([&]{return timing.showing();}));cold.push_back(elapsed.elapsed());
+            timing.cancel();elapsed.restart();timing.hover(normal,session,i*250);
+            assert(timing.showing());cached.push_back(elapsed.elapsed());
+        }
+        const int before=timing.launches;
+        for(int i=0;i<20;++i) { timing.hover(normal,session,10000+i*250);spin(2); }
+        assert(until([&]{return timing.showing();}));assert(timing.launches==before+1);
+        assert(timing.wanted.time==14750 && timing.running.time==14750);
+        auto report=[](const char *name,std::vector<qint64> values) {
+            std::sort(values.begin(),values.end());
+            std::printf("::notice title=Controller scheduling::fake_decoder=1 workload=%s n=%u median_ms=%g p95_ms=%d\n",
+                name,unsigned(values.size()),(values[5]+values[6])/2.0,int(values[11]));
+        };
+        report("uncached",cold);report("cached",cached);
+        timing.cancel(true);
         const QByteArray savedDebug = qgetenv("VLC_TIMELINE_HOVER_DEBUG");
         qunsetenv("VLC_TIMELINE_HOVER_DEBUG");
         QStringList records;
@@ -247,6 +292,7 @@ public:
             traced.hover(normal,QStringLiteral("diagnostic-session"),6500);
             assert(until([&]{return traced.showing();}));
             assert(contains("stage=hover") && contains("stage=launch") && contains("stage=spawn"));
+            assert(contains("event=cache-miss") && contains("request_to_launch_ms=") && contains("request_to_present_ms="));
             assert(contains("stage=finished") && contains("latest=1") && contains("controller="));
             QEvent deactivate(QEvent::WindowDeactivate);qApp->sendEvent(&host,&deactivate);
             assert(!traced.showing() && contains("stage=activation") && contains("stage=window-event") && contains("stage=cancel"));

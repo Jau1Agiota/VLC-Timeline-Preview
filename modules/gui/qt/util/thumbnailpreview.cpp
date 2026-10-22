@@ -25,7 +25,7 @@ static QPointer<Controller> activePreview;
 static QPointer<Controller> extracting;
 static QSharedPointer<Cache> sharedCache()
 {
-    // All controllers live on the GUI thread. One 8 MiB/32-entry budget across
+    // All controllers live on the GUI thread. One 256 MiB/512-entry ceiling across
     // main-window and fullscreen timelines; release it with the last widget.
     static QWeakPointer<Cache> weak;
     QSharedPointer<Cache> cache = weak.toStrongRef();
@@ -191,6 +191,8 @@ void Controller::cancel(bool clearCache)
 {
     if(trace.isEnabled()) diagnose(QStringLiteral("cancel"), QStringLiteral("clear_cache=%1 pending=%2 visible=%3 process_state=%4")
         .arg(clearCache).arg(pending).arg(visible).arg(int(process.state())), 0);
+    if(trace.isEnabled() && wanted.clock.isValid()) diagnose(QStringLiteral("performance"),
+        QStringLiteral("event=cancel generation=%1 elapsed_ms=%2").arg(generation).arg(wanted.clock.elapsed()), 0);
     ++generation; pending = false; wanted = Request();
     debounce.stop(); health.stop(); hide(); stopProcess();
     // Keep the deadline during Starting: started() also rejects canceled work.
@@ -263,15 +265,24 @@ void Controller::hover(const QString &path, const QString &token, qint64 ms)
         }
         return;
     }
+    if(trace.isEnabled() && wanted.clock.isValid()) diagnose(QStringLiteral("performance"),
+        QStringLiteral("event=superseded generation=%1 elapsed_ms=%2").arg(generation).arg(wanted.clock.elapsed()), 0);
+    wanted.clock.start();
     ++generation; wanted.path = path; wanted.token = token; wanted.identity = file;
     wanted.time = time; wanted.key = key; wanted.generation = generation;
     pending = false; debounce.stop(); hide(); stopProcess();
     QImage image = cache->get(key);
     if(!image.isNull()) {
         diagnose(QStringLiteral("cache-hit"), QStringLiteral("bucket_ms=%1").arg(time));
-        visible = true; present(image,time); return;
+        visible = true; present(image,time);
+        if(trace.isEnabled()) diagnose(QStringLiteral("performance"), QStringLiteral(
+            "event=present cache=hit generation=%1 bucket_ms=%2 request_to_present_ms=%3 entries=%4 bytes=%5")
+            .arg(generation).arg(time).arg(wanted.clock.elapsed()).arg(cache->count()).arg(cache->bytes()), 0);
+        return;
     }
     if(key == failedKey && failedAt.isValid() && failedAt.elapsed() < 2000) return;
+    if(trace.isEnabled()) diagnose(QStringLiteral("performance"), QStringLiteral(
+        "event=cache-miss generation=%1 bucket_ms=%2 debounce_ms=%3").arg(generation).arg(time).arg(debounce.interval()), 0);
     pending = true; debounce.start();
 }
 void Controller::launch()
@@ -299,6 +310,8 @@ void Controller::launch()
     environment.remove(QStringLiteral("VLC_PLUGIN_PATH"));
     process.setProcessEnvironment(environment);
     process.setWorkingDirectory(QFileInfo(helper).absolutePath());
+    if(trace.isEnabled()) diagnose(QStringLiteral("performance"), QStringLiteral(
+        "event=launch generation=%1 request_to_launch_ms=%2").arg(generation).arg(running.clock.elapsed()), 0);
     deadline.start(); ++launches; extracting = this;
     diagnose(QStringLiteral("spawn"), QStringLiteral("bucket_ms=%1 generation=%2").arg(wanted.time).arg(generation), 0);
     process.start(helper, QStringList() << wanted.path << QString::number(wanted.time) << output << QStringLiteral("5000"));
@@ -341,6 +354,10 @@ void Controller::finished(int code, QProcess::ExitStatus status)
             QImage image = reader.read().convertToFormat(QImage::Format_ARGB32);
             if(!image.isNull()) {
                 cache->put(running.key,image); visible = true; present(image,running.time);
+                if(trace.isEnabled()) diagnose(QStringLiteral("performance"), QStringLiteral(
+                    "event=present cache=miss generation=%1 bucket_ms=%2 request_to_present_ms=%3 helper_total_ms=%4 entries=%5 bytes=%6")
+                    .arg(generation).arg(running.time).arg(running.clock.elapsed())
+                    .arg(record.value(QStringLiteral("total_latency_ms")).toDouble(-1)).arg(cache->count()).arg(cache->bytes()), 0);
             } else failed(QStringLiteral("invalid helper image"));
         } else failed(QStringLiteral("helper did not return a bounded candidate"));
     }

@@ -225,7 +225,8 @@ the instrumented helper against official 3.0.24 `libvlc.lib`; 21 prototype unit
 tests; Qt offscreen controller/tooltip regression suite. 42 CI safety/packaging/finalization tests; Bash syntax, ShellCheck 0.10.0 and
 actionlint 1.7.7. No failures remain in the final local runs. The unchanged
 Stage 2.4.3 ZIP still hashes to its original SHA-256. Full Windows cross-build,
-packaging and independent readback are running under
+packaging, artifact upload, independent download and manifest/checksum/member-hash/CRC
+readback **passed** under
 [39847212055](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39847212055),
 application source `d10df7f0a54326f122f54b2a2961a3e1b0ee1f66`.
 
@@ -235,9 +236,14 @@ specific silent status only if a subsequent 5-second-bounded `-w` confirms
 shutdown. Nonempty diagnostics, other statuses and wait timeouts still fail
 teardown separately without masking the original build failure. Three focused
 regressions cover these cases. Helper-only run 39847614672 passed with the corrected reporting driver, including
-the repeated finalization step. The already-running full-build driver predates
-this reporting-only correction; its packaging result must be distinguished from
-any final-reporting failure.
+the repeated finalization step. The full-build driver predates this reporting-only correction. Its sole failing
+step was final resource reporting; Checks confirmed `private Wine shutdown:
+command failed (exit 1)` with empty diagnostics. Compilation, tests, packaging,
+upload and independent readback all succeeded. The latest branch fixes that
+reporter and passed the separate real helper-only run; a full rerun with the
+corrected reporter has not been performed. Synthetic fault-injection annotations
+in the older full run are test evidence, not real Docker/monitor failures; the
+updated test driver captures those synthetic workflow commands.
 
 CI retains manual dispatch, read-only repository permissions, exact image/contrib
 and SDK pins, the unchanged 35 GiB gate and cleanup allowlist. Stage 2.4.5 has a
@@ -279,3 +285,55 @@ Retain optimized BMPs for visual PTS review with the existing matrix/scorer:
 Use a different results directory for `-Profile baseline`. The baseline default
 retains the old helper argument list. The PowerShell profile extension is
 reviewed source; native PowerShell execution remains pending Windows testing.
+
+
+## Delivered Windows package
+
+[Download the Stage 2.4.5 artifact](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39847212055/artifacts/12456981505)
+(14-day Actions retention; download while available).
+
+- Artifact: `vlc-stage245-win64-d10df7f0a54326f122f54b2a2961a3e1b0ee1f66-39847212055-1`.
+- Portable ZIP: `VLC-3.0.24-stage245-ci1-win64-d10df7f0a543-39847212055-1.zip`.
+- Delivery includes `PACKAGE_MANIFEST.json` and `SHA256SUMS`, plus an embedded
+  `BUILD_MANIFEST.json` covering every packaged member and both runtime sets.
+- Outer Actions archive size: 512,019,470 bytes. Its API digest is
+  `679c8e0c89cd7c5350b6998cb965ba3dc467c826169918aa80a46d91db664e5e`.
+  This digest describes the **outer Actions archive**, not the inner portable
+  ZIP; use the delivered manifest/checksums for the inner ZIP.
+- [Full build](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39847212055),
+  [build evidence](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39847212055/artifacts/12456707676),
+  [green helper/reporting verification](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39847614672),
+  [verification evidence](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39847614672/artifacts/12457240068).
+
+The package-run benchmark (EPYC 7763, same limits) repeated all 96 requests:
+48 one-shot baseline candidates and 48 worker candidates, all paired hashes
+matching. One-shot total median/p95: 865.5/943 ms (n=48); cold worker response:
+952.6/1,034.0 ms (n=8); warm capture: 172.5/254 ms, warm helper total:
+215.5/307 ms, warm response: 216.0/307.7 ms (n=40). This confirms the slower
+runner result, rather than an across-the-board 300 ms claim. Eight additional
+helper smoke cases passed their positive/negative/short-budget protocol checks;
+this does not establish that a particular short-budget case hit the watchdog.
+See `prototypes/stage_2_3/evidence/stage245-package-run-summary.json`.
+
+Exact PowerShell download, inner-ZIP verification, extraction and launch:
+
+```powershell
+gh run download 39847212055 --repo Jau1Agiota/VLC-Timeline-Preview --name vlc-stage245-win64-d10df7f0a54326f122f54b2a2961a3e1b0ee1f66-39847212055-1 --dir C:\VLC-Stage245\download
+Set-Location C:\VLC-Stage245\download
+$m = Get-Content .\PACKAGE_MANIFEST.json -Raw | ConvertFrom-Json
+if ((Get-FileHash -Algorithm SHA256 $m.zip).Hash.ToLowerInvariant() -ne $m.sha256) { throw 'Portable ZIP checksum mismatch' }
+Expand-Archive -LiteralPath $m.zip -DestinationPath C:\VLC-Stage245\portable
+Set-Location (Join-Path C:\VLC-Stage245\portable $m.root)
+$env:VLC_TIMELINE_HOVER_DEBUG='1'
+& .\vlc.exe -vvv --file-logging --logfile="$PWD\stage245-hover.log" 'C:\Videos\sample.mp4'
+```
+
+Both destination directories must be new. With browser download, first extract
+the outer artifact ZIP into the download directory, then start at `Set-Location`.
+The packaged `vlc.exe`, modified Qt plugin and helper were freshly compiled from
+`d10df7f0a54326f122f54b2a2961a3e1b0ee1f66`. Later branch commits change only
+CI reporting/tests/documentation; Windows production code remains identical to
+that pin. Cloud-side redirected log/artifact downloads remain unavailable, so
+the full package was downloaded/read back by the independent Actions step,
+not falsely claimed as downloaded onto this cloud worktree. No Windows GUI or
+physical-device tests were performed by Codex.

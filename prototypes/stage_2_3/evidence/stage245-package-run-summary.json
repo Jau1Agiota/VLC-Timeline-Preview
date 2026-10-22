@@ -1,0 +1,127 @@
+{
+  "run_id": 39847212055,
+  "source_commit": "d10df7f0a54326f122f54b2a2961a3e1b0ee1f66",
+  "driver_commit": "653c532171db815e2894b0869bef6c67828b49af",
+  "build_package_upload_readback": "success",
+  "workflow_conclusion": "failure: old private Wine teardown reporter only; corrected driver verified in 39847614672",
+  "package_artifact_id": 12456981505,
+  "artifact_archive_sha256": "679c8e0c89cd7c5350b6998cb965ba3dc467c826169918aa80a46d91db664e5e",
+  "artifact_archive_bytes": 512019470,
+  "artifact_digest_scope": "Actions outer artifact ZIP, not the portable ZIP inside. Inner ZIP checksum is in SHA256SUMS and PACKAGE_MANIFEST.json and was independently verified in CI.",
+  "results": {
+    "Thumbnail timing": {
+      "baseline": {
+        "process_wall_ms": {
+          "n": 48,
+          "median_ms": 993.2349050000084,
+          "p95_ms": 1068.68285500002
+        },
+        "outside_main_ms": {
+          "n": 48,
+          "median_ms": 126.04289049997897,
+          "p95_ms": 131.69612400009828
+        },
+        "capture_latency_ms": {
+          "n": 48,
+          "median_ms": 783.0,
+          "p95_ms": 854
+        },
+        "total_latency_ms": {
+          "n": 48,
+          "median_ms": 865.5,
+          "p95_ms": 943
+        },
+        "libvlc_init_ms": {
+          "n": 48,
+          "median_ms": 576.5,
+          "p95_ms": 600
+        },
+        "media_player_create_ms": {
+          "n": 48,
+          "median_ms": 19.0,
+          "p95_ms": 19
+        },
+        "play_call_ms": {
+          "n": 48,
+          "median_ms": 1.0,
+          "p95_ms": 2
+        },
+        "decode_wait_ms": {
+          "n": 48,
+          "median_ms": 179.0,
+          "p95_ms": 269
+        },
+        "stop_release_ms": {
+          "n": 48,
+          "median_ms": 74.5,
+          "p95_ms": 115
+        },
+        "bmp_output_ms": {
+          "n": 48,
+          "median_ms": 1.0,
+          "p95_ms": 1
+        }
+      }
+    },
+    "Candidate comparison (not PTS verification)": {
+      "baseline": {
+        "n": 48,
+        "byte_identical_to_baseline": 48
+      }
+    },
+    "Benchmark environment": {
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.36",
+      "processor": "AMD EPYC 7763 64-Core Processor",
+      "wine": true,
+      "logical_cpus": 4
+    },
+    "Persistent worker timing": {
+      "baseline/worker_cold": {
+        "request_wall_ms": {
+          "n": 8,
+          "median_ms": 952.6488970000173,
+          "p95_ms": 1034.0453640000078
+        },
+        "capture_ms": {
+          "n": 8,
+          "median_ms": 802.5,
+          "p95_ms": 830
+        },
+        "helper_total_ms": {
+          "n": 8,
+          "median_ms": 835.5,
+          "p95_ms": 905
+        },
+        "init_ms": {
+          "n": 8,
+          "median_ms": 605.5,
+          "p95_ms": 627
+        },
+        "byte_identical_to_baseline": 8
+      },
+      "baseline/worker_warm": {
+        "request_wall_ms": {
+          "n": 40,
+          "median_ms": 216.01727249998248,
+          "p95_ms": 307.6882889999979
+        },
+        "capture_ms": {
+          "n": 40,
+          "median_ms": 172.5,
+          "p95_ms": 254
+        },
+        "helper_total_ms": {
+          "n": 40,
+          "median_ms": 215.5,
+          "p95_ms": 307
+        },
+        "init_ms": {
+          "n": 40,
+          "median_ms": 0.0,
+          "p95_ms": 0
+        },
+        "byte_identical_to_baseline": 40
+      }
+    }
+  }
+}

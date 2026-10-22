@@ -115,7 +115,7 @@ class Packaging(unittest.TestCase):
         for name in p.BINARIES:
             file = self.staging / name
             file.parent.mkdir(parents=True, exist_ok=True)
-            file.write_bytes(binary + (p.MARKER if name.endswith('libqt_plugin.dll') else b''))
+            file.write_bytes(binary + (p.MARKER+p.PERF_MARKER if name.endswith('libqt_plugin.dll') else b'libvlc_init_ms'))
         for name in ('COPYING.txt', 'thumbnail-preview/COPYING.txt',
                      'thumbnail-preview/plugins/codec/official.dll',
                      'thumbnail-preview/plugins/plugins.dat', 'plugins/plugins.dat',
@@ -157,6 +157,13 @@ class Packaging(unittest.TestCase):
 
     def test_missing_instrumentation(self):
         (self.staging / 'plugins/gui/libqt_plugin.dll').write_bytes((self.staging / 'vlc.exe').read_bytes())
+        with self.assertRaises(ValueError): self.build()
+
+    def test_missing_performance_instrumentation(self):
+        if p.STAGE != '2.4.5':
+            self.skipTest('Stage 2.4.5 package guard')
+        path=self.staging / 'plugins/gui/libqt_plugin.dll'
+        path.write_bytes(path.read_bytes().replace(p.PERF_MARKER,b''))
         with self.assertRaises(ValueError): self.build()
 
     def test_wrong_architecture(self):

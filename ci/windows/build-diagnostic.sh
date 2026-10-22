@@ -7,7 +7,7 @@ readonly CI_STAGE=${VLC_CI_STAGE:-2.4.3}
 case "$CI_STAGE" in
     2.4.3) CI_SOURCE_SHA=2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc ;;
     2.4.4) CI_SOURCE_SHA=e879ce656c218eddec13926f03b5f0615d14dc61 ;;
-    2.4.5) CI_SOURCE_SHA=9c8602e9ef700262450578fffbfc531270452267 ;;
+    2.4.5) CI_SOURCE_SHA=644865c3ee324a28c2fb39bcc72ac5edd174a13a ;;
     *) echo 'Unsupported diagnostic stage' >&2; exit 2 ;;
 esac
 readonly CI_SOURCE_SHA
@@ -225,6 +225,21 @@ GETCONF
     export HOME=/out/home
     mkdir -m 700 "$WINEPREFIX" "$HOME"
     cd /vlc
+    ci_phase helper-build
+    mkdir /out/sdk
+    7z x -y -o/out/sdk /out/downloads/sdk.7z > /out/logs/sdk-extraction.txt
+    local sdk=/out/sdk/vlc-3.0.24
+    [[ -f $sdk/sdk/lib/libvlc.lib && -f $sdk/libvlc.dll && -d $sdk/plugins ]]
+    x86_64-w64-mingw32-gcc -std=c11 -O2 -Wall -Wextra -Werror -municode -D__USE_MINGW_ANSI_STDIO=1 \
+        -I"$sdk/sdk/include" /vlc/prototypes/stage_2_3/thumbnail_helper.c "$sdk/sdk/lib/libvlc.lib" -o "$sdk/thumbnail-helper.exe"
+    if [[ $CI_STAGE == 2.4.5 ]]; then
+        ci_phase helper-benchmark
+        # Exclude one-time Wine prefix creation from Windows process timings.
+        timeout --kill-after=5s 60s wine cmd /c exit 0 > /out/logs/wine-prefix-init.txt 2>&1
+        python3 /vlc/prototypes/stage_2_3/benchmark.py --helper "$sdk/thumbnail-helper.exe" --fixtures /out/fixtures \
+            --output /out/logs/performance-phase-a.json --wine --github-notice --all-fixtures --profiles baseline --persistent
+    fi
+    [[ $CI_BENCHMARK_ONLY == false ]] || return 0
     if [[ $CI_BENCHMARK_ONLY == false ]]; then
     # .luac is an expected native tool, even with prebuilt target libraries.
     mkdir -p contrib/tarballs
@@ -239,19 +254,6 @@ GETCONF
     unzip -t win64/vlc-3.0.24-win64-debug.zip > /out/logs/upstream-zip-test.txt
     grep -a -q 'timeline-diagnostic slider=' win64/vlc-3.0.24/plugins/gui/libqt_plugin.dll
     fi
-    ci_phase helper-build
-    mkdir /out/sdk
-    7z x -y -o/out/sdk /out/downloads/sdk.7z > /out/logs/sdk-extraction.txt
-    local sdk=/out/sdk/vlc-3.0.24
-    [[ -f $sdk/sdk/lib/libvlc.lib && -f $sdk/libvlc.dll && -d $sdk/plugins ]]
-    x86_64-w64-mingw32-gcc -std=c11 -O2 -Wall -Wextra -Werror -municode -D__USE_MINGW_ANSI_STDIO=1 \
-        -I"$sdk/sdk/include" /vlc/prototypes/stage_2_3/thumbnail_helper.c "$sdk/sdk/lib/libvlc.lib" -o "$sdk/thumbnail-helper.exe"
-    if [[ $CI_STAGE == 2.4.5 ]]; then
-        ci_phase helper-benchmark
-        python3 /vlc/prototypes/stage_2_3/benchmark.py --helper "$sdk/thumbnail-helper.exe" --fixtures /out/fixtures \
-            --output /out/logs/performance-phase-a.json --wine --github-notice
-    fi
-    [[ $CI_BENCHMARK_ONLY == false ]] || return 0
     for binary in win64/vlc-3.0.24/vlc.exe win64/vlc-3.0.24/plugins/gui/libqt_plugin.dll "$sdk/thumbnail-helper.exe"; do
         x86_64-w64-mingw32-objdump -f "$binary"
         x86_64-w64-mingw32-objdump -p "$binary"

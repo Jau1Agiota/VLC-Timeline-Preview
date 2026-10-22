@@ -20,7 +20,7 @@ import zipfile
 STAGE = os.environ.get("VLC_CI_STAGE", "2.4.3")
 SOURCE = {"2.4.3": "2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc",
           "2.4.4": "e879ce656c218eddec13926f03b5f0615d14dc61",
-          "2.4.5": "9c8602e9ef700262450578fffbfc531270452267"}[STAGE]
+          "2.4.5": "644865c3ee324a28c2fb39bcc72ac5edd174a13a"}[STAGE]
 IMAGE = "registry.videolan.org/vlc-debian-win64-3.0@sha256:b8e61c83d248cfb8fc3432d347f07f24de5a2ea6b0060cfe3053243e3674e6e7"
 CONTRIB = "910cc9cada6080dd777fbafb2ebdd0c24f702c30"
 CONTRIB_SHA = "49f7690b3d09760f842f9f8e9612c28de8cbb1d027bcb3f6aaa25767611eea8c"
@@ -29,6 +29,7 @@ BINARIES = ("vlc.exe", "libvlc.dll", "libvlccore.dll", "plugins/gui/libqt_plugin
             "thumbnail-preview/thumbnail-helper.exe", "thumbnail-preview/libvlc.dll",
             "thumbnail-preview/libvlccore.dll")
 MARKER = b"timeline-diagnostic slider="
+PERF_MARKER = "request_to_present_ms=".encode("utf-16le")
 README = (("Stage 2.4.4 fullscreen preview correction; Windows visual verification pending.\r\n"
            if STAGE == "2.4.4" else "Stage 2.4.5 performance experiment; Windows acceptance pending.\r\n" if STAGE == "2.4.5" else "Stage 2.4.3 CI-1 diagnostic pilot; no fullscreen fix.\r\n") +
           "Set VLC_TIMELINE_HOVER_DEBUG=1 before launching vlc.exe with --verbose=2.\r\n"
@@ -99,14 +100,14 @@ def pe64(path):
             struct.unpack_from("<H", header, 24)[0] == 0x20B, "expected PE32+ x64 binary")
 
 
-def has_marker(path):
+def has_marker(path, marker=MARKER):
     tail = b""
     with Path(path).open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             data = tail + chunk
-            if MARKER in data:
+            if marker in data:
                 return True
-            tail = data[-len(MARKER):]
+            tail = data[-len(marker):]
     return False
 
 
@@ -141,6 +142,11 @@ def package(staging, output, metadata_path):
     require(any(n.startswith("thumbnail-preview/plugins/") and n.endswith(".dll") for n in files),
             "missing private runtime plugins")
     require(has_marker(staging / "plugins/gui/libqt_plugin.dll"), "missing Stage 2.4.3 instrumentation")
+    if STAGE == "2.4.5":
+        require(has_marker(staging / "plugins/gui/libqt_plugin.dll", PERF_MARKER),
+                "missing Stage 2.4.5 Qt timing instrumentation")
+        require(has_marker(staging / "thumbnail-preview/thumbnail-helper.exe", b"libvlc_init_ms"),
+                "missing Stage 2.4.5 helper timing instrumentation")
     files["CI_1_README.txt"] = hashlib.sha256(README).hexdigest()
     manifest = dict(metadata, files_sha256=files, native_windows_gui_tested=False,
                     frame_pts_accuracy_verified=False, main_plugin_cache_omitted=True,
@@ -400,6 +406,10 @@ def finalize(work, scope, status=None, phase="before-driver", monitor_pid=None):
     def report(message):
         errors.append(message)
         print("CI-1 teardown: " + message, file=sys.stderr, flush=True)
+        # Surface bounded teardown evidence through Checks when log downloads are unavailable.
+        if os.environ.get("GITHUB_ACTIONS") == "true" or os.environ.get("CI_INSIDE") == "1":
+            escaped = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+            print("::warning title=CI teardown::" + escaped, flush=True)
 
     def attempt(label, operation):
         try:

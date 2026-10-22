@@ -24,7 +24,7 @@ jobs:
     env:
       VLC_CI_STAGE: ${{ inputs.stage || '2.4.3' }}
       VLC_CI_BENCHMARK_ONLY: ${{ inputs.benchmark_only && 'true' || 'false' }}
-      SOURCE_SHA: ${{ inputs.stage == '2.4.5' && '9c8602e9ef700262450578fffbfc531270452267' || inputs.stage == '2.4.4' && 'e879ce656c218eddec13926f03b5f0615d14dc61' || '2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc' }}
+      SOURCE_SHA: ${{ inputs.stage == '2.4.5' && '644865c3ee324a28c2fb39bcc72ac5edd174a13a' || inputs.stage == '2.4.4' && 'e879ce656c218eddec13926f03b5f0615d14dc61' || '2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc' }}
     steps:
       - name: Set run-specific output directory
         shell: bash

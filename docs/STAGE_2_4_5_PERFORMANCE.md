@@ -153,9 +153,12 @@ capture scarcely changed. This supports retaining the instance rather than
 changing seeking/buffering defaults. No NVIDIA acceleration is verified.
 
 Local offscreen Qt controller tests with a fake decoder: 12 uncached requests,
-median 41 ms / p95 44 ms; 12 cached requests, median/p95 0 ms at millisecond
+median 39 ms / p95 40 ms; 12 cached requests, median/p95 0 ms at millisecond
 resolution. This tests debounce/process scheduling and cache mechanics on the
-cloud host, **not real video or Windows visual performance**.
+cloud host, **not real video or Windows visual performance**. In the same final
+local suite, the original 150 ms debounce with the same persistent fake helper
+measured median 149 ms / p95 182 ms (n=12); this isolates scheduling, not the
+old real decoder architecture.
 
 The selected persistent-instance worker avoids those repeated initialization
 costs without reusing seek/decoder state. Cancellation uses process termination,

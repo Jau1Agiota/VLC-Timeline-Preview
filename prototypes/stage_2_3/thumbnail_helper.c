@@ -246,6 +246,9 @@ static int number(const wchar_t *text, uint64_t max, uint64_t *value)
 
 int wmain(int argc, wchar_t **argv)
 {
+    const ULONGLONG entry = GetTickCount64();
+    unsigned init_ms = 0, create_ms = 0, play_ms = 0, wait_ms = 0, stop_ms = 0, bmp_ms = 0;
+    ULONGLONG phase = 0, wait_started = 0;
     if (argc < 4 || argc > 5) {
         fwprintf(stderr, L"usage: thumbnail-helper.exe LOCAL.mp4|mkv TARGET_MS NEW.bmp [TIMEOUT_MS]\n");
         return 2;
@@ -300,11 +303,14 @@ int wmain(int argc, wchar_t **argv)
     if (!guard) goto done;
     const char *options[] = {"--ignore-config", "--no-audio", "--no-spu",
         "--no-osd", "--no-video-title-show", "--no-input-fast-seek"};
+    phase = GetTickCount64();
     vlc = libvlc_new((int)(sizeof(options) / sizeof(options[0])), options);
+    init_ms = (unsigned)(GetTickCount64() - phase);
     if (!vlc) goto done;
 open_media:
     attempt_length = 0;
     has_video = 0;
+    phase = GetTickCount64();
     media = libvlc_media_new_path(vlc, source);
     if (!media) goto done;
     char start[64], seconds[21];
@@ -318,7 +324,12 @@ open_media:
     events = libvlc_media_player_event_manager(player);
     attached_error = !libvlc_event_attach(events, libvlc_MediaPlayerEncounteredError, player_event, &c);
     attached_end = !libvlc_event_attach(events, libvlc_MediaPlayerEndReached, player_event, &c);
-    if (!attached_error || !attached_end || libvlc_media_player_play(player)) goto done;
+    create_ms += (unsigned)(GetTickCount64() - phase);
+    phase = GetTickCount64();
+    const int play_error = (!attached_error || !attached_end) ? -1 : libvlc_media_player_play(player);
+    play_ms += (unsigned)(GetTickCount64() - phase);
+    if (play_error) goto done;
+    wait_started = GetTickCount64();
     if (WaitForSingleObject(c.ready, c.timeout) != WAIT_OBJECT_0) {
         rc = 124; status = "timeout"; goto done;
     }
@@ -326,6 +337,9 @@ open_media:
      * captured; its SetEvent follows the copy. Event callbacks may race that
      * copy, so stop joins all callbacks BEFORE reading the captured image. */
 done:
+    if (wait_started) wait_ms += (unsigned)(GetTickCount64() - wait_started);
+    wait_started = 0;
+    phase = GetTickCount64();
     if (player) {
         libvlc_time_t duration = libvlc_media_player_get_length(player);
         if (duration > 0) attempt_length = (uint64_t)duration;
@@ -351,6 +365,7 @@ done:
                          c.captured ? "candidate_captured" :
                          c.ended ? "ended_without_video" : "decoder_error";
     }
+    stop_ms += (unsigned)(GetTickCount64() - phase);
     uint64_t retry_start;
     if (near_end_retry_start(&c, retried, rc == 124, has_video,
                              target, attempt_length, &retry_start)) {
@@ -364,7 +379,10 @@ done:
         ResetEvent(c.ready);
         goto open_media;
     }
+    phase = GetTickCount64();
     if (vlc) libvlc_release(vlc);
+    stop_ms += (unsigned)(GetTickCount64() - phase);
+    phase = GetTickCount64();
     if (rc != 124 && c.captured && !c.decoder_error) {
         if (save_bmp(argv[3], &c)) {
             rc = 0;
@@ -372,6 +390,7 @@ done:
         }
         else { rc = 4; status = "output_error"; }
     } else if (rc != 124 && c.ended && !c.decoder_error) status = "ended_without_video";
+    bmp_ms = (unsigned)(GetTickCount64() - phase);
     free(source);
     if (c.finished) SetEvent(c.finished);
     if (guard) { WaitForSingleObject(guard, INFINITE); CloseHandle(guard); }
@@ -384,12 +403,15 @@ done:
            "\"total_latency_ms\":%s,\"width\":%u,\"height\":%u,"
            "\"frame_timestamp_verified\":false,\"exit_code\":%d,"
            "\"fallback_used\":%s,\"attempts\":%u,\"effective_start_ms\":%s,"
-           "\"initial_length_ms\":%s,\"initial_extraction_status\":\"%s\"}\n",
+           "\"initial_length_ms\":%s,\"initial_extraction_status\":\"%s\","
+           "\"libvlc_init_ms\":%u,\"media_player_create_ms\":%u,\"play_call_ms\":%u,"
+           "\"decode_wait_ms\":%u,\"stop_release_ms\":%u,\"bmp_output_ms\":%u,\"entry_to_result_ms\":%u}\n",
            status, u64_decimal(target_text, target),
            u64_decimal(capture_text, (uint64_t)c.capture_latency),
            u64_decimal(total_text, (uint64_t)(GetTickCount64() - c.started)),
            c.width, c.height, rc, retried ? "true" : "false",
            (unsigned)(1 + retried), u64_decimal(start_text, effective_start),
-           u64_decimal(length_text, initial_length), initial_status);
+           u64_decimal(length_text, initial_length), initial_status, init_ms, create_ms, play_ms,
+           wait_ms, stop_ms, bmp_ms, (unsigned)(GetTickCount64() - entry));
     return rc;
 }

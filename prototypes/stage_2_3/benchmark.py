@@ -18,7 +18,7 @@ def stats(values):
             "p95_ms": values[math.ceil(.95 * len(values)) - 1]}
 
 
-def benchmark(helper, fixtures, output, samples, wine=False, notice=False):
+def benchmark(helper, fixtures, output, samples, wine=False, notice=False, profiles=("baseline", "low-cache", "fast-seek", "hw-none", "hw-auto")):
     helper, fixtures, output = Path(helper).resolve(), Path(fixtures).resolve(), Path(output)
     if output.exists():
         raise ValueError("output must be new")
@@ -26,25 +26,29 @@ def benchmark(helper, fixtures, output, samples, wine=False, notice=False):
     def win(path):
         return "Z:" + str(path).replace("/", "\\") if wine else str(path)
     with tempfile.TemporaryDirectory(prefix="vlc-perf-") as temporary:
-        for extension in ("mp4", "mkv"):
-            for index in range(samples):
-                target = (1000, 4750, 8000)[index % 3]
-                bmp = Path(temporary) / f"{extension}-{index}.bmp"
-                command = (["wine"] if wine else []) + [str(helper), win(fixtures / ("ordinary." + extension)),
-                           str(target), win(bmp), "5000"]
-                started = time.perf_counter()
-                process = subprocess.run(command, cwd=helper.parent, capture_output=True, timeout=20)
-                wall = (time.perf_counter() - started) * 1000
-                record = json.loads(process.stdout)
-                if process.returncode or not bmp.is_file() or record.get("frame_timestamp_verified") is not False:
-                    raise ValueError("helper failed or violated candidate protocol")
-                rows.append({"mode": "one_shot", "file": "ordinary." + extension, "index": index,
-                             "requested_ms": target, "process_wall_ms": wall, "helper": record})
-                bmp.unlink()
-    summary = {"one_shot": {"process_wall_ms": stats([r["process_wall_ms"] for r in rows])}}
-    for name in ("capture_latency_ms", "total_latency_ms", "libvlc_init_ms", "media_player_create_ms",
-                 "play_call_ms", "decode_wait_ms", "stop_release_ms", "bmp_output_ms"):
-        summary["one_shot"][name] = stats([r["helper"][name] for r in rows])
+        for profile in profiles:
+            for extension in ("mp4", "mkv"):
+                for index in range(samples):
+                    target = (1000, 4750, 8000)[index % 3]
+                    bmp = Path(temporary) / f"{profile}-{extension}-{index}.bmp"
+                    command = (["wine"] if wine else []) + [str(helper), win(fixtures / ("ordinary." + extension)),
+                               str(target), win(bmp), "5000", profile]
+                    started = time.perf_counter()
+                    process = subprocess.run(command, cwd=helper.parent, capture_output=True, timeout=20)
+                    wall = (time.perf_counter() - started) * 1000
+                    record = json.loads(process.stdout)
+                    if process.returncode or not bmp.is_file() or record.get("frame_timestamp_verified") is not False:
+                        raise ValueError("helper failed or violated candidate protocol")
+                    rows.append({"mode": "one_shot", "profile": profile, "file": "ordinary." + extension, "index": index,
+                                 "requested_ms": target, "process_wall_ms": wall, "helper": record})
+                    bmp.unlink()
+    summary = {}
+    for profile in profiles:
+        group = [r for r in rows if r["profile"] == profile]
+        summary[profile] = {"process_wall_ms": stats([r["process_wall_ms"] for r in group])}
+        for name in ("capture_latency_ms", "total_latency_ms", "libvlc_init_ms", "media_player_create_ms",
+                     "play_call_ms", "decode_wait_ms", "stop_release_ms", "bmp_output_ms"):
+            summary[profile][name] = stats([r["helper"][name] for r in group])
     data = {"environment": {"platform": platform.platform(), "processor": platform.processor(),
                             "wine": wine, "logical_cpus": os.cpu_count()},
             "method": "New process/LibVLC per sample; OS caches not flushed. First sample separately identifiable; no visible UI measurement.",

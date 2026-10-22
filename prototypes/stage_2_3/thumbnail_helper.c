@@ -249,14 +249,17 @@ int wmain(int argc, wchar_t **argv)
     const ULONGLONG entry = GetTickCount64();
     unsigned init_ms = 0, create_ms = 0, play_ms = 0, wait_ms = 0, stop_ms = 0, bmp_ms = 0;
     ULONGLONG phase = 0, wait_started = 0;
-    if (argc < 4 || argc > 5) {
-        fwprintf(stderr, L"usage: thumbnail-helper.exe LOCAL.mp4|mkv TARGET_MS NEW.bmp [TIMEOUT_MS]\n");
+    if (argc < 4 || argc > 6) {
+        fwprintf(stderr, L"usage: thumbnail-helper.exe LOCAL.mp4|mkv TARGET_MS NEW.bmp [TIMEOUT_MS] [baseline|low-cache|fast-seek|hw-none|hw-auto]\n");
         return 2;
     }
     uint64_t target, deadline = 10000;
     /* Limit float start-time precision/range for this prototype to 24 hours. */
     if (!number(argv[2], 86400000, &target) ||
-        (argc == 5 && (!number(argv[4], 120000, &deadline) || deadline < 100))) return 2;
+        (argc >= 5 && (!number(argv[4], 120000, &deadline) || deadline < 100))) return 2;
+    const wchar_t *profile = argc == 6 ? argv[5] : L"baseline";
+    if (wcscmp(profile,L"baseline") && wcscmp(profile,L"low-cache") && wcscmp(profile,L"fast-seek") &&
+        wcscmp(profile,L"hw-none") && wcscmp(profile,L"hw-auto")) return 2;
     DWORD needed = GetFullPathNameW(argv[1], 0, NULL, NULL);
     if (!needed || needed > 32767) return 2;
     wchar_t *path = calloc((size_t)needed + 1, sizeof(*path));
@@ -301,10 +304,15 @@ int wmain(int argc, wchar_t **argv)
     if (!c.ready || !c.finished) goto done;
     guard = CreateThread(NULL, 0, watchdog, &c, 0, NULL);
     if (!guard) goto done;
-    const char *options[] = {"--ignore-config", "--no-audio", "--no-spu",
+    const char *options[8] = {"--ignore-config", "--no-audio", "--no-spu",
         "--no-osd", "--no-video-title-show", "--no-input-fast-seek"};
+    int option_count = 6;
+    if (wcscmp(profile,L"baseline")) options[option_count++] = "--file-caching=0";
+    if (!wcscmp(profile,L"fast-seek")) options[5] = "--input-fast-seek";
+    if (!wcscmp(profile,L"hw-none")) options[option_count++] = "--avcodec-hw=none";
+    if (!wcscmp(profile,L"hw-auto")) options[option_count++] = "--avcodec-hw=any";
     phase = GetTickCount64();
-    vlc = libvlc_new((int)(sizeof(options) / sizeof(options[0])), options);
+    vlc = libvlc_new(option_count, options);
     init_ms = (unsigned)(GetTickCount64() - phase);
     if (!vlc) goto done;
 open_media:

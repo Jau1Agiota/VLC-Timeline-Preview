@@ -105,7 +105,9 @@ new output JSON. Use `--profiles baseline --persistent` to compare fresh process
 with the chosen persistent accurate configuration. Worker samples separately
 label the first request of each process and subsequent requests; only the latter
 amortize initialization. The worker benchmark's final EOF also tests clean
-instance release. Targets cycle through 1,000/4,750/8,000 ms. Full mode covers ordinary, B-frame,
+instance release. Targets cycle through 1,000/4,750/8,000 ms. CI footage is synthetic 30-second
+640×360 H.264/AAC, scaled to at most 320×180; it does not represent 1080p/4K
+movies or the unavailable user clip. Full mode covers ordinary, B-frame,
 300-frame-GOP and VFR MP4/MKV. Files and targets are identical between profiles.
 Profiles run sequentially, so filesystem/plugin/OS caches are **not controlled**;
 the first sample is identifiable but is not a repeatable cold-disk experiment.

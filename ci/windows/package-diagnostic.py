@@ -19,7 +19,8 @@ import zipfile
 
 STAGE = os.environ.get("VLC_CI_STAGE", "2.4.3")
 SOURCE = {"2.4.3": "2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc",
-          "2.4.4": "e879ce656c218eddec13926f03b5f0615d14dc61"}[STAGE]
+          "2.4.4": "e879ce656c218eddec13926f03b5f0615d14dc61",
+          "2.4.5": "9c8602e9ef700262450578fffbfc531270452267"}[STAGE]
 IMAGE = "registry.videolan.org/vlc-debian-win64-3.0@sha256:b8e61c83d248cfb8fc3432d347f07f24de5a2ea6b0060cfe3053243e3674e6e7"
 CONTRIB = "910cc9cada6080dd777fbafb2ebdd0c24f702c30"
 CONTRIB_SHA = "49f7690b3d09760f842f9f8e9612c28de8cbb1d027bcb3f6aaa25767611eea8c"
@@ -29,7 +30,7 @@ BINARIES = ("vlc.exe", "libvlc.dll", "libvlccore.dll", "plugins/gui/libqt_plugin
             "thumbnail-preview/libvlccore.dll")
 MARKER = b"timeline-diagnostic slider="
 README = (("Stage 2.4.4 fullscreen preview correction; Windows visual verification pending.\r\n"
-           if STAGE == "2.4.4" else "Stage 2.4.3 CI-1 diagnostic pilot; no fullscreen fix.\r\n") +
+           if STAGE == "2.4.4" else "Stage 2.4.5 performance experiment; Windows acceptance pending.\r\n" if STAGE == "2.4.5" else "Stage 2.4.3 CI-1 diagnostic pilot; no fullscreen fix.\r\n") +
           "Set VLC_TIMELINE_HOVER_DEBUG=1 before launching vlc.exe with --verbose=2.\r\n"
           "Keep thumbnail-preview/ intact: it is a separate official VLC runtime.\r\n"
           "Native Windows GUI/audio/fullscreen and frame PTS accuracy are unverified.\r\n"

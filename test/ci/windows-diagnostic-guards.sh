@@ -223,7 +223,7 @@ class Packaging(unittest.TestCase):
         self.assertTrue(triggers.startswith('  workflow_dispatch:'))
         self.assertEqual(re.findall(r'(?m)^  ([a-z_]+):', triggers), ['workflow_dispatch'])
         self.assertIn("default: '2.4.3'", triggers)
-        self.assertIn("options: ['2.4.3', '2.4.4']", triggers)
+        self.assertIn("options: ['2.4.3', '2.4.4', '2.4.5']", triggers)
         self.assertRegex(workflow, r'permissions:\n  contents: read\n')
         self.assertNotRegex(workflow, r'contents: write|secrets\.|gh release|workflow_run:|pull_request:')
         uses = re.findall(r'uses: ([^\s#]+)', workflow)

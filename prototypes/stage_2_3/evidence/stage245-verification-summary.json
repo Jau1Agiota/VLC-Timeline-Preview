@@ -1,0 +1,123 @@
+{
+  "run_id": 39847614672,
+  "source_commit": "d10df7f0a54326f122f54b2a2961a3e1b0ee1f66",
+  "driver_commit": "5ecc9b48675746d8cbda40cfb14e6c482527083d",
+  "workflow_conclusion": "success",
+  "scope": "Helper-only validation, no VLC rebuild. Wine CPU benchmark, not native Windows or PTS acceptance.",
+  "results": {
+    "Thumbnail timing": {
+      "baseline": {
+        "process_wall_ms": {
+          "n": 48,
+          "median_ms": 1003.2555045000038,
+          "p95_ms": 1107.4958949999996
+        },
+        "outside_main_ms": {
+          "n": 48,
+          "median_ms": 129.87524900002018,
+          "p95_ms": 135.88953500002162
+        },
+        "capture_latency_ms": {
+          "n": 48,
+          "median_ms": 800.5,
+          "p95_ms": 863
+        },
+        "total_latency_ms": {
+          "n": 48,
+          "median_ms": 872.0,
+          "p95_ms": 974
+        },
+        "libvlc_init_ms": {
+          "n": 48,
+          "median_ms": 595.0,
+          "p95_ms": 623
+        },
+        "media_player_create_ms": {
+          "n": 48,
+          "median_ms": 19.0,
+          "p95_ms": 20
+        },
+        "play_call_ms": {
+          "n": 48,
+          "median_ms": 1.0,
+          "p95_ms": 2
+        },
+        "decode_wait_ms": {
+          "n": 48,
+          "median_ms": 182.0,
+          "p95_ms": 265
+        },
+        "stop_release_ms": {
+          "n": 48,
+          "median_ms": 73.5,
+          "p95_ms": 113
+        },
+        "bmp_output_ms": {
+          "n": 48,
+          "median_ms": 1.0,
+          "p95_ms": 1
+        }
+      }
+    },
+    "Candidate comparison (not PTS verification)": {
+      "baseline": {
+        "n": 48,
+        "byte_identical_to_baseline": 48
+      }
+    },
+    "Benchmark environment": {
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.36",
+      "processor": "AMD EPYC 7763 64-Core Processor",
+      "wine": true,
+      "logical_cpus": 4
+    },
+    "Persistent worker timing": {
+      "baseline/worker_cold": {
+        "request_wall_ms": {
+          "n": 8,
+          "median_ms": 973.5500420000278,
+          "p95_ms": 1015.059377
+        },
+        "capture_ms": {
+          "n": 8,
+          "median_ms": 816.0,
+          "p95_ms": 836
+        },
+        "helper_total_ms": {
+          "n": 8,
+          "median_ms": 847.0,
+          "p95_ms": 891
+        },
+        "init_ms": {
+          "n": 8,
+          "median_ms": 615.0,
+          "p95_ms": 628
+        },
+        "byte_identical_to_baseline": 8
+      },
+      "baseline/worker_warm": {
+        "request_wall_ms": {
+          "n": 40,
+          "median_ms": 215.88986700001556,
+          "p95_ms": 310.9063670000296
+        },
+        "capture_ms": {
+          "n": 40,
+          "median_ms": 171.5,
+          "p95_ms": 262
+        },
+        "helper_total_ms": {
+          "n": 40,
+          "median_ms": 215.5,
+          "p95_ms": 310
+        },
+        "init_ms": {
+          "n": 40,
+          "median_ms": 0.0,
+          "p95_ms": 0
+        },
+        "byte_identical_to_baseline": 40
+      }
+    }
+  }
+}

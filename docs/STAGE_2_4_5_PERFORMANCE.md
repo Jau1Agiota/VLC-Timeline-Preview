@@ -185,6 +185,27 @@ as a paired percentage-speedup estimate. Every hash comparison itself is paired
 by file and sample index. Raw summaries are in
 `prototypes/stage_2_3/evidence/stage245-persistent-summary.json`.
 
+A second, successful helper-only run,
+[39847614672](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39847614672),
+used an **AMD EPYC 7763** (same four-CPU quota/12 GiB limit) and the final helper:
+
+| Second runner workload | n | Median ms | p95 ms |
+| --- | ---: | ---: | ---: |
+| One-shot helper total | 48 | 872 | 974 |
+| One-shot process wall | 48 | 1,003.3 | 1,107.5 |
+| Worker cold response wall | 8 | 973.6 | 1,015.1 |
+| Worker warm capture | 40 | 171.5 | 262 |
+| Worker warm helper total | 40 | 215.5 | 310 |
+| Worker warm response wall | 40 | 215.9 | 310.9 |
+
+All 48 worker images again matched their paired baseline bytes. Warm init was
+zero; cold init median was 615 ms. Runner variance is material: the warm p95
+exceeded 300 ms here **before** adding debounce or screen painting. Preserve
+both results rather than choosing the faster runner. This successful run also
+exercised corrected teardown and repeated always-finalization without a VLC
+rebuild. Its machine-readable summary is
+`prototypes/stage_2_3/evidence/stage245-verification-summary.json`.
+
 Real Windows first-visible performance, cached painting, rapid-movement latency,
 repeated foreground seeks and two-video switching latency remain unmeasured.
 The Qt suite tests those scheduling/lifecycle transitions with a fake decoder;
@@ -211,9 +232,10 @@ silent exit 1 with no server, while `-w` returned 0. Finalization now accepts th
 specific silent status only if a subsequent 5-second-bounded `-w` confirms
 shutdown. Nonempty diagnostics, other statuses and wait timeouts still fail
 teardown separately without masking the original build failure. Three focused
-regressions cover these cases. A helper-only real-run check of the corrected
-reporting driver is running separately; the already-running full-build driver
-predates this reporting-only correction.
+regressions cover these cases. Helper-only run 39847614672 passed with the corrected reporting driver, including
+the repeated finalization step. The already-running full-build driver predates
+this reporting-only correction; its packaging result must be distinguished from
+any final-reporting failure.
 
 CI retains manual dispatch, read-only repository permissions, exact image/contrib
 and SDK pins, the unchanged 35 GiB gate and cleanup allowlist. Stage 2.4.5 has a

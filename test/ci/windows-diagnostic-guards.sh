@@ -220,7 +220,10 @@ class Packaging(unittest.TestCase):
         import re
         workflow = (root / '.github/workflows/windows-diagnostic-pilot.yml').read_text()
         triggers = workflow.split('on:\n', 1)[1].split('\npermissions:', 1)[0]
-        self.assertEqual(triggers.strip(), 'workflow_dispatch:')
+        self.assertTrue(triggers.startswith('  workflow_dispatch:'))
+        self.assertEqual(re.findall(r'(?m)^  ([a-z_]+):', triggers), ['workflow_dispatch'])
+        self.assertIn("default: '2.4.3'", triggers)
+        self.assertIn("options: ['2.4.3', '2.4.4']", triggers)
         self.assertRegex(workflow, r'permissions:\n  contents: read\n')
         self.assertNotRegex(workflow, r'contents: write|secrets\.|gh release|workflow_run:|pull_request:')
         uses = re.findall(r'uses: ([^\s#]+)', workflow)

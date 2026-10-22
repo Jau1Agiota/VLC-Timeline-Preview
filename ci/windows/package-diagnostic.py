@@ -17,7 +17,9 @@ import time
 import tempfile
 import zipfile
 
-SOURCE = "2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc"
+STAGE = os.environ.get("VLC_CI_STAGE", "2.4.3")
+SOURCE = {"2.4.3": "2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc",
+          "2.4.4": "e879ce656c218eddec13926f03b5f0615d14dc61"}[STAGE]
 IMAGE = "registry.videolan.org/vlc-debian-win64-3.0@sha256:b8e61c83d248cfb8fc3432d347f07f24de5a2ea6b0060cfe3053243e3674e6e7"
 CONTRIB = "910cc9cada6080dd777fbafb2ebdd0c24f702c30"
 CONTRIB_SHA = "49f7690b3d09760f842f9f8e9612c28de8cbb1d027bcb3f6aaa25767611eea8c"
@@ -26,7 +28,8 @@ BINARIES = ("vlc.exe", "libvlc.dll", "libvlccore.dll", "plugins/gui/libqt_plugin
             "thumbnail-preview/thumbnail-helper.exe", "thumbnail-preview/libvlc.dll",
             "thumbnail-preview/libvlccore.dll")
 MARKER = b"timeline-diagnostic slider="
-README = ("Stage 2.4.3 CI-1 diagnostic pilot; no fullscreen fix.\r\n"
+README = (("Stage 2.4.4 fullscreen preview correction; Windows visual verification pending.\r\n"
+           if STAGE == "2.4.4" else "Stage 2.4.3 CI-1 diagnostic pilot; no fullscreen fix.\r\n") +
           "Set VLC_TIMELINE_HOVER_DEBUG=1 before launching vlc.exe with --verbose=2.\r\n"
           "Keep thumbnail-preview/ intact: it is a separate official VLC runtime.\r\n"
           "Native Windows GUI/audio/fullscreen and frame PTS accuracy are unverified.\r\n"
@@ -142,7 +145,7 @@ def package(staging, output, metadata_path):
                     frame_pts_accuracy_verified=False, main_plugin_cache_omitted=True,
                     toolchain={"gcc": "6.4.0", "binutils": "2.27", "qt": "5.6.3"})
     body = json_bytes(manifest)
-    name = f'VLC-3.0.24-stage243-ci1-win64-{SOURCE[:12]}-{metadata["run_id"]}-{metadata["run_attempt"]}'
+    name = f'VLC-3.0.24-stage{STAGE.replace(".", "")}-ci1-win64-{SOURCE[:12]}-{metadata["run_id"]}-{metadata["run_attempt"]}'
     output.mkdir()
     archive = output / (name + ".zip")
     with zipfile.ZipFile(archive, "x", zipfile.ZIP_DEFLATED, compresslevel=6, allowZip64=True) as z:

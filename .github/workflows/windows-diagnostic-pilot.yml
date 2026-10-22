@@ -2,6 +2,12 @@ name: Windows diagnostic pilot (CI-1)
 
 on:
   workflow_dispatch:
+    inputs:
+      stage:
+        description: Pinned diagnostic source (Stage 2.4.3 remains the default)
+        type: choice
+        options: ['2.4.3', '2.4.4']
+        default: '2.4.3'
 
 permissions:
   contents: read
@@ -11,7 +17,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
-      SOURCE_SHA: 2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc
+      VLC_CI_STAGE: ${{ inputs.stage || '2.4.3' }}
+      SOURCE_SHA: ${{ inputs.stage == '2.4.4' && 'e879ce656c218eddec13926f03b5f0615d14dc61' || '2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc' }}
     steps:
       - name: Set run-specific output directory
         shell: bash
@@ -36,7 +43,7 @@ jobs:
         id: package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: vlc-stage243-win64-${{ env.SOURCE_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: vlc-stage${{ inputs.stage == '2.4.4' && '244' || '243' }}-win64-${{ env.SOURCE_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.CI_WORK }}/delivery/
           if-no-files-found: error
           compression-level: 0

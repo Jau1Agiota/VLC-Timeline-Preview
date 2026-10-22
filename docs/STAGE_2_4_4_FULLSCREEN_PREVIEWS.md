@@ -93,3 +93,9 @@ The CI driver will pin a separate source commit for Stage 2.4.4 and retain Stage
 runtime, disk threshold, cleanup allowlist and final ZIP/readback verification
 remain unchanged. New artifacts/ZIPs must say Stage 2.4.4 and include run/attempt
 identifiers. No Release publishing or automatic trigger is introduced.
+
+Build source is pinned to `e879ce656c218eddec13926f03b5f0615d14dc61`; CI driver
+selection is committed separately. Final local validation passed the host Qt
+suite (including the fullscreen cases), standalone hover mapping, the 38 CI guard/
+packaging tests under each stage selection, Bash syntax, ShellCheck and actionlint.
+Build/device results will be recorded after the hosted attempt.

@@ -353,6 +353,34 @@ class Finalization(unittest.TestCase):
         self.assertTrue(summary['teardown'][1]['errors'])
         self.assertEqual(summary['run-status.json']['exit_code'], 37)
 
+    def test_already_exited_wine_is_verified_not_reported_as_failure(self):
+        (self.work/'wine-prefix').mkdir()
+        calls=[]
+        def run(argv, **kwargs):
+            calls.append((argv,kwargs))
+            return subprocess.CompletedProcess(argv, 1 if argv[-1]=='-k' else 0, b'', b'')
+        with mock.patch.object(p,'reporting_owned'), mock.patch.object(p.subprocess,'run',side_effect=run):
+            self.assertEqual(p.finalize(self.work,'container',0,'compose'),0)
+        self.assertEqual([c[0] for c in calls],[['wineserver','-k'],['wineserver','-w']])
+        self.assertTrue(all(c[1]['timeout']==5 for c in calls))
+        self.assertTrue(all(c[1]['env']['WINEPREFIX']==str(self.work/'wine-prefix') for c in calls))
+
+    def test_wine_kill_error_is_not_ignored(self):
+        (self.work/'wine-prefix').mkdir()
+        with mock.patch.object(p,'reporting_owned'), mock.patch.object(p.subprocess,'run',return_value=
+                subprocess.CompletedProcess(['wineserver','-k'],1,b'',b'permission denied')) as run:
+            self.assertEqual(p.finalize(self.work,'container',37,'compose'),1)
+        self.assertEqual(run.call_count,1)
+        self.assertEqual(json.loads((self.metrics/'container-run-status.json').read_text())['exit_code'],37)
+
+    def test_wine_wait_timeout_is_reported(self):
+        (self.work/'wine-prefix').mkdir()
+        responses=[subprocess.CompletedProcess(['wineserver','-k'],0,b'',b''),
+                   subprocess.TimeoutExpired(['wineserver','-w'],5)]
+        with mock.patch.object(p,'reporting_owned'), mock.patch.object(p.subprocess,'run',side_effect=responses):
+            self.assertEqual(p.finalize(self.work,'container',37,'compose'),1)
+        self.assertEqual(json.loads((self.metrics/'container-run-status.json').read_text())['exit_code'],37)
+
     def test_container_status_cannot_mask_host_failure(self):
         # Exercise scope separation without a real /out mount or Wine/Docker.
         with mock.patch.object(p, 'reporting_owned'):
@@ -491,5 +519,7 @@ class Finalization(unittest.TestCase):
         summary = json.loads((self.metrics / 'summary.json').read_text())
         self.assertTrue(any('without completion' in error for error in summary['teardown'][-1]['errors']))
 
-unittest.main(argv=[sys.argv[0]], verbosity=2)
+# Synthetic fault injection must not emit real GitHub workflow commands.
+with contextlib.redirect_stdout(io.StringIO()):
+    unittest.main(argv=[sys.argv[0]], verbosity=2)
 PY

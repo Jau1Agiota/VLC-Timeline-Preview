@@ -453,7 +453,15 @@ def finalize(work, scope, status=None, phase="before-driver", monitor_pid=None):
         def stop_wine():
             prefix = work / "wine-prefix"
             require(not prefix.is_symlink() and prefix.resolve() == prefix, "unsafe Wine prefix; no shutdown attempted")
-            command(["wineserver", "-k"], 5, dict(os.environ, WINEPREFIX=str(prefix)))
+            environment = dict(os.environ, WINEPREFIX=str(prefix))
+            result = subprocess.run(["wineserver", "-k"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                    timeout=5, check=False, env=environment)
+            # Wine 8 returns silent status 1 when the private server already exited.
+            # A bounded -w must still prove shutdown; never accept diagnostics/errors.
+            require(result.returncode == 0 or (result.returncode == 1 and not result.stdout and not result.stderr),
+                    "private Wine kill failed (exit " + str(result.returncode) + "): " +
+                    result.stderr.decode(errors="replace")[:500])
+            command(["wineserver", "-w"], 5, environment)
         attempt("private Wine shutdown", stop_wine)
     attempt("monitor shutdown", lambda: stop_monitor(metrics, scope, monitor_pid, report))
     attempt("final sample", lambda: snapshot(metrics / (scope + ".jsonl"), [str(work)], "workflow-finish"))

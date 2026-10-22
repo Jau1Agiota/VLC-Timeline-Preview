@@ -131,7 +131,7 @@ libqt_plugin_la_SOURCES = \
 	gui/qt/util/animators.cpp gui/qt/util/animators.hpp \
 	gui/qt/util/input_slider.cpp gui/qt/util/input_slider.hpp \
 	gui/qt/util/seekhover.hpp \
-	gui/qt/util/thumbnailpreview.cpp gui/qt/util/thumbnailpreview.hpp \
+	gui/qt/util/thumbnailpreview.cpp gui/qt/util/thumbnailpreview.hpp gui/qt/util/previewdiagnostics.hpp \
 	gui/qt/util/timetooltip.cpp gui/qt/util/timetooltip.hpp \
 	gui/qt/util/customwidgets.cpp gui/qt/util/customwidgets.hpp \
 	gui/qt/util/searchlineedit.cpp gui/qt/util/searchlineedit.hpp \

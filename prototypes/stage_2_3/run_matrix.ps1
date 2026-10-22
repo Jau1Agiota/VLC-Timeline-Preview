@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory=$true)][string]$Helper,
     [Parameter(Mandatory=$true)][string]$Fixtures,
     [Parameter(Mandatory=$true)][string]$Results,
-    [ValidateSet('Full', 'NearEnd')][string]$Mode = 'Full'
+    [ValidateSet('Full', 'NearEnd')][string]$Mode = 'Full',
+    [ValidateSet('baseline', 'low-cache', 'fast-seek', 'hw-none', 'hw-auto')][string]$Profile = 'baseline'
 )
 $ErrorActionPreference = 'Stop'
 $Helper = (Resolve-Path $Helper).Path
@@ -50,6 +51,7 @@ foreach ($case in $cases) {
         $info = New-Object Diagnostics.ProcessStartInfo
         $info.FileName = $Helper
         $info.Arguments = '"{0}" {1} "{2}" {3}' -f $inputFile, $target, $image, $case.deadline
+        if ($Profile -ne 'baseline') { $info.Arguments += ' ' + $Profile }
         $info.UseShellExecute = $false
         $info.CreateNoWindow = $true
         $info.RedirectStandardOutput = $true
@@ -80,7 +82,7 @@ foreach ($case in $cases) {
         if ($exitCode -eq 0 -and -not $record) { throw "Missing helper JSON: $stem" }
         $rows += [pscustomobject]@{
             fixture=$case.file; requested_ms=$target; repeat=$repeat
-            deadline_ms=$case.deadline
+            profile=$Profile; deadline_ms=$case.deadline
             status=$(if ($record) { $record.status } else { '' })
             fallback_used=$(if ($record) { $record.fallback_used } else { '' })
             attempts=$(if ($record) { $record.attempts } else { '' })

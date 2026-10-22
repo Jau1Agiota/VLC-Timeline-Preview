@@ -1,0 +1,243 @@
+{
+  "run_id": 39843296241,
+  "source_commit": "9c8602e9ef700262450578fffbfc531270452267",
+  "scope": "GitHub Ubuntu / pinned Windows compiler / Wine; 4 CPU quota, 12 GiB memory limit. CPU model not captured in this first experiment. Summary from Checks annotations; raw rows in evidence artifact.",
+  "frame_timestamp_verified": false,
+  "summary": {
+    "baseline": {
+      "process_wall_ms": {
+        "n": 12,
+        "median_ms": 5108.547857500042,
+        "p95_ms": 12713.717906
+      },
+      "capture_latency_ms": {
+        "n": 12,
+        "median_ms": 528.0,
+        "p95_ms": 567
+      },
+      "total_latency_ms": {
+        "n": 12,
+        "median_ms": 616.0,
+        "p95_ms": 664
+      },
+      "libvlc_init_ms": {
+        "n": 12,
+        "median_ms": 395.0,
+        "p95_ms": 434
+      },
+      "media_player_create_ms": {
+        "n": 12,
+        "median_ms": 14.0,
+        "p95_ms": 15
+      },
+      "play_call_ms": {
+        "n": 12,
+        "median_ms": 1.0,
+        "p95_ms": 2
+      },
+      "decode_wait_ms": {
+        "n": 12,
+        "median_ms": 118.0,
+        "p95_ms": 128
+      },
+      "stop_release_ms": {
+        "n": 12,
+        "median_ms": 77.5,
+        "p95_ms": 95
+      },
+      "bmp_output_ms": {
+        "n": 12,
+        "median_ms": 1.0,
+        "p95_ms": 1
+      }
+    },
+    "low-cache": {
+      "process_wall_ms": {
+        "n": 12,
+        "median_ms": 5043.771749000001,
+        "p95_ms": 5108.887895000009
+      },
+      "capture_latency_ms": {
+        "n": 12,
+        "median_ms": 522.0,
+        "p95_ms": 608
+      },
+      "total_latency_ms": {
+        "n": 12,
+        "median_ms": 560.0,
+        "p95_ms": 641
+      },
+      "libvlc_init_ms": {
+        "n": 12,
+        "median_ms": 394.0,
+        "p95_ms": 446
+      },
+      "media_player_create_ms": {
+        "n": 12,
+        "median_ms": 14.0,
+        "p95_ms": 15
+      },
+      "play_call_ms": {
+        "n": 12,
+        "median_ms": 1.0,
+        "p95_ms": 1
+      },
+      "decode_wait_ms": {
+        "n": 12,
+        "median_ms": 119.5,
+        "p95_ms": 155
+      },
+      "stop_release_ms": {
+        "n": 12,
+        "median_ms": 31.0,
+        "p95_ms": 50
+      },
+      "bmp_output_ms": {
+        "n": 12,
+        "median_ms": 1.0,
+        "p95_ms": 1
+      }
+    },
+    "fast-seek": {
+      "process_wall_ms": {
+        "n": 12,
+        "median_ms": 5068.367765999994,
+        "p95_ms": 5116.498221000029
+      },
+      "capture_latency_ms": {
+        "n": 12,
+        "median_ms": 542.5,
+        "p95_ms": 606
+      },
+      "total_latency_ms": {
+        "n": 12,
+        "median_ms": 573.5,
+        "p95_ms": 648
+      },
+      "libvlc_init_ms": {
+        "n": 12,
+        "median_ms": 381.5,
+        "p95_ms": 396
+      },
+      "media_player_create_ms": {
+        "n": 12,
+        "median_ms": 14.0,
+        "p95_ms": 17
+      },
+      "play_call_ms": {
+        "n": 12,
+        "median_ms": 1.0,
+        "p95_ms": 1
+      },
+      "decode_wait_ms": {
+        "n": 12,
+        "median_ms": 147.5,
+        "p95_ms": 196
+      },
+      "stop_release_ms": {
+        "n": 12,
+        "median_ms": 31.0,
+        "p95_ms": 41
+      },
+      "bmp_output_ms": {
+        "n": 12,
+        "median_ms": 1.0,
+        "p95_ms": 1
+      }
+    },
+    "hw-none": {
+      "process_wall_ms": {
+        "n": 12,
+        "median_ms": 5037.5078105000175,
+        "p95_ms": 5119.519502000003
+      },
+      "capture_latency_ms": {
+        "n": 12,
+        "median_ms": 526.5,
+        "p95_ms": 587
+      },
+      "total_latency_ms": {
+        "n": 12,
+        "median_ms": 558.5,
+        "p95_ms": 619
+      },
+      "libvlc_init_ms": {
+        "n": 12,
+        "median_ms": 392.0,
+        "p95_ms": 416
+      },
+      "media_player_create_ms": {
+        "n": 12,
+        "median_ms": 14.0,
+        "p95_ms": 15
+      },
+      "play_call_ms": {
+        "n": 12,
+        "median_ms": 1.0,
+        "p95_ms": 1
+      },
+      "decode_wait_ms": {
+        "n": 12,
+        "median_ms": 116.0,
+        "p95_ms": 155
+      },
+      "stop_release_ms": {
+        "n": 12,
+        "median_ms": 30.5,
+        "p95_ms": 35
+      },
+      "bmp_output_ms": {
+        "n": 12,
+        "median_ms": 1.0,
+        "p95_ms": 1
+      }
+    },
+    "hw-auto": {
+      "process_wall_ms": {
+        "n": 12,
+        "median_ms": 5035.250435499961,
+        "p95_ms": 5278.254502999971
+      },
+      "capture_latency_ms": {
+        "n": 12,
+        "median_ms": 529.0,
+        "p95_ms": 655
+      },
+      "total_latency_ms": {
+        "n": 12,
+        "median_ms": 562.5,
+        "p95_ms": 689
+      },
+      "libvlc_init_ms": {
+        "n": 12,
+        "median_ms": 389.5,
+        "p95_ms": 493
+      },
+      "media_player_create_ms": {
+        "n": 12,
+        "median_ms": 14.0,
+        "p95_ms": 14
+      },
+      "play_call_ms": {
+        "n": 12,
+        "median_ms": 1.0,
+        "p95_ms": 1
+      },
+      "decode_wait_ms": {
+        "n": 12,
+        "median_ms": 120.0,
+        "p95_ms": 148
+      },
+      "stop_release_ms": {
+        "n": 12,
+        "median_ms": 31.5,
+        "p95_ms": 52
+      },
+      "bmp_output_ms": {
+        "n": 12,
+        "median_ms": 1.0,
+        "p95_ms": 1
+      }
+    }
+  }
+}

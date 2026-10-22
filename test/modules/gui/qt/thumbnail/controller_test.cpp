@@ -142,18 +142,18 @@ public:
         control.cancel();assert(last.isNull());control.hover(normal,session,1800);spin(10);
         assert(control.showing() && control.launches==1); // cache survives leave
         published.clear();control.hover(slow,session,2000);
-        assert(until([&]{return control.process.state()==QProcess::Running;}));
+        assert(until([&]{return control.process.state()==QProcess::Running && control.workerBusy;}));
         control.hover(slow,session,3000);assert(last.isNull());
         assert(until([&]{return !last.isNull();}));
         assert(published.size()==1 && published.last()==3000); // killed result never paints
-        control.hover(slow,session,4000);assert(until([&]{return control.process.state()==QProcess::Running;}));
+        control.hover(slow,session,4000);assert(until([&]{return control.process.state()==QProcess::Running && control.workerBusy;}));
         control.cancel();spin(500);assert(last.isNull() && !control.pending && !control.debounce.isActive());
         assert(control.process.state()==QProcess::NotRunning && !QFile::exists(control.output));
         control.hover(normal,session,0);assert(until([&]{return !last.isNull();}));
         eligible=false;assert(until([&]{return !control.showing();},500));
         assert(control.cache->count()==0); // stationary cursor on invalid/stopped input
         eligible=true;control.hover(slow,session,1000);
-        assert(until([&]{return control.process.state()==QProcess::Running;}));
+        assert(until([&]{return control.process.state()==QProcess::Running && control.workerBusy;}));
         session=QStringLiteral("session2");control.cancel(true);spin(450);assert(last.isNull());
         assert(control.cache->count()==0);
         control.hover(normal,session,1000);assert(until([&]{return !last.isNull();}));
@@ -184,8 +184,8 @@ public:
         {
             Controller other(&host,[&](const QString &){return true;},[](const QImage &,qint64){},
                              [](const QString &){},helper,1,700);
-            control.hover(slow,session,1000);assert(until([&]{return control.process.state()==QProcess::Running;}));
-            other.hover(slow,session,2000);assert(until([&]{return other.process.state()==QProcess::Running;}));
+            control.hover(slow,session,1000);assert(until([&]{return control.process.state()==QProcess::Running && control.workerBusy;}));
+            other.hover(slow,session,2000);assert(until([&]{return other.process.state()==QProcess::Running && other.workerBusy;}));
             assert(control.process.state()==QProcess::NotRunning && !control.pending);
             assert(other.cache==control.cache);
         }
@@ -211,7 +211,7 @@ public:
         const QString temp = [&] {
             Controller dying(&host,[&](const QString &){return true;},[](const QImage &,qint64){},
                              [](const QString &){},helper,1,700);
-            dying.hover(slow,session,1000);assert(until([&]{return dying.process.state()==QProcess::Running;}));
+            dying.hover(slow,session,1000);assert(until([&]{return dying.process.state()==QProcess::Running && dying.workerBusy;}));
             return dying.directory->path();
         }();
         assert(!QDir(temp).exists()); // destructor kills/reaps before deleting session files
@@ -241,7 +241,39 @@ public:
                 name,unsigned(values.size()),(values[5]+values[6])/2.0,int(values[11]));
         };
         report("uncached",cold);report("cached",cached);
+        std::vector<qint64> oldDebounce;
+        Controller oldTiming(&host,[](const QString &){return true;},[](const QImage &,qint64){},
+                             [](const QString &){},helper,150);
+        oldTiming.cancel(true);
+        for(int i=0;i<12;++i) {
+            QElapsedTimer elapsed;elapsed.start();oldTiming.hover(normal,session,i*250);
+            assert(until([&]{return oldTiming.showing();}));oldDebounce.push_back(elapsed.elapsed());
+        }
+        report("baseline_150ms_uncached",oldDebounce);oldTiming.cancel(true);
         timing.cancel(true);
+        {
+            Controller worker(&host,[](const QString &){return true;},[](const QImage &,qint64){},
+                              [](const QString &){},helper,1,700);
+            worker.cancel(true);worker.hover(normal,session,0);
+            assert(until([&]{return worker.showing();}));
+            const qint64 pid=worker.process.processId();
+            worker.hover(normal,session,250);assert(until([&]{return worker.showing();}));
+            assert(worker.workerRequests==2 && worker.process.processId()==pid);
+            worker.cancel();assert(worker.process.state()==QProcess::Running && !worker.workerBusy);
+            worker.idle.setInterval(20);worker.idle.start();
+            assert(until([&]{return worker.process.state()==QProcess::NotRunning;}));
+            worker.hover(normal,session,500);assert(until([&]{return worker.showing();}));
+            assert(worker.workerRequests==1);
+            worker.workerRequests=63;worker.hover(normal,session,750);
+            assert(until([&]{return worker.showing();}));
+            assert(until([&]{return worker.process.state()==QProcess::NotRunning;}));
+            worker.hover(normal,session,1000);assert(until([&]{return worker.showing();}));
+            assert(worker.workerRequests==1);
+            const QString bad=file("badid.mp4");worker.failedAt.invalidate();
+            worker.hover(bad,session,1250);assert(until([&]{return worker.failedAt.isValid();}));
+            assert(!worker.showing());
+            worker.hover(normal,session,1500);assert(until([&]{return worker.showing();}));
+        }
         const QByteArray savedDebug = qgetenv("VLC_TIMELINE_HOVER_DEBUG");
         qunsetenv("VLC_TIMELINE_HOVER_DEBUG");
         QStringList records;

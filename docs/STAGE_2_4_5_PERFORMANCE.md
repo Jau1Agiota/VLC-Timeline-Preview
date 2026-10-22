@@ -22,7 +22,25 @@ A maximum-size ARGB frame costs 230,400 bytes; 512 such frames account for
 metadata and temporary image copies are additional. No prefetch queue exists.
 Same-bucket hover events do not restart extraction, and cache hits present
 synchronously without debounce. One process is globally active, one latest
-request is pending, and superseded work is killed and reaped before replacement.
+request is pending, and superseded active work is killed and reaped before replacement.
+A private worker now retains **only the LibVLC instance** between requests.
+Each request creates and releases its media/player/decoder and drains callbacks
+before sending JSON. Accurate seeking and the original file-cache/hardware
+settings remain the default: Phase A did not justify fast seek or zero caching.
+No decoding or player state is reused across timestamps.
+
+The worker takes the media and output paths as separate Unicode argv fields;
+stdin contains only `request_id target_ms timeout_ms` (bounded to 127 bytes).
+There is one request in flight and no worker-side request queue. JSON IDs and
+controller generations both reject stale results. Idle workers survive ordinary
+mouse leave/cache hits, but active leave cancels by killing the process.
+Media/source changes, crashes, bad output or timeouts restart from a fresh
+instance. The GUI kills idle workers after 30 s, the helper independently ends
+after 120 s or 64 requests, and final instance release has a 5 s watchdog.
+Shutdown retains the existing bounded private-process teardown; no new GUI wait
+is introduced. A cold process still pays initialization; only subsequent
+uncached buckets in that worker amortize it. Fullscreen/windowed handover keeps
+one global private process, restarting it when the owning controller changes.
 Existing job-object containment (512 MiB), 5 s helper budget, 6.5 s controller
 deadline, source-identity checks and failure backoff remain in place.
 
@@ -77,7 +95,7 @@ Generate the existing burned-in-PTS fixtures, then benchmark (new output paths):
 
 ```powershell
 py prototypes\stage_2_3\generate_fixtures.py C:\VLC-Stage245\fixtures --font C:\Windows\Fonts\arial.ttf
-py prototypes\stage_2_3\benchmark.py --helper C:\VLC-Stage245\portable\thumbnail-preview\thumbnail-helper.exe --fixtures C:\VLC-Stage245\fixtures --output C:\VLC-Stage245\timings-run1.json --samples 12 --all-fixtures
+py prototypes\stage_2_3\benchmark.py --helper C:\VLC-Stage245\portable\thumbnail-preview\thumbnail-helper.exe --fixtures C:\VLC-Stage245\fixtures --output C:\VLC-Stage245\timings-run1.json --samples 6 --all-fixtures --profiles baseline --persistent
 ```
 
 Adjust `portable` to the extracted package root. Requires existing Python,
@@ -99,24 +117,49 @@ accuracy reduction.
 ## Measurements and decision
 
 Helper-only experiment: [Actions run 39843296241](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39843296241),
-source `9c8602e9ef700262450578fffbfc531270452267`. Results pending at this document
-revision; no extraction profile has yet been selected from unmeasured estimates.
+source `9c8602e9ef700262450578fffbfc531270452267`. All 60 candidates completed. The build/benchmark step succeeded; the existing
+separate final resource step failed. No VLC application was rebuilt in this run.
+Each profile has 12 samples (ordinary MP4/MKV, six each):
+
+| Private helper profile | Capture median / p95 ms | Total median / p95 ms | Initialization median ms |
+| --- | --- | --- | --- |
+| Accurate baseline | 528 / 567 | 616 / 664 | 395 |
+| Accurate, zero file cache | 522 / 608 | 560 / 641 | 394 |
+| Fast seek, zero cache | 542.5 / 606 | 573.5 / 648 | 381.5 |
+| CPU requested, zero cache | 526.5 / 587 | 558.5 / 619 | 392 |
+| Hardware auto requested, zero cache | 529 / 655 | 562.5 / 689 | 389.5 |
+
+Environment: GitHub Ubuntu runner, pinned image/GCC 6.4.0 and official Windows
+runtime under Wine, four-CPU quota / 12 GiB container limit. This first version
+did not capture the CPU model. Process wall medians were approximately 5.0–5.1 s
+under Wine (first baseline p95 12.7 s), far above in-helper times. They include
+Wine/loader/prefix/exit transport effects and are **not native Windows startup
+measurements**. Phase B initializes the Wine prefix separately and measures
+persistent responses rather than waiting for a fresh Wine client to exit.
+The machine-readable summary is committed in
+`prototypes/stage_2_3/evidence/stage245-phase-a-summary.json`; raw records remain
+in evidence artifact `vlc-ci1-evidence-39843296241-1` (ID 12453479622).
+
+Initialization dominates the measured helper cost (395 ms median vs 118 ms
+median decode wait). File-cache reduction saved mainly shutdown time, while
+capture scarcely changed. This supports retaining the instance rather than
+changing seeking/buffering defaults. No NVIDIA acceleration is verified.
 
 Local offscreen Qt controller tests with a fake decoder: 12 uncached requests,
 median 41 ms / p95 44 ms; 12 cached requests, median/p95 0 ms at millisecond
 resolution. This tests debounce/process scheduling and cache mechanics on the
 cloud host, **not real video or Windows visual performance**.
 
-A persistent worker could amortize process loading and LibVLC initialization.
-It would also require a bounded request protocol, cancellation acknowledgements,
-watchdog/restart policy and explicit decoder draining across media switches.
-The phase measurements must establish whether that amortization is worth the
-additional lifetime/PTS-association risk; no decoder reuse is assumed safe.
+The selected persistent-instance worker avoids those repeated initialization
+costs without reusing seek/decoder state. Cancellation uses process termination,
+not cooperative seeking or an unbounded queued cancel acknowledgement. The
+standalone one-shot CLI is preserved for comparison and rollback. Phase B
+measurements and native Windows acceptance are still pending at this revision.
 
 ## Validation and delivery
 
 Available local results: pinned MinGW-w64 GCC 6.4.0 compile **and final link** of
-the instrumented helper against official 3.0.24 `libvlc.lib`; 18 prototype unit
+the instrumented helper against official 3.0.24 `libvlc.lib`; 20 prototype unit
 tests; Qt offscreen controller/tooltip regression suite. Final full Windows
 cross-build, packaging and independent readback will be recorded here.
 
@@ -150,3 +193,13 @@ Rollback: close Stage 2.4.5 and launch the preserved Stage 2.4.4 portable direct
 No user preferences, foreground decoding settings or existing packages are
 rewritten by this stage. Reverting this branch's controller/helper changes and
 building the previously pinned Stage 2.4.4 source restores its build behavior.
+
+Retain optimized BMPs for visual PTS review with the existing matrix/scorer:
+
+```powershell
+.\prototypes\stage_2_3\run_matrix.ps1 -Helper C:\VLC-Stage245\portable\thumbnail-preview\thumbnail-helper.exe -Fixtures C:\VLC-Stage245\fixtures -Results C:\VLC-Stage245\accuracy-lowcache-run1 -Profile low-cache
+```
+
+Use a different results directory for `-Profile baseline`. The baseline default
+retains the old helper argument list. The PowerShell profile extension is
+reviewed source; native PowerShell execution remains pending Windows testing.

@@ -47,9 +47,10 @@ struct Format {
 
 /* Independent process deadline also bounds a stuck LibVLC initialization/stop.
  * Deliberately do not depend on stdio locks or decoder cooperation here. */
+typedef struct { HANDLE finished; DWORD timeout; } Deadline;
 static DWORD WINAPI watchdog(void *opaque)
 {
-    Capture *c = opaque;
+    Deadline *c = opaque;
     if (WaitForSingleObject(c->finished, c->timeout) != WAIT_OBJECT_0)
         TerminateProcess(GetCurrentProcess(), 124);
     return 0;
@@ -244,7 +245,7 @@ static int number(const wchar_t *text, uint64_t max, uint64_t *value)
     return 1;
 }
 
-int wmain(int argc, wchar_t **argv)
+static int extract(int argc, wchar_t **argv, libvlc_instance_t **retained, unsigned request_id)
 {
     const ULONGLONG entry = GetTickCount64();
     unsigned init_ms = 0, create_ms = 0, play_ms = 0, wait_ms = 0, stop_ms = 0, bmp_ms = 0;
@@ -297,12 +298,13 @@ int wmain(int argc, wchar_t **argv)
     uint64_t effective_start = target, attempt_length = 0, initial_length = 0;
     const char *initial_status = "not_started";
     const char *status = "decoder_error";
-    libvlc_instance_t *vlc = NULL;
+    libvlc_instance_t *vlc = retained ? *retained : NULL;
     libvlc_media_t *media = NULL;
     libvlc_media_player_t *player = NULL;
     libvlc_event_manager_t *events = NULL;
     if (!c.ready || !c.finished) goto done;
-    guard = CreateThread(NULL, 0, watchdog, &c, 0, NULL);
+    Deadline budget = {c.finished,c.timeout};
+    guard = CreateThread(NULL, 0, watchdog, &budget, 0, NULL);
     if (!guard) goto done;
     const char *options[8] = {"--ignore-config", "--no-audio", "--no-spu",
         "--no-osd", "--no-video-title-show", "--no-input-fast-seek"};
@@ -312,7 +314,8 @@ int wmain(int argc, wchar_t **argv)
     if (!wcscmp(profile,L"hw-none")) options[option_count++] = "--avcodec-hw=none";
     if (!wcscmp(profile,L"hw-auto")) options[option_count++] = "--avcodec-hw=any";
     phase = GetTickCount64();
-    vlc = libvlc_new(option_count, options);
+    if (!vlc) vlc = libvlc_new(option_count, options);
+    if (retained) *retained = vlc;
     init_ms = (unsigned)(GetTickCount64() - phase);
     if (!vlc) goto done;
 open_media:
@@ -388,7 +391,7 @@ done:
         goto open_media;
     }
     phase = GetTickCount64();
-    if (vlc) libvlc_release(vlc);
+    if (vlc && !retained) libvlc_release(vlc);
     stop_ms += (unsigned)(GetTickCount64() - phase);
     phase = GetTickCount64();
     if (rc != 124 && c.captured && !c.decoder_error) {
@@ -413,13 +416,74 @@ done:
            "\"fallback_used\":%s,\"attempts\":%u,\"effective_start_ms\":%s,"
            "\"initial_length_ms\":%s,\"initial_extraction_status\":\"%s\","
            "\"libvlc_init_ms\":%u,\"media_player_create_ms\":%u,\"play_call_ms\":%u,"
-           "\"decode_wait_ms\":%u,\"stop_release_ms\":%u,\"bmp_output_ms\":%u,\"entry_to_result_ms\":%u}\n",
+           "\"decode_wait_ms\":%u,\"stop_release_ms\":%u,\"bmp_output_ms\":%u,\"entry_to_result_ms\":%u,\"request_id\":%u}\n",
            status, u64_decimal(target_text, target),
            u64_decimal(capture_text, (uint64_t)c.capture_latency),
            u64_decimal(total_text, (uint64_t)(GetTickCount64() - c.started)),
            c.width, c.height, rc, retried ? "true" : "false",
            (unsigned)(1 + retried), u64_decimal(start_text, effective_start),
            u64_decimal(length_text, initial_length), initial_status, init_ms, create_ms, play_ms,
-           wait_ms, stop_ms, bmp_ms, (unsigned)(GetTickCount64() - entry));
+           wait_ms, stop_ms, bmp_ms, (unsigned)(GetTickCount64() - entry), request_id);
+    fflush(stdout);
+    return rc;
+}
+
+/* Protocol v1: fixed argv media/output, at most one line in flight. Keep only
+ * LibVLC's instance/plugin initialization; NEVER reuse a player/decoder/clock.
+ * Cancellation is process termination by the controller, not a concurrent seek.
+ */
+static int request_line(const char *line, unsigned fields[3])
+{
+    for (unsigned i=0; i<3; ++i) {
+        if (*line < '0' || *line > '9') return 0;
+        unsigned value=0;
+        while (*line >= '0' && *line <= '9') {
+            unsigned digit=(unsigned)(*line++ - '0');
+            if (value > (1000000000u-digit)/10u) return 0;
+            value=value*10u+digit;
+        }
+        fields[i]=value;
+        if (i<2) { if (*line++ != ' ') return 0; }
+    }
+    return (*line == '\n' && !line[1]) || (*line == '\r' && line[1]=='\n' && !line[2]);
+}
+
+int wmain(int argc, wchar_t **argv)
+{
+    if (argc < 2 || wcscmp(argv[1],L"--worker")) return extract(argc,argv,NULL,0);
+    if (argc != 4 && argc != 5) return 2;
+    /* This independent watchdog also bounds idle stdin and final teardown.
+     * The GUI has a shorter idle budget; standalone workers cannot live forever.
+     */
+    Deadline lifetime={0}; lifetime.timeout=120000;
+    lifetime.finished=CreateEventW(NULL,TRUE,FALSE,NULL);
+    if (!lifetime.finished) return 3;
+    HANDLE guard=CreateThread(NULL,0,watchdog,&lifetime,0,NULL);
+    if (!guard) { CloseHandle(lifetime.finished); return 3; }
+    libvlc_instance_t *retained=NULL;
+    unsigned previous=0;
+    int rc=0;
+    char line[128];
+    for (unsigned count=0; count<64 && fgets(line,sizeof(line),stdin); ++count) {
+        unsigned fields[3];
+        if (!request_line(line,fields) || fields[0] <= previous || fields[0]>64 ||
+            fields[1]>86400000 || fields[2]<100 || fields[2]>120000) { rc=2; break; }
+        previous=fields[0];
+        wchar_t target[21], timeout[21];
+        swprintf(target,21,L"%u",fields[1]); swprintf(timeout,21,L"%u",fields[2]);
+        wchar_t *request[]={argv[0],argv[2],target,argv[3],timeout,argc==5?argv[4]:L"baseline"};
+        rc=extract(6,request,&retained,fields[0]);
+        if (rc) break; // A failed instance is never reused.
+    }
+    /* Shorten the remaining teardown budget before releasing the instance. */
+    Deadline teardown={0}; teardown.timeout=5000;
+    teardown.finished=CreateEventW(NULL,TRUE,FALSE,NULL);
+    HANDLE final_guard=teardown.finished?CreateThread(NULL,0,watchdog,&teardown,0,NULL):NULL;
+    if (!final_guard) TerminateProcess(GetCurrentProcess(),124);
+    if (retained) libvlc_release(retained);
+    SetEvent(teardown.finished); WaitForSingleObject(final_guard,INFINITE);
+    CloseHandle(final_guard); CloseHandle(teardown.finished);
+    SetEvent(lifetime.finished); WaitForSingleObject(guard,INFINITE);
+    CloseHandle(guard); CloseHandle(lifetime.finished);
     return rc;
 }

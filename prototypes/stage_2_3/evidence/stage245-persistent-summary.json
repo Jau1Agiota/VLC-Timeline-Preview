@@ -1,0 +1,122 @@
+{
+  "run_id": 39846291221,
+  "source_commit": "644865c3ee324a28c2fb39bcc72ac5edd174a13a",
+  "scope": "Helper benchmark completed before this intermediate app build was canceled for an idle-protocol GUI safety correction. All helper code is identical in final d10df7f0a5 source. No Windows visual/PTS acceptance.",
+  "frame_timestamp_verified": false,
+  "results": {
+    "Thumbnail timing": {
+      "baseline": {
+        "process_wall_ms": {
+          "n": 48,
+          "median_ms": 708.4630510000238,
+          "p95_ms": 788.789037000015
+        },
+        "outside_main_ms": {
+          "n": 48,
+          "median_ms": 94.53115350003213,
+          "p95_ms": 100.82905399995298
+        },
+        "capture_latency_ms": {
+          "n": 48,
+          "median_ms": 543.0,
+          "p95_ms": 600
+        },
+        "total_latency_ms": {
+          "n": 48,
+          "median_ms": 612.5,
+          "p95_ms": 693
+        },
+        "libvlc_init_ms": {
+          "n": 48,
+          "median_ms": 403.0,
+          "p95_ms": 420
+        },
+        "media_player_create_ms": {
+          "n": 48,
+          "median_ms": 14.0,
+          "p95_ms": 15
+        },
+        "play_call_ms": {
+          "n": 48,
+          "median_ms": 1.0,
+          "p95_ms": 1
+        },
+        "decode_wait_ms": {
+          "n": 48,
+          "median_ms": 121.0,
+          "p95_ms": 180
+        },
+        "stop_release_ms": {
+          "n": 48,
+          "median_ms": 65.0,
+          "p95_ms": 99
+        },
+        "bmp_output_ms": {
+          "n": 48,
+          "median_ms": 1.0,
+          "p95_ms": 1
+        }
+      }
+    },
+    "Candidate comparison (not PTS verification)": {
+      "baseline": {
+        "n": 48,
+        "byte_identical_to_baseline": 48
+      }
+    },
+    "Benchmark environment": {
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.36",
+      "processor": "AMD EPYC 9V45 96-Core Processor",
+      "wine": true,
+      "logical_cpus": 4
+    },
+    "Persistent worker timing": {
+      "baseline/worker_cold": {
+        "request_wall_ms": {
+          "n": 8,
+          "median_ms": 678.4426214999826,
+          "p95_ms": 728.6873470000046
+        },
+        "capture_ms": {
+          "n": 8,
+          "median_ms": 543.0,
+          "p95_ms": 578
+        },
+        "helper_total_ms": {
+          "n": 8,
+          "median_ms": 586.0,
+          "p95_ms": 614
+        },
+        "init_ms": {
+          "n": 8,
+          "median_ms": 410.0,
+          "p95_ms": 442
+        },
+        "byte_identical_to_baseline": 8
+      },
+      "baseline/worker_warm": {
+        "request_wall_ms": {
+          "n": 40,
+          "median_ms": 158.109445000008,
+          "p95_ms": 246.71299499999577
+        },
+        "capture_ms": {
+          "n": 40,
+          "median_ms": 116.0,
+          "p95_ms": 172
+        },
+        "helper_total_ms": {
+          "n": 40,
+          "median_ms": 157.5,
+          "p95_ms": 246
+        },
+        "init_ms": {
+          "n": 40,
+          "median_ms": 0.0,
+          "p95_ms": 0
+        },
+        "byte_identical_to_baseline": 40
+      }
+    }
+  }
+}

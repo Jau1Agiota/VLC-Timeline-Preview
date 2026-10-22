@@ -158,15 +158,62 @@ cloud host, **not real video or Windows visual performance**.
 The selected persistent-instance worker avoids those repeated initialization
 costs without reusing seek/decoder state. Cancellation uses process termination,
 not cooperative seeking or an unbounded queued cancel acknowledgement. The
-standalone one-shot CLI is preserved for comparison and rollback. Phase B
-measurements and native Windows acceptance are still pending at this revision.
+standalone one-shot CLI is preserved for comparison and rollback. The first Phase B run
+[39846291221](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39846291221)
+completed the helper benchmark before cancellation to include the later GUI
+idle-protocol guard. Its helper source is byte-identical to the final source.
+Hardware: AMD EPYC 9V45, four logical CPUs, Linux/Azure, Wine, 12 GiB container
+limit. The separate Wine-prefix setup removed the huge prefix/exit artifacts
+from the initial experiment.
+
+| Phase B workload | n | Median ms | p95 ms |
+| --- | ---: | ---: | ---: |
+| One-shot capture | 48 | 543 | 600 |
+| One-shot helper total | 48 | 612.5 | 693 |
+| One-shot process wall | 48 | 708.5 | 788.8 |
+| Worker first request, response wall | 8 | 678.4 | 728.7 |
+| Worker warm capture | 40 | 116 | 172 |
+| Worker warm helper total | 40 | 157.5 | 246 |
+| Worker warm response wall | 40 | 158.1 | 246.7 |
+
+All eight cold and 40 warm worker BMPs were byte-identical to their corresponding
+one-shot candidates across ordinary/B-frame/long-GOP/VFR MP4/MKV. Initialization
+was 0 ms for all warm requests. These are unverified-PTS candidates, not an
+accuracy-gate pass. Warm samples exclude the first 1,000 ms request in each
+worker, so aggregate groups have different target weights; do not treat this
+as a paired percentage-speedup estimate. Every hash comparison itself is paired
+by file and sample index. Raw summaries are in
+`prototypes/stage_2_3/evidence/stage245-persistent-summary.json`.
+
+Real Windows first-visible performance, cached painting, rapid-movement latency,
+repeated foreground seeks and two-video switching latency remain unmeasured.
+The Qt suite tests those scheduling/lifecycle transitions with a fake decoder;
+it does not substitute for physical-device performance tests. Cold process
+startup remains above the aspirational target in CI. No prewarming is performed.
+Superseding an active request kills the worker and loses its warm initialization;
+rapid movement can therefore end with a cold restart. This deliberately preserves
+latest-request priority and avoids unverified cooperative decoder cancellation.
+Only completed-request reuse earns the measured warm benefit.
 
 ## Validation and delivery
 
 Available local results: pinned MinGW-w64 GCC 6.4.0 compile **and final link** of
 the instrumented helper against official 3.0.24 `libvlc.lib`; 21 prototype unit
-tests; Qt offscreen controller/tooltip regression suite. Final full Windows
-cross-build, packaging and independent readback will be recorded here.
+tests; Qt offscreen controller/tooltip regression suite. 42 CI safety/packaging/finalization tests; Bash syntax, ShellCheck 0.10.0 and
+actionlint 1.7.7. No failures remain in the final local runs. The unchanged
+Stage 2.4.3 ZIP still hashes to its original SHA-256. Full Windows cross-build,
+packaging and independent readback are running under
+[39847212055](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39847212055),
+application source `d10df7f0a54326f122f54b2a2961a3e1b0ee1f66`.
+
+The pinned Wine 8 `wineserver64 -k` was separately reproduced locally returning
+silent exit 1 with no server, while `-w` returned 0. Finalization now accepts that
+specific silent status only if a subsequent 5-second-bounded `-w` confirms
+shutdown. Nonempty diagnostics, other statuses and wait timeouts still fail
+teardown separately without masking the original build failure. Three focused
+regressions cover these cases. A helper-only real-run check of the corrected
+reporting driver is running separately; the already-running full-build driver
+predates this reporting-only correction.
 
 CI retains manual dispatch, read-only repository permissions, exact image/contrib
 and SDK pins, the unchanged 35 GiB gate and cleanup allowlist. Stage 2.4.5 has a

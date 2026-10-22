@@ -55,6 +55,7 @@ jobs:
           "$CI_WORK/readback" --expected-manifest "$CI_WORK/delivery/PACKAGE_MANIFEST.json"
       - name: Final resource and container measurements
         if: always()
+        timeout-minutes: 2
         shell: bash
         run: |
           if [[ -f ci-driver/ci/windows/build-diagnostic.sh ]]; then

@@ -26,10 +26,12 @@ ci_cleanup_allowed() {
 ci_owned_work() {
     local work parent
     [[ ! -L $1 ]] || { ci_die 'symlinked output directory'; return 2; }
-    work=$(realpath -m -- "$1")
-    parent=$(realpath -- "${RUNNER_TEMP:?}")
-    [[ $(dirname -- "$work") == "$parent" && $(basename -- "$work") =~ ^vlc-ci1-[0-9]+-[0-9]+$ &&
-       -f "$work/.ci1-work" && ! -L "$work" ]] || { ci_die 'not an owned CI-1 work directory'; return 2; }
+    [[ -n ${RUNNER_TEMP:-} && ${GITHUB_RUN_ID:-} =~ ^[0-9]+$ && ${GITHUB_RUN_ATTEMPT:-} =~ ^[0-9]+$ ]] ||
+        { ci_die 'missing run ownership environment'; return 2; }
+    work=$(realpath -m -- "$1") || return 2
+    parent=$(realpath -- "$RUNNER_TEMP") || return 2
+    [[ $(dirname -- "$work") == "$parent" && $(basename -- "$work") == "vlc-ci1-${GITHUB_RUN_ID:?}-${GITHUB_RUN_ATTEMPT:?}" &&
+       -f "$work/.ci1-work" && ! -L "$work/.ci1-work" && ! -L "$work" ]] || { ci_die 'not an owned CI-1 work directory'; return 2; }
 }
 ci_space() {
     local available=$1 minimum=$2
@@ -77,15 +79,15 @@ ci_phase() {
     echo "CI-1 phase: $CI_PHASE"
 }
 ci_prepare_host() {
-    ci_require_hosted
-    ci_owned_work "$CI_WORK"
+    ci_require_hosted || return 2
+    ci_owned_work "$CI_WORK" || return 2
     local path workspace docker_root
     workspace=$(realpath -- "${GITHUB_WORKSPACE:?}")
     docker_root=$(docker info --format '{{.DockerRootDir}}')
     [[ $(stat -c %d "$CI_WORK") == $(sudo stat -c %d "$docker_root") ]] ||
         { ci_die 'workspace and Docker storage must share the measured filesystem for this pilot'; return 2; }
     for path in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup; do
-        ci_cleanup_allowed "$path"
+        ci_cleanup_allowed "$path" || return 2
         [[ ! -L $path ]] || { ci_die 'symlinked SDK cleanup path'; return 2; }
         [[ -d $path ]] || continue
         [[ $(realpath -- "$path") == "$path" ]] || { ci_die 'aliased SDK cleanup path'; return 2; }
@@ -107,48 +109,88 @@ ci_prepare_host() {
     docker info --format 'Docker storage: {{.Driver}}' | tee "$CI_WORK/logs/docker-storage.txt"
     [[ $(docker info --format '{{.Driver}}') != vfs ]] || { ci_die 'vfs image copying is unsupported'; return 2; }
 }
-ci_finish() {
-    ci_require_hosted
-    ci_owned_work "$1"
-    local work=$1 id
-    # Only the container whose ID was produced by this run may be stopped.
-    if [[ -f "$work/container.id" ]]; then
-        id=$(cat "$work/container.id")
-        if [[ $id =~ ^[a-f0-9]{64}$ ]]; then
-            docker inspect --format '{{json .State}}' "$id" > "$work/metrics/docker-state.json" || true
-            if [[ $(docker inspect --format '{{.State.Running}}' "$id" 2>/dev/null) == true ]]; then
-                docker stop --time 15 "$id" >/dev/null || true
-            fi
-        fi
+ci_inside_owned() {
+    [[ ${CI_INSIDE:-} == 1 && $1 == /out && -d /out && ! -L /out &&
+       -f /out/.ci1-work && ! -L /out/.ci1-work ]] ||
+        { ci_die 'not an owned container output'; return 2; }
+}
+ci_finalize_guard() {
+    if [[ ${CI_INSIDE:-} == 1 ]]; then
+        ci_inside_owned "$1" || return 2
+    else
+        ci_require_hosted || return 2
+        ci_owned_work "$1" || return 2
     fi
-    python3 "$CI_DRIVER/package-diagnostic.py" snapshot "$work/metrics/host.jsonl" --phase workflow-finish --disk "$work"
-    touch "$work/metrics/host.stop"
-    python3 "$CI_DRIVER/package-diagnostic.py" summarize "$work/metrics"
+}
+ci_repair_work() {
+    ci_finalize_guard "$1" || return 2
+    local work=$1 path
+    for path in "$work/logs" "$work/metrics"; do
+        [[ ! -L $path && ( ! -e $path || -d $path ) ]] ||
+            { ci_die 'unsafe reporting directory'; return 2; }
+    done
+    [[ ! -L $work/container.id && ( ! -e $work/container.id || -f $work/container.id ) ]] ||
+        { ci_die 'unsafe container identity file'; return 2; }
+    # Never follow evidence-file symlinks, even in an otherwise owned directory.
+    for path in "$work/metrics/"* "$work/metrics/".[!.]* "$work/metrics/"..?*; do
+        [[ ! -L $path && ( ! -e $path || -f $path ) ]] ||
+            { ci_die 'unsafe reporting file'; return 2; }
+    done
+    mkdir -p -- "$work/logs" "$work/metrics" || return 1
+}
+ci_console_fallback() {
+    ci_finalize_guard "$1" || return 2
+    echo 'CI-1: reporting incomplete/unavailable; console-only resource fallback' >&2
+    timeout --kill-after=2s 5s df -h -- "$1" || true
+    timeout --kill-after=2s 5s free -m || true
+}
+ci_finish() {
+    # Explicit returns are essential: EXIT calls this with errexit disabled.
+    ci_finalize_guard "$1" || return 2
+    local work
+    work=$(realpath -- "$1") || return 2
+    ci_repair_work "$work" || {
+        local repair_status=$?
+        [[ $repair_status != 2 ]] || return 2
+        ci_console_fallback "$work"
+        return 1
+    }
+    local scope=host
+    [[ ${CI_INSIDE:-} != 1 ]] || scope=container
+    local args=(finalize "$work" --scope "$scope" --phase "${3:-before-driver}")
+    [[ -z ${2:-} ]] || args+=(--status "$2")
+    [[ -z ${CI_MONITOR_PID:-} ]] || args+=(--monitor-pid "$CI_MONITOR_PID")
+    timeout --kill-after=5s 70s python3 "$CI_DRIVER/package-diagnostic.py" "${args[@]}" || {
+        local status=$?
+        echo "CI-1: teardown failed separately (status $status); build status is unchanged" >&2
+        ci_console_fallback "$work"
+        return "$status"
+    }
 }
 ci_exit() {
     local status=$1
     trap - EXIT
     set +e
-    python3 "$CI_DRIVER/package-diagnostic.py" snapshot "$CI_WORK/metrics/events.jsonl" --phase "${CI_PHASE:-startup}" --status "$status" --disk "$CI_WORK"
-    printf '{"exit_code":%s,"phase":"%s"}\n' "$status" "${CI_PHASE:-startup}" > "$CI_WORK/metrics/run-status.json"
-    touch "$CI_WORK/metrics/host.stop"
-    wait "${CI_MONITOR_PID:-}" 2>/dev/null
-    ci_finish "$CI_WORK"
+    ci_finish "$CI_WORK" "$status" "${CI_PHASE:-initialization}"
     exit "$status"
 }
 ci_inside_exit() {
     local status=$1
     trap - EXIT
     set +e
-    python3 /ci/package-diagnostic.py snapshot /out/metrics/container.jsonl --phase "${CI_PHASE:-container}" --status "$status" --disk /vlc /out
-    # WINEPREFIX belongs only to this pilot; never terminate a shared Wine server.
-    WINEPREFIX=/out/wine-prefix timeout 10s wineserver -k 2>/dev/null
-    touch /out/metrics/container.stop
-    wait "${CI_MONITOR_PID:-}" 2>/dev/null
+    ci_finish /out "$status" "${CI_PHASE:-container}"
     exit "$status"
 }
+ci_finish_entry() {
+    ci_require_hosted || return 2
+    if [[ ! -e $1 && ! -L $1 ]]; then
+        # No build ran (for example, source checkout failed).
+        ci_new_work "$1" || { ci_finish "$1"; return 1; }
+    fi
+    ci_finish "$1"
+}
 ci_inside() {
-    [[ ${CI_INSIDE:-} == 1 && -f /out/.ci1-work ]] || { ci_die 'inside mode requires an owned container output'; return 2; }
+    ci_inside_owned /out || return 2
     CI_WORK=/out
     trap 'ci_inside_exit "$?"' EXIT
     python3 /ci/package-diagnostic.py monitor /out/metrics/container.jsonl --stop /out/metrics/container.stop --disk /vlc /out &
@@ -213,19 +255,20 @@ ci_new_work() {
     [[ ! -L $1 && $(dirname -- "$work") == $(realpath -- "${RUNNER_TEMP:?}") &&
        $(basename -- "$work") == "vlc-ci1-${GITHUB_RUN_ID:?}-${GITHUB_RUN_ATTEMPT:?}" && ! -e $work ]] ||
         { ci_die 'output must be a new run-specific directory directly in RUNNER_TEMP'; return 2; }
-    mkdir "$work"
-    touch "$work/.ci1-work"
-    mkdir "$work/logs" "$work/metrics" "$work/downloads" "$work/guard"
     CI_WORK=$work
+    mkdir -- "$work" || return 1
+    touch "$work/.ci1-work" || return 1
+    mkdir "$work/logs" "$work/metrics" "$work/downloads" "$work/guard" || return 1
 }
 ci_run() {
-    ci_require_hosted
+    ci_require_hosted || return 2
     local source work driver_sha
-    source=$(realpath -- "$1")
-    ci_new_work "$2"
-    work=$CI_WORK
-    CI_PHASE=startup
+    CI_WORK=$2
+    CI_PHASE=initialization
     trap 'ci_exit "$?"' EXIT
+    ci_new_work "$2" || return "$?"
+    work=$CI_WORK
+    source=$(realpath -- "$1") || return "$?"
     exec > >(tee "$work/logs/driver.log") 2>&1
     python3 "$CI_DRIVER/package-diagnostic.py" monitor "$work/metrics/host.jsonl" --stop "$work/metrics/host.stop" --disk "$work" &
     CI_MONITOR_PID=$!
@@ -269,15 +312,7 @@ if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
         run) [[ $# == 3 ]]; ci_run "$2" "$3" ;;
         inside) [[ $# == 1 ]]; ci_inside ;;
         make-guard) shift; ci_make_guard "$@" ;;
-        finish)
-            [[ $# == 2 ]]
-            ci_require_hosted
-            if [[ ! -e $2 ]]; then
-                # A checkout/pre-driver failure still gets an honest final snapshot.
-                ci_new_work "$2"
-                echo '{"exit_code":null,"phase":"before-driver","note":"Only final measurements available"}' > "$CI_WORK/metrics/run-status.json"
-            fi
-            ci_finish "$2" ;;
+        finish) [[ $# == 2 ]]; ci_finish_entry "$2" ;;
         *) ci_die 'usage: build-diagnostic.sh run SOURCE NEW_WORK | finish WORK (inside/make-guard are internal)' ;;
     esac
 fi

@@ -134,6 +134,43 @@ runner image and host test-tool versions are not byte-for-byte locked.
     finalization steps. Hard VM termination can interrupt samples/uploads; missing
     measurements are explicitly unavailable, never reported as zero.
 
+## Failure finalization
+
+The EXIT trap is installed before output initialization. Teardown explicitly
+checks hosted/container context, the exact run/attempt directory and its regular
+ownership marker, even with Bash `errexit` disabled. Rejected guards prevent
+repair, Docker calls and reporting. Only an owned directory may have missing
+`logs/` and `metrics/` directories repaired; symlinked reporting paths or container
+identity files are rejected. If validated reporting storage is unwritable, resource
+information goes to the console instead. Unmarked directories are never adopted.
+
+Docker inspection has a 10-second client timeout; stopping has a 25-second client
+timeout around its 15-second container grace period. Valid Docker state replaces
+the previous JSON atomically. Inspection, JSON or replacement failure preserves
+the previous record. Empty/invalid cidfiles are reported without Docker operations.
+The private Wine server has a five-second client timeout.
+
+Monitors register PID and Linux process start identity. Shutdown checks both that
+identity and the exact monitor command before signaling. It allows six seconds
+for the stop marker, then two seconds each after TERM and KILL. Summary generation
+follows this bounded shutdown attempt; forced/incomplete termination is explicitly
+reported. Finalization has a 70-second outer timeout with five-second kill grace;
+the workflow's always-run finalization step has a two-minute limit.
+
+`run-status.json` preserves the first host build exit status; the container writes
+`container-run-status.json` separately. The EXIT handler always returns the original
+build status. Teardown errors are appended to `teardown.jsonl` and included in the
+summary. A later successful cleanup does not erase those errors: the separate
+workflow finalization step still fails when earlier teardown errors exist. Repeated
+finalization performs no build or SDK cleanup and retains prior failure evidence.
+
+Regression coverage includes rejected guards with `errexit` disabled, direct Python
+guards, unowned/symlinked paths, double finalization, failed/timeout Docker inspection,
+atomic replacement failure, partial initialization, early checkout failures,
+unwritable reporting storage, original exit-status preservation, real graceful
+monitor completion and simulated timeout/PID-mismatch cases. Docker failure tests
+use mocks; this is not evidence of hosted-runner or Docker-daemon behavior.
+
 ## Package verification and measurements
 
 The delivery artifact contains exactly the portable ZIP plus
@@ -161,7 +198,10 @@ The old image was about 2.8 GB compressed / 8.6 GB unpacked. **35 GiB free,
 12 GiB container memory, four CPUs, and roughly 30–90 minutes are pilot sizing
 assumptions, not clean hosted-build measurements.** Evidence from the first run
 must establish actual peaks and build duration. A capacity failure is useful
-pilot evidence, not permission to relax checks.
+pilot evidence, not permission to relax checks. The 35 GiB free-space gate is
+**not demonstrably achievable on a standard hosted runner from the available
+records**. Keep the gate and exact cleanup allowlist; hosted measurements remain
+a prerequisite to establishing feasibility.
 
 ## Local checks (no VLC build)
 
@@ -179,7 +219,7 @@ license requirements, diagnostic marker checks, output preservation, archive pat
 safety, checksums, producer-manifest comparison, telemetry and failed commands.
 These checks do not replace the real hosted compiler/linker/Wine execution.
 
-Implementation-time results: 17 Python tests plus shell guard checks passed;
+Implementation-time results: 38 Python tests plus shell guard checks passed;
 ShellCheck 0.10.0, actionlint 1.7.7, Bash syntax and Python AST checks passed.
 The pinned source's standalone hover mapping test also passed with the host C++
 compiler. Full Qt controller tests were not run locally (Qt5Widgets development

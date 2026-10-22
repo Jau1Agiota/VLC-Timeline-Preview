@@ -11,8 +11,10 @@ import signal
 import resource
 import stat
 import struct
+import sys
 import subprocess
 import time
+import tempfile
 import zipfile
 
 SOURCE = "2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc"
@@ -51,6 +53,23 @@ def json_bytes(data):
 def write_new(path, data):
     with Path(path).open("xb") as stream:
         stream.write(data)
+
+
+def atomic_json(path, data):
+    """Keep the previous record intact until a complete replacement is ready."""
+    path = Path(path)
+    body = json_bytes(data)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=path.parent, prefix=".ci1-", delete=False) as stream:
+            temporary = Path(stream.name)
+            stream.write(body)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def safe_name(name):
@@ -226,7 +245,16 @@ def snapshot(output, disks, phase=None, status=None):
         stream.write(json.dumps(record) + "\n")
 
 
+def process_identity(pid):
+    try:
+        fields = Path(f"/proc/{pid}/stat").read_text().rsplit(") ", 1)[1].split()
+        return fields[19] if fields[0] != "Z" else None
+    except (OSError, IndexError):
+        return None
+
+
 def monitor(output, stop, disks):
+    atomic_json(str(output) + ".owner.json", {"pid": os.getpid(), "start": process_identity(os.getpid())})
     while True:
         snapshot(output, disks)
         if Path(stop).exists():
@@ -255,12 +283,185 @@ def summarize(directory):
                          "cgroup_peak_bytes": max(peaks) if peaks else None,
                          "minimum_disk_available_bytes": min(v["available_bytes"] for r in rows for v in r["disk"].values()),
                          "monitor_finished": Path(str(path) + ".done").exists(), "last_sample": rows[-1]}
-    for name in ("run-status.json", "docker-state.json"):
+    for name in ("run-status.json", "container-run-status.json", "docker-state.json"):
         try:
             result[name] = json.loads((directory / name).read_text())
         except (OSError, ValueError):
             result[name] = None
-    (directory / "summary.json").write_bytes(json_bytes(result))
+    # Include every teardown invocation; a later success must not erase an error.
+    result["teardown"] = []
+    try:
+        for line in (directory / "teardown.jsonl").read_text().splitlines():
+            try:
+                result["teardown"].append(json.loads(line))
+            except ValueError:
+                pass
+    except OSError:
+        pass
+    atomic_json(directory / "summary.json", result)
+
+
+def reporting_owned(work, scope):
+    work = Path(work)
+    require(not work.is_symlink() and work.is_dir() and work.resolve() == work,
+            "unowned/noncanonical reporting directory")
+    marker = work / ".ci1-work"
+    require(marker.is_file() and not marker.is_symlink(), "missing ownership marker")
+    if scope == "host":
+        expected = {"GITHUB_ACTIONS": "true", "RUNNER_ENVIRONMENT": "github-hosted",
+                    "RUNNER_OS": "Linux", "RUNNER_ARCH": "X64", "ImageOS": "ubuntu24"}
+        require(all(os.environ.get(k) == v for k, v in expected.items()), "not a hosted runner")
+        require(work.parent == Path(os.environ["RUNNER_TEMP"]).resolve() and
+                work.name == "vlc-ci1-" + os.environ["GITHUB_RUN_ID"] + "-" + os.environ["GITHUB_RUN_ATTEMPT"],
+                "wrong run ownership")
+    else:
+        require(scope == "container" and os.environ.get("CI_INSIDE") == "1" and work == Path("/out"),
+                "not an owned container output")
+    container_id = work / "container.id"
+    require(not container_id.is_symlink() and (not container_id.exists() or container_id.is_file()),
+            "unsafe container identity file")
+    metrics = work / "metrics"
+    require(metrics.is_dir() and not metrics.is_symlink(), "unsafe/missing metrics directory")
+    require(all(p.is_file() and not p.is_symlink() for p in metrics.iterdir()), "unsafe metrics file")
+
+
+def stop_monitor(metrics, scope, supplied_pid, report, grace=6, escalation=2):
+    output = metrics / (scope + ".jsonl")
+    owner_path = Path(str(output) + ".owner.json")
+    done = Path(str(output) + ".done")
+    owner = json.loads(owner_path.read_text()) if owner_path.exists() else None
+    require(owner is None or (isinstance(owner, dict) and "pid" in owner and "start" in owner and
+            (owner["start"] is None or isinstance(owner["start"], str))),
+            "invalid monitor ownership record; no signal sent")
+    pid = owner["pid"] if owner else supplied_pid
+    if pid is None:
+        return  # Initialization failed before starting a monitor.
+    require(isinstance(pid, int) and pid > 1 and pid != os.getpid(), "invalid monitor PID")
+    start = owner["start"] if owner else process_identity(pid)
+
+    def alive():
+        return start is not None and process_identity(pid) == start
+
+    if not alive():
+        if not done.exists():
+            report("monitor exited without completion evidence")
+        return
+    # Never signal a reused PID or a process unrelated to this exact monitor.
+    try:
+        command = Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
+    except FileNotFoundError:
+        if not alive():
+            if not done.exists():
+                report("monitor exited without completion evidence")
+            return
+        raise
+    expected = [str(Path(__file__).resolve()).encode(), b"monitor", str(output).encode()]
+    require(any(command[i:i + 3] == expected for i in range(len(command) - 2)),
+            "monitor identity mismatch; no signal sent")
+    try:
+        (metrics / (scope + ".stop")).touch()
+    except OSError as error:
+        report("monitor stop marker: " + str(error))
+
+    def await_exit(seconds):
+        deadline = time.monotonic() + seconds
+        while alive() and time.monotonic() < deadline:
+            time.sleep(0.1)
+        return not alive()
+
+    if not await_exit(grace):
+        report("monitor shutdown timeout; bounded signal escalation required")
+        for sig in (signal.SIGTERM, signal.SIGKILL):
+            if not alive():
+                break
+            try:
+                os.kill(pid, sig)
+            except ProcessLookupError:
+                break
+            if await_exit(escalation):
+                break
+    if alive():
+        report("monitor remains alive after bounded shutdown; summary is incomplete")
+    elif not done.exists():
+        report("monitor stopped without completion evidence")
+
+
+def finalize(work, scope, status=None, phase="before-driver", monitor_pid=None):
+    work = Path(work)
+    reporting_owned(work, scope)  # No reporting, Docker or signaling before validation.
+    metrics = work / "metrics"
+    errors = []
+    started = time.monotonic()
+
+    def report(message):
+        errors.append(message)
+        print("CI-1 teardown: " + message, file=sys.stderr, flush=True)
+
+    def attempt(label, operation):
+        try:
+            return operation()
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            report(label + ": " + str(error))
+            return None
+
+    def command(argv, seconds, env=None):
+        result = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                timeout=seconds, check=False, env=env)
+        require(result.returncode == 0, "command failed (exit " + str(result.returncode) + "): " +
+                result.stderr.decode(errors="replace")[:500])
+        return result.stdout
+
+    def inspect(container):
+        state = json.loads(command(["docker", "inspect", "--format", "{{json .State}}", container], 10))
+        require(isinstance(state, dict) and isinstance(state.get("Running"), bool), "invalid Docker state")
+        atomic_json(metrics / "docker-state.json", state)
+        return state
+
+    status_file = metrics / ("run-status.json" if scope == "host" else "container-run-status.json")
+    if not status_file.exists():
+        attempt("build status", lambda: atomic_json(status_file,
+                {"exit_code": status, "phase": phase}))
+    if status is not None:
+        attempt("exit sample", lambda: snapshot(metrics / "events.jsonl", [str(work)], phase, status))
+    if scope == "host" and (work / "container.id").exists():
+        def read_container():
+            container = (work / "container.id").read_text().strip()
+            require(len(container) == 64 and all(c in "0123456789abcdef" for c in container),
+                    "invalid container ID; no Docker operation attempted")
+            return container
+        container = attempt("container identity", read_container)
+        if container is not None:
+            state = attempt("Docker inspection (previous evidence retained on failure)", lambda: inspect(container))
+            if state is None or state["Running"]:
+                attempt("Docker stop", lambda: command(["docker", "stop", "--time", "15", container], 25))
+                attempt("Docker final inspection (previous evidence retained on failure)", lambda: inspect(container))
+    elif scope == "container" and (work / "wine-prefix").is_dir():
+        def stop_wine():
+            prefix = work / "wine-prefix"
+            require(not prefix.is_symlink() and prefix.resolve() == prefix, "unsafe Wine prefix; no shutdown attempted")
+            command(["wineserver", "-k"], 5, dict(os.environ, WINEPREFIX=str(prefix)))
+        attempt("private Wine shutdown", stop_wine)
+    attempt("monitor shutdown", lambda: stop_monitor(metrics, scope, monitor_pid, report))
+    attempt("final sample", lambda: snapshot(metrics / (scope + ".jsonl"), [str(work)], "workflow-finish"))
+    record = {"scope": scope, "build_exit_code": status, "phase": phase, "errors": errors,
+              "wall_seconds": time.monotonic() - started}
+    def record_teardown():
+        with (metrics / "teardown.jsonl").open("a") as stream:
+            stream.write(json.dumps(record) + "\n")
+    attempt("teardown evidence", record_teardown)
+    attempt("final summary", lambda: summarize(metrics))
+    historical_errors = False
+    try:
+        for line in (metrics / "teardown.jsonl").read_text().splitlines():
+            try:
+                historical_errors |= bool(json.loads(line).get("errors"))
+            except ValueError:
+                historical_errors = True
+    except OSError:
+        historical_errors = True
+    # The EXIT handler preserves the build status. The separate workflow step
+    # must still fail if an earlier teardown invocation failed.
+    return 1 if errors or historical_errors else 0
 
 
 def smoke(runtime, fixtures, output):
@@ -363,6 +564,10 @@ def main():
         if name == "monitor": p.add_argument("--stop", required=True)
         else:
             p.add_argument("--phase"); p.add_argument("--status", type=int)
+    p = commands.add_parser("finalize"); p.add_argument("work")
+    p.add_argument("--scope", choices=("host", "container"), required=True)
+    p.add_argument("--status", type=int); p.add_argument("--phase", default="before-driver")
+    p.add_argument("--monitor-pid", type=int)
     p = commands.add_parser("summarize"); p.add_argument("directory")
     p = commands.add_parser("smoke")
     for name in ("runtime", "fixtures", "output"): p.add_argument("--" + name, required=True)
@@ -376,6 +581,8 @@ def main():
     elif args.command == "monitor": monitor(args.output, args.stop, args.disk)
     elif args.command == "snapshot": snapshot(args.output, args.disk, args.phase, args.status)
     elif args.command == "summarize": summarize(args.directory)
+    elif args.command == "finalize":
+        raise SystemExit(finalize(args.work, args.scope, args.status, args.phase, args.monitor_pid))
     elif args.command == "smoke": smoke(args.runtime, args.fixtures, args.output)
     elif args.command == "timed":
         raise SystemExit(timed(args.output, args.argv[1:] if args.argv[:1] == ["--"] else args.argv))

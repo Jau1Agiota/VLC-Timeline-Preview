@@ -22,10 +22,16 @@
 #ifndef TIMETOOLTIP_H
 #define TIMETOOLTIP_H
 
-#include "qt.hpp"
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
+#include <QtGlobal>
 
 #include <QWidget>
+#include <QImage>
 #include <QPainterPath>
+#include "previewdiagnostics.hpp"
+#include "thumbnailpreview.hpp"
 
 class TimeTooltip : public QWidget
 {
@@ -34,11 +40,20 @@ public:
     explicit TimeTooltip( QWidget *parent = 0 );
     void setTip( const QPoint& pos, const QString& time, const QString& text );
     virtual void show();
+    void setPlacementContext(QWidget *owner, TimelinePreview::PopupContext context);
+    void setDiagnosticLogger( TimelinePreview::Diagnostics::Log logger ) { mTrace.setLogger(logger); }
+    void setPreview( const QImage &, qint64 requestedMs, const QRect &windowBounds );
 
 protected:
     void paintEvent( QPaintEvent * ) Q_DECL_OVERRIDE;
+    bool event( QEvent * ) Q_DECL_OVERRIDE;
 
 private:
+    TimelinePreview::Diagnostics mTrace;
+    void diagnose( const QString &, const QString &, int intervalMs = 250 );
+    void presentFullscreen();
+    QPointer<QWidget> mPlacementOwner;
+    TimelinePreview::PopupContext mContext = TimelinePreview::PopupContext::Windowed;
     void adjustPosition();
     void buildPath();
     QPoint mTarget;
@@ -49,6 +64,11 @@ private:
     QRect mBox;
     QPainterPath mPainterPath;
     int mTipX;
+    QImage mPreview;
+    QRect mWindowBounds;
+    QRect mPreviewTextBox;
+    QString mPreviewTime;
+    QString mPreviewLabel;
 };
 
 #endif // TIMETOOLTIP_H

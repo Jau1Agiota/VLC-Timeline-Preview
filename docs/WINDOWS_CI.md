@@ -292,3 +292,23 @@ Future release publishing requires a separate reviewed stage with narrowly scope
 `GITHUB_TOKEN` Contents write permission, re-verification of this manifest/ZIP,
 versioned non-overwriting asset names and permanent Release links. **No such
 stage or dormant publishing code is included here.**
+
+## Stage 2.4.4 selection
+
+The same manual workflow now has an optional `stage` choice. Omission still
+selects Stage 2.4.3 and its original source/filenames. Stage 2.4.4 selects only
+`e879ce656c218eddec13926f03b5f0615d14dc61`; arbitrary source refs are not accepted.
+The CI driver stays separate from that source commit. It passes the stage into
+the container, uses Stage 2.4.4 ZIP/artifact names and retains the same dependency,
+cleanup, resource, runtime-isolation and checksum/readback rules. There is no
+automatic trigger or release publishing. To build this feature before merging:
+
+```sh
+gh workflow run windows-diagnostic-pilot.yml \
+  --repo Jau1Agiota/VLC-Timeline-Preview \
+  --ref feature/stage-2.4.4-fullscreen-preview -f stage=2.4.4
+```
+
+See `STAGE_2_4_4_FULLSCREEN_PREVIEWS.md` for fullscreen device acceptance. A later
+reporting failure must be distinguished from compilation and package verification;
+the individual job steps and evidence identify which operation failed.

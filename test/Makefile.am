@@ -35,7 +35,8 @@ check_PROGRAMS = \
 	test_modules_demux_libmp4 \
 	test_modules_demux_timestamps \
 	test_modules_demux_ts_pes \
-	test_modules_keystore
+	test_modules_keystore \
+	test_modules_gui_seekhover
 
 if ENABLE_SOUT
 check_PROGRAMS += test_modules_tls
@@ -63,7 +64,12 @@ EXTRA_DIST = \
 	samples/image.jpg \
 	samples/subitems \
 	samples/slaves \
-	$(check_SCRIPTS)
+	$(check_SCRIPTS) \
+	modules/gui/qt/run.sh \
+	modules/gui/qt/thumbnail/controller_test.cpp \
+	modules/gui/qt/thumbnail/fake_helper.cpp \
+	modules/gui/qt/thumbnail/real_helper_test.cpp \
+	modules/gui/qt/thumbnail/run.sh
 
 check_HEADERS = libvlc/test.h libvlc/libvlc_additions.h
 
@@ -279,3 +285,7 @@ if !HAVE_OSX
 noinst_PROGRAMS += vlccoreios
 endif
 endif
+
+# Pure hover geometry test: no Qt application or decoder is launched.
+test_modules_gui_seekhover_SOURCES = modules/gui/qt/seekhover.cpp
+test_modules_gui_seekhover_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)

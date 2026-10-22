@@ -3,7 +3,13 @@
 set -euo pipefail
 CI_DRIVER=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 readonly CI_DRIVER
-readonly CI_SOURCE_SHA=2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc
+readonly CI_STAGE=${VLC_CI_STAGE:-2.4.3}
+case "$CI_STAGE" in
+    2.4.3) CI_SOURCE_SHA=2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc ;;
+    2.4.4) CI_SOURCE_SHA=e879ce656c218eddec13926f03b5f0615d14dc61 ;;
+    *) echo 'Unsupported diagnostic stage' >&2; exit 2 ;;
+esac
+readonly CI_SOURCE_SHA
 readonly CI_IMAGE=registry.videolan.org/vlc-debian-win64-3.0@sha256:b8e61c83d248cfb8fc3432d347f07f24de5a2ea6b0060cfe3053243e3674e6e7
 readonly CI_CONTRIB=910cc9cada6080dd777fbafb2ebdd0c24f702c30
 readonly CI_CONTRIB_SHA=49f7690b3d09760f842f9f8e9612c28de8cbb1d027bcb3f6aaa25767611eea8c
@@ -301,7 +307,7 @@ ci_run() {
     timeout --signal=TERM --kill-after=30s 90m docker run --name "vlc-ci1-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
         --cidfile "$work/container.id" --cpus=4 --memory=12g --pids-limit=1024 --user "$(id -u):$(id -g)" \
         --mount "type=bind,src=$source,dst=/vlc" --mount "type=bind,src=$CI_DRIVER,dst=/ci,readonly" \
-        --mount "type=bind,src=$work,dst=/out" --env CI_INSIDE=1 --workdir /vlc "$CI_IMAGE" \
+        --mount "type=bind,src=$work,dst=/out" --env CI_INSIDE=1 --env "VLC_CI_STAGE=$CI_STAGE" --workdir /vlc "$CI_IMAGE" \
         bash /ci/build-diagnostic.sh inside
     ci_phase final-verification
     python3 "$CI_DRIVER/package-diagnostic.py" verify "$work/delivery"

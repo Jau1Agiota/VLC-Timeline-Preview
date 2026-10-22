@@ -40,6 +40,9 @@ int main(int argc,char **argv) {
         if(!(request>>id>>target>>timeout) || request>>extra)return 2;
         char *args[]={argv[0],argv[2],&target[0],argv[3],&timeout[0]};
         const int rc=capture(5,args,id);if(rc)return rc;
+        if(std::string(argv[2]).find("unsolicited")!=std::string::npos) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));std::cout<<"{}"<<std::endl;
+        }
     }
     return 0;
 }

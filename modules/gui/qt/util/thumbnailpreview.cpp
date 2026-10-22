@@ -342,14 +342,14 @@ void Controller::drain()
         const QByteArray chunk = process.read(4096);
         if(stopping) { stdoutData.clear(); continue; }
         if(stdoutData.size() + chunk.size() > 4096) {
-            failed(QStringLiteral("worker output limit")); cancel(); continue;
+            failed(QStringLiteral("worker output limit")); cancel(); stopProcess(); continue;
         }
         stdoutData.append(chunk);
         const int newline = stdoutData.indexOf('\n');
         if(newline >= 0) {
             const QByteArray line = stdoutData.left(newline);
             stdoutData.remove(0,newline+1);
-            if(!workerBusy || !stdoutData.isEmpty()) { failed(QStringLiteral("unexpected worker output")); cancel(); return; }
+            if(!workerBusy || !stdoutData.isEmpty()) { failed(QStringLiteral("unexpected worker output")); cancel(); stopProcess(); return; }
             result(line);
         }
     }

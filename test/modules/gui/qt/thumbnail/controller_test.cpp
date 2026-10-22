@@ -262,6 +262,7 @@ public:
             worker.cancel();assert(worker.process.state()==QProcess::Running && !worker.workerBusy);
             worker.idle.setInterval(20);worker.idle.start();
             assert(until([&]{return worker.process.state()==QProcess::NotRunning;}));
+            worker.idle.setInterval(30000);
             worker.hover(normal,session,500);assert(until([&]{return worker.showing();}));
             assert(worker.workerRequests==1);
             worker.workerRequests=63;worker.hover(normal,session,750);
@@ -273,6 +274,11 @@ public:
             worker.hover(bad,session,1250);assert(until([&]{return worker.failedAt.isValid();}));
             assert(!worker.showing());
             worker.hover(normal,session,1500);assert(until([&]{return worker.showing();}));
+            const QString unsolicited=file("unsolicited.mp4");worker.failedAt.invalidate();
+            worker.hover(unsolicited,session,1750);assert(until([&]{return worker.showing();}));
+            assert(until([&]{return worker.failedAt.isValid();}));
+            assert(until([&]{return worker.process.state()==QProcess::NotRunning;}));
+            worker.hover(normal,session,2000);assert(until([&]{return worker.showing();}));
         }
         const QByteArray savedDebug = qgetenv("VLC_TIMELINE_HOVER_DEBUG");
         qunsetenv("VLC_TIMELINE_HOVER_DEBUG");

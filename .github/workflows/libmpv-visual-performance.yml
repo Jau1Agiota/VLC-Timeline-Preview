@@ -17,16 +17,28 @@ jobs:
       - name: Optional full-resolution HEVC10 synthetic smoke fixture
         id: generate
         run: |
-          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null || ! command -v fc-match >/dev/null; then
-            echo 'available=false' >> "$GITHUB_OUTPUT"
-            echo '::warning::Runner fixture tools unavailable; native compilation/package still run. No smoke-test claim.'
-            exit 0
-          fi
-          font=$(fc-match -f '%{file}' monospace)
-          if [[ ! -f "$font" ]]; then
-            echo 'available=false' >> "$GITHUB_OUTPUT"
-            echo '::warning::Runner font unavailable; smoke fixture skipped.'
-            exit 0
+          font=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null || [[ ! -f "$font" ]]; then
+            # Only official Ubuntu sources; do not update unrelated third-party repositories.
+            sources=/etc/apt/sources.list.d/ubuntu.sources
+            if [[ ! -f "$sources" ]]; then
+              echo '::error::Official Ubuntu source configuration unavailable; fixture blocked.'
+              exit 1
+            fi
+            apt_options=(-o "Dir::Etc::sourcelist=$sources" -o 'Dir::Etc::sourceparts=-' -o 'APT::Get::List-Cleanup=0' -o 'DPkg::Lock::Timeout=15' -o 'Acquire::Retries=0' -o 'Acquire::http::Timeout=20' -o 'Acquire::https::Timeout=20')
+            set +e
+            timeout 120s sudo apt-get "${apt_options[@]}" update > apt-fixture.log 2>&1
+            result=$?
+            if [[ $result == 0 ]]; then
+              timeout 180s sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg fonts-dejavu-core >> apt-fixture.log 2>&1
+              result=$?
+            fi
+            set -e
+            if [[ $result != 0 ]]; then
+              echo "::error::Official Ubuntu FFmpeg/font preparation failed (exit $result); no smoke-test claim."
+              tail -20 apt-fixture.log
+              exit "$result"
+            fi
           fi
           python3 prototypes/stage_2_4_6A_1/generate_hevc_fixture.py "$RUNNER_TEMP/hevc-fixture" --duration 12 --font "$font"
           echo 'available=true' >> "$GITHUB_OUTPUT"
@@ -36,6 +48,15 @@ jobs:
         with:
           name: visual-hevc-fixture-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/hevc-fixture/
+          retention-days: 14
+          overwrite: false
+      - name: Preserve fixture dependency diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: visual-fixture-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: apt-fixture.log
+          if-no-files-found: ignore
           retention-days: 14
           overwrite: false
   windows:

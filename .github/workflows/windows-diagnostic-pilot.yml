@@ -6,7 +6,7 @@ on:
       stage:
         description: Pinned diagnostic source (Stage 2.4.3 remains the default)
         type: choice
-        options: ['2.4.3', '2.4.4', '2.4.5', '2.4.6A', '2.4.6B', '2.4.6C']
+        options: ['2.4.3', '2.4.4', '2.4.5', '2.4.6A', '2.4.6B', '2.4.6C', '2.4.6D']
         default: '2.4.3'
 
       benchmark_only:
@@ -34,7 +34,7 @@ jobs:
     env:
       VLC_CI_STAGE: ${{ inputs.stage || '2.4.3' }}
       VLC_CI_BENCHMARK_ONLY: ${{ inputs.benchmark_only && 'true' || 'false' }}
-      SOURCE_SHA: ${{ inputs.stage == '2.4.6C' && 'febfd332f4ffbc94981f0b1cac298dc941de057b' || inputs.stage == '2.4.6B' && '5cfebdb9718b3477e17c5ffcb6d14a2876974350' || inputs.stage == '2.4.5' && 'd10df7f0a54326f122f54b2a2961a3e1b0ee1f66' || inputs.stage == '2.4.4' && 'e879ce656c218eddec13926f03b5f0615d14dc61' || '2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc' }}
+      SOURCE_SHA: ${{ inputs.stage == '2.4.6D' && '12b25af9272193ddfd0c298e1e9f48c5ff5b66e4' || inputs.stage == '2.4.6C' && 'febfd332f4ffbc94981f0b1cac298dc941de057b' || inputs.stage == '2.4.6B' && '5cfebdb9718b3477e17c5ffcb6d14a2876974350' || inputs.stage == '2.4.5' && 'd10df7f0a54326f122f54b2a2961a3e1b0ee1f66' || inputs.stage == '2.4.4' && 'e879ce656c218eddec13926f03b5f0615d14dc61' || '2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc' }}
     steps:
       - name: Set run-specific output directory
         shell: bash
@@ -60,7 +60,7 @@ jobs:
         id: package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: vlc-stage${{ inputs.stage == '2.4.6C' && '246C' || inputs.stage == '2.4.6B' && '246B' || inputs.stage == '2.4.5' && '245' || inputs.stage == '2.4.4' && '244' || '243' }}-win64-${{ env.SOURCE_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: vlc-stage${{ inputs.stage == '2.4.6D' && '246D' || inputs.stage == '2.4.6C' && '246C' || inputs.stage == '2.4.6B' && '246B' || inputs.stage == '2.4.5' && '245' || inputs.stage == '2.4.4' && '244' || '243' }}-win64-${{ env.SOURCE_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.CI_WORK }}/delivery/
           if-no-files-found: error
           compression-level: 0
@@ -104,10 +104,10 @@ jobs:
           retention-days: 14
           overwrite: false
       - name: Export synthetic fixture inputs for native worker tests
-        if: ${{ (inputs.stage == '2.4.6B' || inputs.stage == '2.4.6C') && success() }}
+        if: ${{ (inputs.stage == '2.4.6B' || inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D') && success() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: stage${{ inputs.stage == '2.4.6C' && '246C' || '246B' }}-fixtures-${{ github.run_id }}-${{ github.run_attempt }}
+          name: stage${{ inputs.stage == '2.4.6D' && '246D' || inputs.stage == '2.4.6C' && '246C' || '246B' }}-fixtures-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             ${{ env.CI_WORK }}/fixtures/*.mp4
             ${{ env.CI_WORK }}/fixtures/*.mkv
@@ -142,14 +142,14 @@ jobs:
     uses: ./.github/workflows/libmpv-preview-experiment.yml
 
   native-mpv:
-    if: ${{ !cancelled() && (inputs.stage == '2.4.6B' || inputs.stage == '2.4.6C') && (needs.build.result == 'success' || (inputs.native_only && inputs.package_run_id != '')) }}
+    if: ${{ !cancelled() && (inputs.stage == '2.4.6B' || inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D') && (needs.build.result == 'success' || (inputs.native_only && inputs.package_run_id != '')) }}
     permissions:
       contents: read
       actions: read
     needs: build
     env:
       VLC_CI_STAGE: ${{ inputs.stage }}
-      EXPECTED_SOURCE: ${{ inputs.stage == '2.4.6C' && 'febfd332f4ffbc94981f0b1cac298dc941de057b' || '5cfebdb9718b3477e17c5ffcb6d14a2876974350' }}
+      EXPECTED_SOURCE: ${{ inputs.stage == '2.4.6D' && '12b25af9272193ddfd0c298e1e9f48c5ff5b66e4' || inputs.stage == '2.4.6C' && 'febfd332f4ffbc94981f0b1cac298dc941de057b' || '5cfebdb9718b3477e17c5ffcb6d14a2876974350' }}
     runs-on: windows-2025
     timeout-minutes: 15
     steps:
@@ -160,14 +160,14 @@ jobs:
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.package_run_id || github.run_id }}
-          pattern: vlc-stage${{ inputs.stage == '2.4.6C' && '246C' || '246B' }}-win64-*
+          pattern: vlc-stage${{ inputs.stage == '2.4.6D' && '246D' || inputs.stage == '2.4.6C' && '246C' || '246B' }}-win64-*
           path: delivery
           merge-multiple: true
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.package_run_id || github.run_id }}
-          pattern: stage${{ inputs.stage == '2.4.6C' && '246C' || '246B' }}-fixtures-*
+          pattern: stage${{ inputs.stage == '2.4.6D' && '246D' || inputs.stage == '2.4.6C' && '246C' || '246B' }}-fixtures-*
           merge-multiple: true
           path: fixtures
       - name: Verify package, initialize private runtime and exercise persistent worker
@@ -183,13 +183,13 @@ jobs:
           $app=Join-Path "$env:RUNNER_TEMP/app" $manifest.root
           & "$app/thumbnail-mpv/Setup-Runtime.ps1" -Destination "$env:RUNNER_TEMP/mpv-runtime"
           if(Test-Path C:/VulkanSDK){Get-ChildItem C:/VulkanSDK -Directory | ForEach-Object {$env:PATH="$($_.FullName)/Bin;$env:PATH"}}
-          if($env:VLC_CI_STAGE -eq '2.4.6C'){
+          if($env:VLC_CI_STAGE -in @('2.4.6C','2.4.6D')){
             python prototypes/stage_2_4_6C/benchmark.py --fast "$env:RUNNER_TEMP/mpv-runtime/mpv-thumbnail-worker.exe" --exact "$env:RUNNER_TEMP/mpv-runtime/mpv-thumbnail-accurate-worker.exe" --libvlc "$app/thumbnail-preview/thumbnail-helper.exe" --fixtures fixtures --output results
           }else{
           python prototypes/stage_2_4_6B/test_worker.py "$env:RUNNER_TEMP/mpv-runtime/mpv-thumbnail-worker.exe" fixtures results --libvlc "$app/thumbnail-preview/thumbnail-helper.exe"
           }
           $testExit=$LASTEXITCODE
-          if($env:VLC_CI_STAGE -ne '2.4.6C' -and (Test-Path results/results.json)){
+          if($env:VLC_CI_STAGE -notin @('2.4.6C','2.4.6D') -and (Test-Path results/results.json)){
             $r=Get-Content results/results.json -Raw | ConvertFrom-Json
             $summary=@{first=$r.first;warm=$r.warm;matched_warm_mpv=$r.matched_warm_mpv;libvlc_first=$r.libvlc_first;libvlc_warm=$r.libvlc_warm;render=$r.render;previous_pipe_write=$r.previous_pipe_write;max_sampled_private_bytes=$r.max_sampled_private_bytes;cpu_ms_by_media=$r.cpu_ms_by_media;failures=$r.failures;rows=$r.rows.Count;physical_display_verified=$false}
             Write-Output ("::notice title=Stage 2.4.6B synthetic worker::"+($summary | ConvertTo-Json -Compress -Depth 5))
@@ -199,10 +199,14 @@ jobs:
           $p=Start-Process "$app/vlc.exe" -ArgumentList '--no-one-instance','--intf=dummy','--vout=dummy','--aout=dummy','--play-and-exit',('"'+(Resolve-Path fixtures/ordinary.mp4).Path+'"') -PassThru
           if(-not $p.WaitForExit(45000)){$p.Kill();throw 'VLC process launch/exit timeout'}
           if($p.ExitCode -ne 0){throw "VLC process exit $($p.ExitCode)"}
+          if($env:VLC_CI_STAGE -eq '2.4.6D'){
+            $smokeOutput=Join-Path (Resolve-Path results).Path "qt-stability-smoke"
+            & ./test/modules/gui/qt/stability-smoke.ps1 -Application "$app/vlc.exe" -Media (Resolve-Path fixtures/ordinary.mp4).Path -Output $smokeOutput
+          }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: stage${{ inputs.stage == '2.4.6C' && '246C' || '246B' }}-native-results-${{ github.run_id }}-${{ github.run_attempt }}
+          name: stage${{ inputs.stage == '2.4.6D' && '246D' || inputs.stage == '2.4.6C' && '246C' || '246B' }}-native-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: results/
           if-no-files-found: warn
           retention-days: 14
@@ -210,7 +214,7 @@ jobs:
 
   image-evidence:
     needs: native-mpv
-    if: ${{ !cancelled() && ((inputs.stage == '2.4.6B' && needs.native-mpv.result == 'success') || (inputs.stage == '2.4.6C' && needs.native-mpv.result != 'skipped')) }}
+    if: ${{ !cancelled() && ((inputs.stage == '2.4.6B' && needs.native-mpv.result == 'success') || ((inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D') && needs.native-mpv.result != 'skipped')) }}
     permissions:
       contents: read
       actions: read
@@ -224,13 +228,13 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: stage${{ inputs.stage == '2.4.6C' && '246C' || '246B' }}-native-results-${{ github.run_id }}-${{ github.run_attempt }}
+          name: stage${{ inputs.stage == '2.4.6D' && '246D' || inputs.stage == '2.4.6C' && '246C' || '246B' }}-native-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: evidence
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.package_run_id || github.run_id }}
-          pattern: stage${{ inputs.stage == '2.4.6C' && '246C' || '246B' }}-fixtures-*
+          pattern: stage${{ inputs.stage == '2.4.6D' && '246D' || inputs.stage == '2.4.6C' && '246C' || '246B' }}-fixtures-*
           merge-multiple: true
           path: fixtures
       - name: Analyze visible timestamps independently of seek acknowledgements
@@ -242,7 +246,7 @@ jobs:
             timeout 120s sudo apt-get "${apt_options[@]}" update
             timeout 180s sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg tesseract-ocr
           fi
-          if [[ $VLC_CI_STAGE == 2.4.6C ]]; then
+          if [[ $VLC_CI_STAGE == 2.4.6C || $VLC_CI_STAGE == 2.4.6D ]]; then
             python3 prototypes/stage_2_4_6C/score_images.py evidence fixtures accuracy
           else
             python3 prototypes/stage_2_4_6B/score_images.py evidence fixtures accuracy
@@ -250,7 +254,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: stage${{ inputs.stage == '2.4.6C' && '246C' || '246B' }}-image-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          name: stage${{ inputs.stage == '2.4.6D' && '246D' || inputs.stage == '2.4.6C' && '246C' || '246B' }}-image-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: accuracy/
           if-no-files-found: warn
           retention-days: 14

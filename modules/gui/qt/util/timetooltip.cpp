@@ -72,6 +72,13 @@ void TimeTooltip::adjustPosition()
         return;
     }
 
+    // Results/cache hits can arrive without another mouse move (for example
+    // while the fullscreen toolbar moves). All layout paths use the live slider
+    // top in Qt logical/global coordinates, never a saved mouse Y or native px.
+    if(mTimeline) mTarget.setY(mTimeline->mapToGlobal(QPoint(0,0)).y());
+    if(mPlacementOwner)
+        mWindowBounds = QRect(mPlacementOwner->mapToGlobal(QPoint(0,0)), mPlacementOwner->size());
+
     // Get the bounding box required to print the text and add some padding
     QFontMetrics metrics( mFont );
     // The experimental backend may retain an intermediate image while the
@@ -151,17 +158,18 @@ void TimeTooltip::adjustPosition()
         }
         position = placed.topLeft();
     }
-    move( position );
-
     int tipX = mTarget.x() - position.x();
     if( mBox != textbox || mTipX != tipX )
     {
         mBox = textbox;
         mTipX = tipX;
 
-        resize( size );
         buildPath();
     }
+    // One native geometry transaction: move()+resize() exposed the new position
+    // with the old size during image/text handoffs. Set path state first so even
+    // a synchronous geometry event observes the matching layout.
+    setGeometry(QRect(position,size));
     if( mTrace.isEnabled() ) diagnose( QStringLiteral("placement-final"), QStringLiteral(
         "target=%1,%2 final_rect=%3 screen=%4 owner_bounds=%5 preview=%6 visible=%7 hidden=%8")
         .arg(mTarget.x()).arg(mTarget.y()).arg(TimelinePreview::diagnosticRect(geometry()))
@@ -250,9 +258,10 @@ void TimeTooltip::show()
     presentFullscreen();
 }
 
-void TimeTooltip::setPlacementContext(QWidget *owner, TimelinePreview::PopupContext context)
+void TimeTooltip::setPlacementContext(QWidget *owner, TimelinePreview::PopupContext context, QWidget *timeline)
 {
-    const bool changed = mPlacementOwner != owner || mContext != context;
+    const bool changed = mPlacementOwner != owner || mContext != context || mTimeline != timeline;
+    mTimeline = timeline;
     mPlacementOwner = owner;
     mContext = context;
     if(owner) mWindowBounds = QRect(owner->mapToGlobal(QPoint(0,0)), owner->size());
@@ -309,19 +318,21 @@ bool TimeTooltip::event( QEvent *event )
     const QEvent::Type type = event->type();
     const bool observe = mTrace.isEnabled() && (type == QEvent::Show || type == QEvent::Hide ||
         type == QEvent::WindowActivate || type == QEvent::WindowDeactivate ||
-        type == QEvent::WindowStateChange || type == QEvent::ZOrderChange);
+        type == QEvent::WindowStateChange || type == QEvent::ZOrderChange ||
+        type == QEvent::Move || type == QEvent::Resize);
     const bool before = isVisible();
     const bool result = QWidget::event(event);
     if( observe ) {
         const char *name = type == QEvent::Show ? "show" : type == QEvent::Hide ? "hide" :
             type == QEvent::WindowActivate ? "activate" : type == QEvent::WindowDeactivate ? "deactivate" :
-            type == QEvent::ZOrderChange ? "z-order" : "window-state";
+            type == QEvent::ZOrderChange ? "z-order" : type == QEvent::Move ? "move" :
+            type == QEvent::Resize ? "resize" : "window-state";
         diagnose( QStringLiteral("event-visibility"), QStringLiteral(
             "event=%1 visible_before=%2 visible_after=%3 hidden=%4 active=%5 active_window=%6 app_state=%7 flags=%8 rect=%9")
             .arg(QString::fromLatin1(name)).arg(before).arg(isVisible()).arg(isHidden()).arg(isActiveWindow())
             .arg(TimelinePreview::diagnosticId(qApp->activeWindow())).arg(int(qApp->applicationState()))
             .arg(QString::number(quint32(windowFlags()),16)).arg(TimelinePreview::diagnosticRect(geometry())),
-            type == QEvent::ZOrderChange ? 250 : 0 );
+            type == QEvent::ZOrderChange || type == QEvent::Move || type == QEvent::Resize ? 250 : 0 );
     }
     return result;
 }

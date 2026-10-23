@@ -157,6 +157,9 @@ Controller::Controller(QWidget *widget, Current check, Present update, Log logge
     }
 #endif
     connect(&process, &QProcess::started, this, [this] {
+        if(trace.isEnabled()) diagnose(QStringLiteral("child-started"),
+            QStringLiteral("child_pid=%1 gui_pid=%2 mpv=%3 exact=%4 foreground_controls=none")
+                .arg(process.processId()).arg(QCoreApplication::applicationPid()).arg(mpvBackend).arg(mpvExact),0);
 #ifdef Q_OS_WIN
         HANDLE child = OpenProcess(PROCESS_SET_QUOTA | PROCESS_TERMINATE | PROCESS_SET_INFORMATION,
                                    FALSE, DWORD(process.processId()));

@@ -41,7 +41,7 @@ public:
     void setHoverTarget(qint64 ms) { mHoverTargetMs = ms; }
     void setTip( const QPoint& pos, const QString& time, const QString& text );
     virtual void show();
-    void setPlacementContext(QWidget *owner, TimelinePreview::PopupContext context);
+    void setPlacementContext(QWidget *owner, TimelinePreview::PopupContext context, QWidget *timeline = NULL);
     void setDiagnosticLogger( TimelinePreview::Diagnostics::Log logger ) { mTrace.setLogger(logger); }
     void setPreview( const QImage &, qint64 requestedMs, const QRect &windowBounds );
 
@@ -54,6 +54,7 @@ private:
     void diagnose( const QString &, const QString &, int intervalMs = 250 );
     void presentFullscreen();
     QPointer<QWidget> mPlacementOwner;
+    QPointer<QWidget> mTimeline;
     TimelinePreview::PopupContext mContext = TimelinePreview::PopupContext::Windowed;
     void adjustPosition();
     void buildPath();

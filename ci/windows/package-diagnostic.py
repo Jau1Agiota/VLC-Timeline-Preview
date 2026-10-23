@@ -20,7 +20,7 @@ import zipfile
 STAGE = os.environ.get("VLC_CI_STAGE", "2.4.3")
 SOURCE = {"2.4.3": "2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc",
           "2.4.4": "e879ce656c218eddec13926f03b5f0615d14dc61",
-          "2.4.6D": "52ad287063a576d675d209aa35c343b4ba8f8b9a",
+          "2.4.6D": "12b25af9272193ddfd0c298e1e9f48c5ff5b66e4",
           "2.4.6C": "febfd332f4ffbc94981f0b1cac298dc941de057b",
           "2.4.6B": "5cfebdb9718b3477e17c5ffcb6d14a2876974350",
           "2.4.5": "d10df7f0a54326f122f54b2a2961a3e1b0ee1f66"}[STAGE]

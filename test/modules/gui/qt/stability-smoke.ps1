@@ -28,9 +28,12 @@ foreach($enabled in @($false,$true)) {
         if(-not (Test-Path -LiteralPath $log)){throw "$name missing log"}
         $text=Get-Content -LiteralPath $log -Raw
         $heartbeats=@([regex]::Matches($text,'playback-stability heartbeat')).Count
+        $statsSamples=@([regex]::Matches($text,'stats=1 observation=')).Count
+        $decoded=$text -match ' decoded=[1-9][0-9]* '
+        if($enabled -and ($statsSamples -lt 1 -or -not $decoded)){throw 'Foreground statistics/video progress not observed'}
         if($enabled -and ($heartbeats -lt 2 -or $text -notmatch 'playback-stability enabled')){throw 'Modified Qt diagnostic heartbeat not observed'}
         if(-not $enabled -and $text -match 'playback-stability'){throw 'Foreground diagnostics were not quiet by default'}
-        $rows+=@{mode=$name;exit_code=$child.ExitCode;heartbeats=$heartbeats;physical_gui_verified=$false;dummy_outputs=$true}
+        $rows+=@{mode=$name;exit_code=$child.ExitCode;heartbeats=$heartbeats;stats_samples=$statsSamples;video_counter_positive=$decoded;physical_gui_verified=$false;dummy_outputs=$true}
     }
     finally {
         if(-not $child.HasExited){$child.Kill();[void]$child.WaitForExit(5000)}

@@ -1,0 +1,125 @@
+name: Standalone visual-performance experiment (2.4.6A.1)
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    outputs:
+      available: ${{ steps.generate.outputs.available }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Optional full-resolution HEVC10 synthetic smoke fixture
+        id: generate
+        run: |
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null || ! command -v fc-match >/dev/null; then
+            echo 'available=false' >> "$GITHUB_OUTPUT"
+            echo '::warning::Runner fixture tools unavailable; native compilation/package still run. No smoke-test claim.'
+            exit 0
+          fi
+          font=$(fc-match -f '%{file}' monospace)
+          if [[ ! -f "$font" ]]; then
+            echo 'available=false' >> "$GITHUB_OUTPUT"
+            echo '::warning::Runner font unavailable; smoke fixture skipped.'
+            exit 0
+          fi
+          python3 prototypes/stage_2_4_6A_1/generate_hevc_fixture.py "$RUNNER_TEMP/hevc-fixture" --duration 12 --font "$font"
+          echo 'available=true' >> "$GITHUB_OUTPUT"
+          echo '::notice title=Fixture::12-second synthetic 1920x1080 HEVC Main10; not the user movie, not HDR.'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: steps.generate.outputs.available == 'true'
+        with:
+          name: visual-hevc-fixture-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/hevc-fixture/
+          retention-days: 14
+          overwrite: false
+  windows:
+    needs: fixture
+    if: ${{ !cancelled() }}
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e
+        with:
+          path-type: inherit
+          msystem: UCRT64
+          update: true
+          install: mingw-w64-ucrt-x86_64-gcc
+      - name: Verify unchanged pinned SDK
+        shell: pwsh
+        run: |
+          ./prototypes/stage_2_4_6A_1/Get-Runtime.ps1 -Destination "$env:RUNNER_TEMP/libmpv-sdk"
+          if (Test-Path C:/VulkanSDK) { Get-ChildItem C:/VulkanSDK -Directory | ForEach-Object { "$($_.FullName)/Bin" } | Out-File -FilePath $env:GITHUB_PATH -Append }
+          Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors | ConvertTo-Json | Set-Content cpu.json
+      - name: Strict native compile, baseline compile and focused tests
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          export CC=gcc PYTHON=python
+          mkdir out
+          sdk="$(cygpath -u "$RUNNER_TEMP")/libmpv-sdk"
+          bash prototypes/stage_2_4_6A_1/build.sh "$sdk" out/visual
+          bash prototypes/stage_2_4_6/build.sh "$sdk" out/legacy
+          gcc -std=c11 -Wall -Wextra -Werror prototypes/stage_2_4_6A_1/test_policy.c -lm -o out/policy-test.exe
+          ./out/policy-test.exe
+          PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s prototypes/stage_2_4_6A_1 -p 'test_*.py' -v
+          objdump -p out/visual/mpv-preview.exe > out/imports.txt
+      - name: Package only own executable and source
+        shell: pwsh
+        run: py prototypes/stage_2_4_6A_1/package.py out/visual/mpv-preview.exe delivery .
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        id: package
+        with:
+          name: libmpv-stage246A1-win64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: delivery/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: ${{ steps.package.outputs.artifact-id }}
+          path: readback
+          merge-multiple: true
+      - name: Verify independent ZIP readback
+        shell: pwsh
+        run: |
+          $entry = (Get-Content delivery/SHA256SUMS).Split(' ',[StringSplitOptions]::RemoveEmptyEntries)
+          if ((Get-FileHash -Algorithm SHA256 "readback/$($entry[1])").Hash.ToLowerInvariant() -ne $entry[0]) { throw 'Checksum mismatch' }
+          py -m zipfile -t "readback/$($entry[1])"
+          if ($LASTEXITCODE -ne 0) { throw 'ZIP integrity failure' }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: needs.fixture.outputs.available == 'true'
+        with:
+          name: visual-hevc-fixture-${{ github.run_id }}-${{ github.run_attempt }}
+          path: fixture
+      - name: Same-file paced visual/diagnostic/baseline software smoke (not GPU acceptance)
+        if: needs.fixture.outputs.available == 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory results | Out-Null
+          foreach ($mode in @('visual','timing','capture')) {
+            py prototypes/stage_2_4_6A_1/replay.py --exe out/visual/mpv-preview.exe --runtime "$env:RUNNER_TEMP/libmpv-sdk" --media fixture/hevc10.mkv --output "results/$mode" --renderer sw --mode $mode --samples 6 --bursts 2
+            if ($LASTEXITCODE -ne 0) { throw "Replay failed: $mode" }
+          }
+          py prototypes/stage_2_4_6A_1/replay.py --exe out/legacy/mpv-preview.exe --runtime "$env:RUNNER_TEMP/libmpv-sdk" --media fixture/hevc10.mkv --output results/legacy --renderer sw --mode capture --legacy --samples 6 --bursts 2
+          if ($LASTEXITCODE -ne 0) { throw 'Baseline replay failed' }
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: visual-performance-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            results/
+            cpu.json
+            out/**/*.txt
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: false

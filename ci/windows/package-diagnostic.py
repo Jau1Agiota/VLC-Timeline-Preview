@@ -20,6 +20,7 @@ import zipfile
 STAGE = os.environ.get("VLC_CI_STAGE", "2.4.3")
 SOURCE = {"2.4.3": "2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc",
           "2.4.4": "e879ce656c218eddec13926f03b5f0615d14dc61",
+          "2.4.6B": "5cfebdb9718b3477e17c5ffcb6d14a2876974350",
           "2.4.5": "d10df7f0a54326f122f54b2a2961a3e1b0ee1f66"}[STAGE]
 IMAGE = "registry.videolan.org/vlc-debian-win64-3.0@sha256:b8e61c83d248cfb8fc3432d347f07f24de5a2ea6b0060cfe3053243e3674e6e7"
 CONTRIB = "910cc9cada6080dd777fbafb2ebdd0c24f702c30"
@@ -28,10 +29,13 @@ SDK_SHA = "1ed59c09152e78aff84663fa76efab26057716576db74332858810e5ef54ae1f"
 BINARIES = ("vlc.exe", "libvlc.dll", "libvlccore.dll", "plugins/gui/libqt_plugin.dll",
             "thumbnail-preview/thumbnail-helper.exe", "thumbnail-preview/libvlc.dll",
             "thumbnail-preview/libvlccore.dll")
+if STAGE == "2.4.6B":
+    BINARIES += ("thumbnail-mpv/mpv-thumbnail-worker.exe",)
+MPV_MARKER = "event=mpv-present".encode("utf-16le")
 MARKER = b"timeline-diagnostic slider="
 PERF_MARKER = "request_to_present_ms=".encode("utf-16le")
 README = (("Stage 2.4.4 fullscreen preview correction; Windows visual verification pending.\r\n"
-           if STAGE == "2.4.4" else "Stage 2.4.5 performance experiment; Windows acceptance pending.\r\n" if STAGE == "2.4.5" else "Stage 2.4.3 CI-1 diagnostic pilot; no fullscreen fix.\r\n") +
+           if STAGE == "2.4.4" else "Stage 2.4.6B opt-in libmpv integration; use thumbnail-mpv/Start-Preview.ps1.\r\n" if STAGE == "2.4.6B" else "Stage 2.4.5 performance experiment; Windows acceptance pending.\r\n" if STAGE == "2.4.5" else "Stage 2.4.3 CI-1 diagnostic pilot; no fullscreen fix.\r\n") +
           "Set VLC_TIMELINE_HOVER_DEBUG=1 before launching vlc.exe with --verbose=2.\r\n"
           "Keep thumbnail-preview/ intact: it is a separate official VLC runtime.\r\n"
           "Native Windows GUI/audio/fullscreen and frame PTS accuracy are unverified.\r\n"
@@ -142,11 +146,16 @@ def package(staging, output, metadata_path):
     require(any(n.startswith("thumbnail-preview/plugins/") and n.endswith(".dll") for n in files),
             "missing private runtime plugins")
     require(has_marker(staging / "plugins/gui/libqt_plugin.dll"), "missing Stage 2.4.3 instrumentation")
-    if STAGE == "2.4.5":
+    if STAGE in {"2.4.5", "2.4.6B"}:
         require(has_marker(staging / "plugins/gui/libqt_plugin.dll", PERF_MARKER),
                 "missing Stage 2.4.5 Qt timing instrumentation")
         require(has_marker(staging / "thumbnail-preview/thumbnail-helper.exe", b"libvlc_init_ms"),
                 "missing Stage 2.4.5 helper timing instrumentation")
+    if STAGE == "2.4.6B":
+        require(has_marker(staging / "plugins/gui/libqt_plugin.dll", MPV_MARKER), "missing libmpv integration marker")
+        require(not any(PurePosixPath(n).name.lower() == "libmpv-2.dll" for n in files), "unreviewed mpv runtime must not be bundled")
+        for name in ("Start-Preview.ps1", "Setup-Runtime.ps1", "Get-Runtime.ps1", "dependencies.json", "THIRD_PARTY.md"):
+            require("thumbnail-mpv/"+name in files, "missing mpv setup/license material")
     files["CI_1_README.txt"] = hashlib.sha256(README).hexdigest()
     manifest = dict(metadata, files_sha256=files, native_windows_gui_tested=False,
                     frame_pts_accuracy_verified=False, main_plugin_cache_omitted=True,
@@ -565,6 +574,8 @@ def inputs(args):
                "modules/gui/qt/util/thumbnailpreview.cpp", "modules/gui/qt/util/thumbnailpreview.hpp",
                "modules/gui/qt/util/timetooltip.cpp", "modules/gui/qt/util/timetooltip.hpp",
                "prototypes/stage_2_3/thumbnail_helper.c")
+    if STAGE == "2.4.6B":
+        tracked += ("prototypes/stage_2_4_6B/worker.c", "prototypes/stage_2_4_6B/dependencies.json")
     metadata = {"source_commit": SOURCE, "driver_commit": args.driver, "image": args.image,
                 "contrib_commit": args.contrib, "contrib_sha256": args.contrib_sha, "sdk_sha256": args.sdk_sha,
                 "sdk_url": "https://download.videolan.org/pub/videolan/vlc/3.0.24/win64/vlc-3.0.24-win64.7z",

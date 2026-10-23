@@ -74,8 +74,12 @@ void TimeTooltip::adjustPosition()
 
     // Get the bounding box required to print the text and add some padding
     QFontMetrics metrics( mFont );
-    mPreviewLabel = metrics.elidedText(mPreviewTime +
-        (mText.isEmpty() ? QString() : QStringLiteral(" - ") + mText),
+    // The experimental backend may retain an intermediate image while the
+    // cursor advances. Distinguish current hover from the image's own request.
+    const QString imageLabel = mMpvPreview ?
+        QStringLiteral("hover ") + mHoverTime + QStringLiteral(" | image ") + mPreviewTime : mPreviewTime;
+    mPreviewLabel = metrics.elidedText(imageLabel +
+        (mMpvPreview || mText.isEmpty() ? QString() : QStringLiteral(" - ") + mText),
         Qt::ElideRight, qMax(140, mPreview.width()));
     const QString label = mPreview.isNull() ? mDisplayedText : mPreviewLabel;
     QRect textbox = metrics.boundingRect( label );
@@ -187,6 +191,8 @@ void TimeTooltip::buildPath()
 
 void TimeTooltip::setTip( const QPoint& target, const QString& time, const QString& text )
 {
+    mHoverTime = time;
+    mMpvPreview = qgetenv("VLC_THUMBNAIL_BACKEND") == "libmpv";
     mDisplayedText = time;
     if ( !text.isEmpty() )
         mDisplayedText.append( " - " ).append( text );
@@ -198,6 +204,7 @@ void TimeTooltip::setTip( const QPoint& target, const QString& time, const QStri
         mText = text;
         adjustPosition();
     }
+    else if(mMpvPreview && !mPreview.isNull()) adjustPosition();
 
     update();
     raise();

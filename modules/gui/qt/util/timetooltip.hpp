@@ -68,6 +68,8 @@ private:
     QRect mWindowBounds;
     QRect mPreviewTextBox;
     QString mPreviewTime;
+    QString mHoverTime;
+    bool mMpvPreview = false;
     QString mPreviewLabel;
 };
 

@@ -208,7 +208,7 @@ Provisional OCR of actual mpv BMP content (source-frame plausibility checked):
 This is automated burned-text OCR, **human spot review pending**, and includes
 intermediate images actually handed off during bursts. It is independent of
 `time-pos`, but is not a completed accuracy gate. Fast keyframe output can be
-nearly ten seconds early on this long-GOP fixture. Exact seeking is slower but
+nearly ten seconds away from the request on this long-GOP fixture. Exact seeking is slower but
 promising; acceptable movie behavior must be decided on the user's PC. No frame
 PTS is fabricated from a command acknowledgement or player clock.
 
@@ -239,3 +239,13 @@ SHA-256: `a24b501d85b362dd462c06f5a5d41ff45ed40a738e415a40ef8bfac66dd41754`.
 Its native Windows build, all four benchmarks/comparisons and independent readback
 also passed. Raw evidence artifact: `12500719775`. Benchmark table above deliberately
 identifies the earlier measured run; it does not combine samples across runs.
+
+
+Follow-up run `39954190209` again passed its Windows benchmark/package job;
+the Ubuntu analysis job exceeded its 15-minute limit without an accuracy
+artifact. Cloud retrieval of job logs was blocked by HTTP 403, so the precise
+internal command is not established. The workflow now reuses trusted
+runner-provided FFmpeg/fonts when present, records their identity and bounds
+APT update/install fallback to 120/180 seconds with one retry. Tesseract fallback
+has the same bounds. These are dependency preparation changes, not decoder or
+measurement changes. No all-green workflow or completed accuracy gate is claimed.

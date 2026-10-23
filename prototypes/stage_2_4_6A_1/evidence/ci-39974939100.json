@@ -1,0 +1,1185 @@
+{
+  "run_url": "https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39974939100",
+  "source_commit": "f5760207c98691d2631c34f1240ed9d3af7f10b0",
+  "platform": "GitHub-hosted Windows 2025, software renderer, CPU decode; 12-second synthetic 1080p HEVC Main 10",
+  "cases": [
+    {
+      "annotation_truncated": false,
+      "groups": {
+        "first_hover": {
+          "display_handoff_ms": {
+            "n": 1,
+            "median_ms": 26.191,
+            "p95_ms": 26.191
+          },
+          "queue_ms": null,
+          "command_ack_ms": {
+            "n": 1,
+            "median_ms": 3.979,
+            "p95_ms": 3.979
+          },
+          "restart_ms": {
+            "n": 1,
+            "median_ms": 26.075,
+            "p95_ms": 26.075
+          },
+          "render_ms": {
+            "n": 1,
+            "median_ms": 26.026,
+            "p95_ms": 26.026
+          },
+          "render_call_ms": null,
+          "readback_ms": null,
+          "swap_ms": null,
+          "bmp_ms": null,
+          "stream_log_ms": null,
+          "ui_message_age_ms": null,
+          "render_total_ms": null,
+          "readback_total_ms": null,
+          "seek_pipeline_ms": null,
+          "render_to_handoff_ms": {
+            "n": 1,
+            "median_ms": 0.16499999999999915,
+            "p95_ms": 0.16499999999999915
+          }
+        },
+        "warm_random": {
+          "display_handoff_ms": {
+            "n": 5,
+            "median_ms": 20.417,
+            "p95_ms": 25.953
+          },
+          "queue_ms": null,
+          "command_ack_ms": {
+            "n": 5,
+            "median_ms": 0.143,
+            "p95_ms": 0.202
+          },
+          "restart_ms": {
+            "n": 5,
+            "median_ms": 20.253,
+            "p95_ms": 25.804
+          },
+          "render_ms": {
+            "n": 5,
+            "median_ms": 20.241,
+            "p95_ms": 25.793
+          },
+          "render_call_ms": null,
+          "readback_ms": null,
+          "swap_ms": null,
+          "bmp_ms": null,
+          "stream_log_ms": null,
+          "ui_message_age_ms": null,
+          "render_total_ms": null,
+          "readback_total_ms": null,
+          "seek_pipeline_ms": null,
+          "render_to_handoff_ms": {
+            "n": 5,
+            "median_ms": 0.17299999999999827,
+            "p95_ms": 0.25700000000000145
+          }
+        },
+        "repeat_same": {
+          "display_handoff_ms": {
+            "n": 3,
+            "median_ms": 24.024,
+            "p95_ms": 25.407
+          },
+          "queue_ms": null,
+          "command_ack_ms": {
+            "n": 3,
+            "median_ms": 0.139,
+            "p95_ms": 0.161
+          },
+          "restart_ms": {
+            "n": 3,
+            "median_ms": 23.862,
+            "p95_ms": 25.265
+          },
+          "render_ms": {
+            "n": 3,
+            "median_ms": 23.851,
+            "p95_ms": 25.254
+          },
+          "render_call_ms": null,
+          "readback_ms": null,
+          "swap_ms": null,
+          "bmp_ms": null,
+          "stream_log_ms": null,
+          "ui_message_age_ms": null,
+          "render_total_ms": null,
+          "readback_total_ms": null,
+          "seek_pipeline_ms": null,
+          "render_to_handoff_ms": {
+            "n": 3,
+            "median_ms": 0.16100000000000136,
+            "p95_ms": 0.19200000000000017
+          }
+        },
+        "rapid_latest": {
+          "display_handoff_ms": {
+            "n": 2,
+            "median_ms": 40.4485,
+            "p95_ms": 53.959
+          },
+          "queue_ms": null,
+          "command_ack_ms": {
+            "n": 2,
+            "median_ms": 11.508,
+            "p95_ms": 22.133
+          },
+          "restart_ms": {
+            "n": 2,
+            "median_ms": 40.2945,
+            "p95_ms": 53.798
+          },
+          "render_ms": {
+            "n": 2,
+            "median_ms": 40.2375,
+            "p95_ms": 53.787
+          },
+          "render_call_ms": null,
+          "readback_ms": null,
+          "swap_ms": null,
+          "bmp_ms": null,
+          "stream_log_ms": null,
+          "ui_message_age_ms": null,
+          "render_total_ms": null,
+          "readback_total_ms": null,
+          "seek_pipeline_ms": null,
+          "render_to_handoff_ms": {
+            "n": 2,
+            "median_ms": 0.21100000000000207,
+            "p95_ms": 0.25
+          }
+        }
+      },
+      "mode": "capture",
+      "renderer": "sw",
+      "legacy": true,
+      "session": null,
+      "external_cpu_before_quit_ms": 1734.375,
+      "external_wall_before_quit_ms": 12269.23629999999,
+      "planned_requests": 33,
+      "presented_requests": 11,
+      "missing_required_ids": [],
+      "intermediate_presentations": 0
+    },
+    {
+      "annotation_truncated": true,
+      "groups": {
+        "first_hover": {
+          "display_handoff_ms": {
+            "n": 1,
+            "median_ms": 29.848,
+            "p95_ms": 29.848
+          },
+          "queue_ms": {
+            "n": 1,
+            "median_ms": 1.37,
+            "p95_ms": 1.37
+          },
+          "command_ack_ms": {
+            "n": 1,
+            "median_ms": 4.837,
+            "p95_ms": 4.837
+          },
+          "restart_ms": {
+            "n": 1,
+            "median_ms": 29.723,
+            "p95_ms": 29.723
+          },
+          "render_ms": {
+            "n": 1,
+            "median_ms": 29.708,
+            "p95_ms": 29.708
+          },
+          "render_call_ms": {
+            "n": 1,
+            "median_ms": 2.102,
+            "p95_ms": 2.102
+          },
+          "readback_ms": {
+            "n": 1,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "swap_ms": {
+            "n": 1,
+            "median_ms": 0.119,
+            "p95_ms": 0.119
+          },
+          "bmp_ms": {
+            "n": 1,
+            "median_ms": 2.043,
+            "p95_ms": 2.043
+          },
+          "stream_log_ms": {
+            "n": 1,
+            "median_ms": 0.051,
+            "p95_ms": 0.051
+          },
+          "ui_message_age_ms": {
+            "n": 1,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "render_total_ms": {
+            "n": 1,
+            "median_ms": 2.102,
+            "p95_ms": 2.102
+          },
+          "readback_total_ms": {
+            "n": 1,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "seek_pipeline_ms": {
+            "n": 1,
+            "median_ms": 28.352999999999998,
+            "p95_ms": 28.352999999999998
+          },
+          "render_to_handoff_ms": {
+            "n": 1,
+            "median_ms": 0.14000000000000057,
+            "p95_ms": 0.14000000000000057
+          }
+        },
+        "warm_random": {
+          "display_handoff_ms": {
+            "n": 5,
+            "median_ms": 21.221,
+            "p95_ms": 27.128
+          },
+          "queue_ms": {
+            "n": 5,
+            "median_ms": 0.045,
+            "p95_ms": 0.124
+          },
+          "command_ack_ms": {
+            "n": 5,
+            "median_ms": 0.869,
+            "p95_ms": 0.896
+          },
+          "restart_ms": {
+            "n": 5,
+            "median_ms": 21.11,
+            "p95_ms": 27.015
+          },
+          "render_ms": {
+            "n": 5,
+            "median_ms": 20.44,
+            "p95_ms": 27.004
+          },
+          "render_call_ms": {
+            "n": 5,
+            "median_ms": 1.397,
+            "p95_ms": 2.822
+          },
+          "readback_ms": {
+            "n": 5,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "swap_ms": {
+            "n": 5,
+            "median_ms": 0.104,
+            "p95_ms": 0.168
+          },
+          "bmp_ms": {
+            "n": 5,
+            "median_ms": 1.527,
+            "p95_ms": 1.761
+          },
+          "stream_log_ms": {
+            "n": 5,
+            "median_ms": 0.098,
+            "p95_ms": 0.103
+          },
+          "ui_message_age_ms": {
+            "n": 5,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "render_total_ms": {
+            "n": 5,
+            "median_ms": 1.397,
+            "p95_ms": 2.822
+          },
+          "readback_total_ms": {
+            "n": 5,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "seek_pipeline_ms": {
+            "n": 5,
+            "median_ms": 21.066,
+            "p95_ms": 26.891000000000002
+          },
+          "render_to_handoff_ms": {
+            "n": 5,
+            "median_ms": 0.20399999999999707,
+            "p95_ms": 0.7809999999999988
+          }
+        },
+        "repeat_same": {
+          "display_handoff_ms": {
+            "n": 3,
+            "median_ms": 26.256,
+            "p95_ms": 26.278
+          },
+          "queue_ms": {
+            "n": 3,
+            "median_ms": 0.053,
+            "p95_ms": 0.054
+          },
+          "command_ack_ms": {
+            "n": 3,
+            "median_ms": 0.737,
+            "p95_ms": 0.789
+          },
+          "restart_ms": {
+            "n": 3,
+            "median_ms": 26.127,
+            "p95_ms": 26.17
+          },
+          "render_ms": {
+            "n": 3,
+            "median_ms": 26.115,
+            "p95_ms": 26.158
+          },
+          "render_call_ms": {
+            "n": 3,
+            "median_ms": 0.705,
+            "p95_ms": 1.057
+          },
+          "readback_ms": {
+            "n": 3,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "swap_ms": {
+            "n": 3,
+            "median_ms": 0.124,
+            "p95_ms": 0.13
+          },
+          "bmp_ms": {
+            "n": 3,
+            "median_ms": 1.26,
+            "p95_ms": 1.315
+          },
+          "stream_log_ms": {
+            "n": 3,
+            "median_ms": 0.066,
+            "p95_ms": 0.074
+          },
+          "ui_message_age_ms": {
+            "n": 3,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "render_total_ms": {
+            "n": 3,
+            "median_ms": 0.705,
+            "p95_ms": 1.057
+          },
+          "readback_total_ms": {
+            "n": 3,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "seek_pipeline_ms": {
+            "n": 3,
+            "median_ms": 26.08,
+            "p95_ms": 26.116000000000003
+          },
+          "render_to_handoff_ms": {
+            "n": 3,
+            "median_ms": 0.1410000000000018,
+            "p95_ms": 0.20700000000000074
+          }
+        },
+        "rapid_latest": {
+          "display_handoff_ms": {
+            "n": 2,
+            "median_ms": 39.378,
+            "p95_ms": 51.251
+          },
+          "queue_ms": {
+            "n": 2,
+            "median_ms": 11.8795,
+            "p95_ms": 21.976
+          },
+          "command_ack_ms": {
+            "n": 2,
+            "median_ms": 12.497,
+            "p95_ms": 22.604
+          },
+          "restart_ms": {
+            "n": 2,
+            "median_ms": 39.216499999999996,
+            "p95_ms": 51.096
+          },
+          "render_ms": {
+            "n": 2,
+            "median_ms": 39.129000000000005,
+            "p95_ms": 51.024
+          },
+          "render_call_ms": {
+            "n": 2,
+            "median_ms": 1.268,
+            "p95_ms": 1.443
+          },
+          "readback_ms": {
+            "n": 2,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "swap_ms": {
+            "n": 2,
+            "median_ms": 0.1545,
+            "p95_ms": 0.161
+          },
+          "bmp_ms": {
+            "n": 2,
+            "median_ms": 1.737,
+            "p95_ms": 1.875
+          },
+          "stream_log_ms": {
+            "n": 2,
+            "median_ms": 0.0545,
+            "p95_ms": 0.055
+          },
+          "ui_message_age_ms": {
+            "n": 2,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "render_total_ms": {
+            "n": 2,
+            "median_ms": 1.268,
+            "p95_ms": 1.443
+          },
+          "readback_total_ms": {
+            "n": 2,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "seek_pipeline_ms": {
+            "n": 2,
+            "median_ms": 27.336999999999996,
+            "p95_ms": 29.119999999999997
+          },
+          "render_to_handoff_ms": {
+            "n": 2,
+            "median_ms": 0.248999999999997,
+            "p95_ms": 0.27099999999999724
+          }
+        }
+      },
+      "mode": "capture",
+      "renderer": "sw",
+      "legacy": false,
+      "planned_requests": 33,
+      "presented_requests": 18,
+      "missing_required_ids": [],
+      "intermediate_presentations": 7
+    },
+    {
+      "annotation_truncated": true,
+      "groups": {
+        "first_hover": {
+          "display_handoff_ms": {
+            "n": 1,
+            "median_ms": 27.889,
+            "p95_ms": 27.889
+          },
+          "queue_ms": {
+            "n": 1,
+            "median_ms": 0.281,
+            "p95_ms": 0.281
+          },
+          "command_ack_ms": {
+            "n": 1,
+            "median_ms": 2.869,
+            "p95_ms": 2.869
+          },
+          "restart_ms": {
+            "n": 1,
+            "median_ms": 27.74,
+            "p95_ms": 27.74
+          },
+          "render_ms": {
+            "n": 1,
+            "median_ms": 27.728,
+            "p95_ms": 27.728
+          },
+          "render_call_ms": {
+            "n": 1,
+            "median_ms": 1.012,
+            "p95_ms": 1.012
+          },
+          "readback_ms": {
+            "n": 1,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "swap_ms": {
+            "n": 1,
+            "median_ms": 0.142,
+            "p95_ms": 0.142
+          },
+          "bmp_ms": {
+            "n": 1,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "stream_log_ms": {
+            "n": 1,
+            "median_ms": 0.158,
+            "p95_ms": 0.158
+          },
+          "ui_message_age_ms": {
+            "n": 1,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "render_total_ms": {
+            "n": 1,
+            "median_ms": 1.012,
+            "p95_ms": 1.012
+          },
+          "readback_total_ms": {
+            "n": 1,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "seek_pipeline_ms": {
+            "n": 1,
+            "median_ms": 27.459,
+            "p95_ms": 27.459
+          },
+          "render_to_handoff_ms": {
+            "n": 1,
+            "median_ms": 0.1609999999999978,
+            "p95_ms": 0.1609999999999978
+          }
+        },
+        "warm_random": {
+          "display_handoff_ms": {
+            "n": 5,
+            "median_ms": 20.262,
+            "p95_ms": 27.086
+          },
+          "queue_ms": {
+            "n": 5,
+            "median_ms": 0.051,
+            "p95_ms": 0.063
+          },
+          "command_ack_ms": {
+            "n": 5,
+            "median_ms": 0.815,
+            "p95_ms": 0.946
+          },
+          "restart_ms": {
+            "n": 5,
+            "median_ms": 20.154,
+            "p95_ms": 26.974
+          },
+          "render_ms": {
+            "n": 5,
+            "median_ms": 20.074,
+            "p95_ms": 26.963
+          },
+          "render_call_ms": {
+            "n": 5,
+            "median_ms": 1.538,
+            "p95_ms": 1.652
+          },
+          "readback_ms": {
+            "n": 5,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "swap_ms": {
+            "n": 5,
+            "median_ms": 0.101,
+            "p95_ms": 0.117
+          },
+          "bmp_ms": {
+            "n": 5,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "stream_log_ms": {
+            "n": 5,
+            "median_ms": 0.088,
+            "p95_ms": 0.101
+          },
+          "ui_message_age_ms": {
+            "n": 5,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "render_total_ms": {
+            "n": 5,
+            "median_ms": 1.538,
+            "p95_ms": 1.652
+          },
+          "readback_total_ms": {
+            "n": 5,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "seek_pipeline_ms": {
+            "n": 5,
+            "median_ms": 20.102,
+            "p95_ms": 26.911
+          },
+          "render_to_handoff_ms": {
+            "n": 5,
+            "median_ms": 0.19099999999999895,
+            "p95_ms": 0.34800000000000253
+          }
+        },
+        "repeat_same": {
+          "display_handoff_ms": {
+            "n": 3,
+            "median_ms": 25.291,
+            "p95_ms": 25.332
+          },
+          "queue_ms": {
+            "n": 3,
+            "median_ms": 0.051,
+            "p95_ms": 0.06
+          },
+          "command_ack_ms": {
+            "n": 3,
+            "median_ms": 0.63,
+            "p95_ms": 0.681
+          },
+          "restart_ms": {
+            "n": 3,
+            "median_ms": 25.16,
+            "p95_ms": 25.21
+          },
+          "render_ms": {
+            "n": 3,
+            "median_ms": 25.148,
+            "p95_ms": 25.198
+          },
+          "render_call_ms": {
+            "n": 3,
+            "median_ms": 1.19,
+            "p95_ms": 1.241
+          },
+          "readback_ms": {
+            "n": 3,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "swap_ms": {
+            "n": 3,
+            "median_ms": 0.119,
+            "p95_ms": 0.124
+          },
+          "bmp_ms": {
+            "n": 3,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "stream_log_ms": {
+            "n": 3,
+            "median_ms": 0.105,
+            "p95_ms": 0.12
+          },
+          "ui_message_age_ms": {
+            "n": 3,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "render_total_ms": {
+            "n": 3,
+            "median_ms": 1.19,
+            "p95_ms": 1.241
+          },
+          "readback_total_ms": {
+            "n": 3,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "seek_pipeline_ms": {
+            "n": 3,
+            "median_ms": 25.109,
+            "p95_ms": 25.163
+          },
+          "render_to_handoff_ms": {
+            "n": 3,
+            "median_ms": 0.14300000000000068,
+            "p95_ms": 0.20899999999999963
+          }
+        },
+        "rapid_latest": {
+          "display_handoff_ms": {
+            "n": 2,
+            "median_ms": 32.308,
+            "p95_ms": 35.928
+          },
+          "queue_ms": {
+            "n": 2,
+            "median_ms": 3.7085000000000004,
+            "p95_ms": 7.315
+          },
+          "command_ack_ms": {
+            "n": 2,
+            "median_ms": 4.4635,
+            "p95_ms": 8.221
+          },
+          "restart_ms": {
+            "n": 2,
+            "median_ms": 32.1405,
+            "p95_ms": 35.758
+          },
+          "render_ms": {
+            "n": 2,
+            "median_ms": 32.123999999999995,
+            "p95_ms": 35.742
+          },
+          "render_call_ms": {
+            "n": 2,
+            "median_ms": 1.1665,
+            "p95_ms": 1.261
+          },
+          "readback_ms": {
+            "n": 2,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "swap_ms": {
+            "n": 2,
+            "median_ms": 0.1615,
+            "p95_ms": 0.164
+          },
+          "bmp_ms": {
+            "n": 2,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "stream_log_ms": {
+            "n": 2,
+            "median_ms": 0.10849999999999999,
+            "p95_ms": 0.145
+          },
+          "ui_message_age_ms": {
+            "n": 2,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "render_total_ms": {
+            "n": 2,
+            "median_ms": 1.1665,
+            "p95_ms": 1.261
+          },
+          "readback_total_ms": {
+            "n": 2,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "seek_pipeline_ms": {
+            "n": 2,
+            "median_ms": 28.432000000000002,
+            "p95_ms": 28.443
+          },
+          "render_to_handoff_ms": {
+            "n": 2,
+            "median_ms": 0.18399999999999928,
+            "p95_ms": 0.18599999999999994
+          }
+        }
+      },
+      "mode": "timing",
+      "renderer": "sw",
+      "legacy": false,
+      "planned_requests": 33,
+      "presented_requests": 17,
+      "missing_required_ids": [],
+      "intermediate_presentations": 6
+    },
+    {
+      "annotation_truncated": true,
+      "groups": {
+        "first_hover": {
+          "display_handoff_ms": {
+            "n": 1,
+            "median_ms": 25.384,
+            "p95_ms": 25.384
+          },
+          "queue_ms": {
+            "n": 1,
+            "median_ms": 0.278,
+            "p95_ms": 0.278
+          },
+          "command_ack_ms": {
+            "n": 1,
+            "median_ms": 4.176,
+            "p95_ms": 4.176
+          },
+          "restart_ms": {
+            "n": 1,
+            "median_ms": 25.252,
+            "p95_ms": 25.252
+          },
+          "render_ms": {
+            "n": 1,
+            "median_ms": 25.239,
+            "p95_ms": 25.239
+          },
+          "render_call_ms": {
+            "n": 1,
+            "median_ms": 1.062,
+            "p95_ms": 1.062
+          },
+          "readback_ms": {
+            "n": 1,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "swap_ms": {
+            "n": 1,
+            "median_ms": 0.125,
+            "p95_ms": 0.125
+          },
+          "bmp_ms": {
+            "n": 1,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "stream_log_ms": {
+            "n": 1,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "ui_message_age_ms": {
+            "n": 1,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "render_total_ms": {
+            "n": 1,
+            "median_ms": 1.062,
+            "p95_ms": 1.062
+          },
+          "readback_total_ms": {
+            "n": 1,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "seek_pipeline_ms": {
+            "n": 1,
+            "median_ms": 24.974,
+            "p95_ms": 24.974
+          },
+          "render_to_handoff_ms": {
+            "n": 1,
+            "median_ms": 0.14499999999999957,
+            "p95_ms": 0.14499999999999957
+          }
+        },
+        "warm_random": {
+          "display_handoff_ms": {
+            "n": 5,
+            "median_ms": 20.099,
+            "p95_ms": 26.391
+          },
+          "queue_ms": {
+            "n": 5,
+            "median_ms": 0.049,
+            "p95_ms": 0.091
+          },
+          "command_ack_ms": {
+            "n": 5,
+            "median_ms": 0.802,
+            "p95_ms": 1.131
+          },
+          "restart_ms": {
+            "n": 5,
+            "median_ms": 19.952,
+            "p95_ms": 26.258
+          },
+          "render_ms": {
+            "n": 5,
+            "median_ms": 19.851,
+            "p95_ms": 26.243
+          },
+          "render_call_ms": {
+            "n": 5,
+            "median_ms": 1.223,
+            "p95_ms": 1.82
+          },
+          "readback_ms": {
+            "n": 5,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "swap_ms": {
+            "n": 5,
+            "median_ms": 0.13,
+            "p95_ms": 0.14
+          },
+          "bmp_ms": {
+            "n": 5,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "stream_log_ms": {
+            "n": 5,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "ui_message_age_ms": {
+            "n": 5,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "render_total_ms": {
+            "n": 5,
+            "median_ms": 1.223,
+            "p95_ms": 1.82
+          },
+          "readback_total_ms": {
+            "n": 5,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "seek_pipeline_ms": {
+            "n": 5,
+            "median_ms": 19.894000000000002,
+            "p95_ms": 26.212999999999997
+          },
+          "render_to_handoff_ms": {
+            "n": 5,
+            "median_ms": 0.20199999999999818,
+            "p95_ms": 0.2740000000000009
+          }
+        },
+        "repeat_same": {
+          "display_handoff_ms": {
+            "n": 3,
+            "median_ms": 25.383,
+            "p95_ms": 25.465
+          },
+          "queue_ms": {
+            "n": 3,
+            "median_ms": 0.051,
+            "p95_ms": 0.052
+          },
+          "command_ack_ms": {
+            "n": 3,
+            "median_ms": 0.702,
+            "p95_ms": 0.852
+          },
+          "restart_ms": {
+            "n": 3,
+            "median_ms": 25.259,
+            "p95_ms": 25.339
+          },
+          "render_ms": {
+            "n": 3,
+            "median_ms": 25.249,
+            "p95_ms": 25.324
+          },
+          "render_call_ms": {
+            "n": 3,
+            "median_ms": 0.701,
+            "p95_ms": 1.015
+          },
+          "readback_ms": {
+            "n": 3,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "swap_ms": {
+            "n": 3,
+            "median_ms": 0.117,
+            "p95_ms": 0.12
+          },
+          "bmp_ms": {
+            "n": 3,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "stream_log_ms": {
+            "n": 3,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "ui_message_age_ms": {
+            "n": 3,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "render_total_ms": {
+            "n": 3,
+            "median_ms": 0.701,
+            "p95_ms": 1.015
+          },
+          "readback_total_ms": {
+            "n": 3,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "seek_pipeline_ms": {
+            "n": 3,
+            "median_ms": 25.214,
+            "p95_ms": 25.288
+          },
+          "render_to_handoff_ms": {
+            "n": 3,
+            "median_ms": 0.13400000000000034,
+            "p95_ms": 0.14099999999999824
+          }
+        },
+        "rapid_latest": {
+          "display_handoff_ms": {
+            "n": 2,
+            "median_ms": 42.008,
+            "p95_ms": 53.468
+          },
+          "queue_ms": {
+            "n": 2,
+            "median_ms": 12.930499999999999,
+            "p95_ms": 19.115
+          },
+          "command_ack_ms": {
+            "n": 2,
+            "median_ms": 13.589500000000001,
+            "p95_ms": 19.774
+          },
+          "restart_ms": {
+            "n": 2,
+            "median_ms": 41.89,
+            "p95_ms": 53.36
+          },
+          "render_ms": {
+            "n": 2,
+            "median_ms": 41.8435,
+            "p95_ms": 53.348
+          },
+          "render_call_ms": {
+            "n": 2,
+            "median_ms": 1.042,
+            "p95_ms": 1.304
+          },
+          "readback_ms": {
+            "n": 2,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "swap_ms": {
+            "n": 2,
+            "median_ms": 0.11149999999999999,
+            "p95_ms": 0.121
+          },
+          "bmp_ms": {
+            "n": 2,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "stream_log_ms": {
+            "n": 2,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "ui_message_age_ms": {
+            "n": 2,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "render_total_ms": {
+            "n": 2,
+            "median_ms": 1.042,
+            "p95_ms": 1.304
+          },
+          "readback_total_ms": {
+            "n": 2,
+            "median_ms": 0.0,
+            "p95_ms": 0.0
+          },
+          "seek_pipeline_ms": {
+            "n": 2,
+            "median_ms": 28.959500000000002,
+            "p95_ms": 34.245000000000005
+          },
+          "render_to_handoff_ms": {
+            "n": 2,
+            "median_ms": 0.1645000000000021,
+            "p95_ms": 0.20899999999999963
+          }
+        }
+      },
+      "mode": "visual",
+      "renderer": "sw",
+      "legacy": false,
+      "planned_requests": 33,
+      "presented_requests": 18,
+      "missing_required_ids": [],
+      "intermediate_presentations": 7
+    }
+  ],
+  "provisional_image_analysis": [
+    {
+      "report": "results/visual/benchmark.json",
+      "media": "hevc10.mkv",
+      "seek": "keyframes",
+      "mode": "visual",
+      "legacy": false,
+      "images": 0,
+      "ocr_plausible": 0,
+      "provisional_absolute_error": null,
+      "human_review_pending": true
+    },
+    {
+      "report": "results/timing/benchmark.json",
+      "media": "hevc10.mkv",
+      "seek": "keyframes",
+      "mode": "timing",
+      "legacy": false,
+      "images": 0,
+      "ocr_plausible": 0,
+      "provisional_absolute_error": null,
+      "human_review_pending": true
+    },
+    {
+      "report": "results/legacy/benchmark.json",
+      "media": "hevc10.mkv",
+      "seek": "keyframes",
+      "mode": "capture",
+      "legacy": true,
+      "images": 11,
+      "ocr_plausible": 11,
+      "provisional_absolute_error": {
+        "n": 11,
+        "median_ms": 1400.0,
+        "p95_ms": 7800.0
+      },
+      "human_review_pending": true
+    },
+    {
+      "report": "results/capture/benchmark.json",
+      "media": "hevc10.mkv",
+      "seek": "keyframes",
+      "mode": "capture",
+      "legacy": false,
+      "images": 18,
+      "ocr_plausible": 18,
+      "provisional_absolute_error": {
+        "n": 18,
+        "median_ms": 1400.0,
+        "p95_ms": 7800.0
+      },
+      "human_review_pending": true
+    }
+  ],
+  "limitations": "Extracted complete JSON subobjects from GitHub Checks; notices truncate at 4096 characters. Full raw JSON/BMPs/resources are in artifact 12511251280; no fabricated missing CPU/GPU values. Human/device review pending."
+}

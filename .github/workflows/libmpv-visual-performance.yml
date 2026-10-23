@@ -1,0 +1,189 @@
+name: Standalone visual-performance experiment (2.4.6A.1)
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  fixture:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    outputs:
+      available: ${{ steps.generate.outputs.available }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Optional full-resolution HEVC10 synthetic smoke fixture
+        id: generate
+        run: |
+          font=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null || [[ ! -f "$font" ]]; then
+            # Only official Ubuntu sources; do not update unrelated third-party repositories.
+            sources=/etc/apt/sources.list.d/ubuntu.sources
+            if [[ ! -f "$sources" ]]; then
+              echo '::error::Official Ubuntu source configuration unavailable; fixture blocked.'
+              exit 1
+            fi
+            apt_options=(-o "Dir::Etc::sourcelist=$sources" -o 'Dir::Etc::sourceparts=-' -o 'APT::Get::List-Cleanup=0' -o 'DPkg::Lock::Timeout=15' -o 'Acquire::Retries=0' -o 'Acquire::http::Timeout=20' -o 'Acquire::https::Timeout=20')
+            set +e
+            timeout 120s sudo apt-get "${apt_options[@]}" update > apt-fixture.log 2>&1
+            result=$?
+            if [[ $result == 0 ]]; then
+              timeout 180s sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg fonts-dejavu-core >> apt-fixture.log 2>&1
+              result=$?
+            fi
+            set -e
+            if [[ $result != 0 ]]; then
+              echo "::error::Official Ubuntu FFmpeg/font preparation failed (exit $result); no smoke-test claim."
+              tail -20 apt-fixture.log
+              exit "$result"
+            fi
+          fi
+          python3 prototypes/stage_2_4_6A_1/generate_hevc_fixture.py "$RUNNER_TEMP/hevc-fixture" --duration 12 --font "$font"
+          cp prototypes/stage_2_4_6A_1/FONT_NOTICES.txt "$RUNNER_TEMP/hevc-fixture/FONT_NOTICES.txt"
+          echo 'available=true' >> "$GITHUB_OUTPUT"
+          echo '::notice title=Fixture::12-second synthetic 1920x1080 HEVC Main10; not the user movie, not HDR.'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: steps.generate.outputs.available == 'true'
+        with:
+          name: visual-hevc-fixture-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/hevc-fixture/hevc10.mp4
+            ${{ runner.temp }}/hevc-fixture/hevc10.mkv
+            ${{ runner.temp }}/hevc-fixture/hevc10.mp4.frames.json
+            ${{ runner.temp }}/hevc-fixture/manifest.json
+            ${{ runner.temp }}/hevc-fixture/FONT_NOTICES.txt
+          retention-days: 14
+          overwrite: false
+      - name: Preserve fixture dependency diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: visual-fixture-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: apt-fixture.log
+          if-no-files-found: ignore
+          retention-days: 14
+          overwrite: false
+  windows:
+    needs: fixture
+    if: ${{ !cancelled() }}
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e
+        with:
+          path-type: inherit
+          msystem: UCRT64
+          update: true
+          install: mingw-w64-ucrt-x86_64-gcc
+      - name: Verify unchanged pinned SDK
+        shell: pwsh
+        run: |
+          ./prototypes/stage_2_4_6A_1/Get-Runtime.ps1 -Destination "$env:RUNNER_TEMP/libmpv-sdk"
+          if (Test-Path C:/VulkanSDK) { Get-ChildItem C:/VulkanSDK -Directory | ForEach-Object { "$($_.FullName)/Bin" } | Out-File -FilePath $env:GITHUB_PATH -Append }
+          Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors | ConvertTo-Json | Set-Content cpu.json
+      - name: Strict native compile, baseline compile and focused tests
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          export CC=gcc PYTHON=python
+          mkdir out
+          sdk="$(cygpath -u "$RUNNER_TEMP")/libmpv-sdk"
+          bash prototypes/stage_2_4_6A_1/build.sh "$sdk" out/visual
+          bash prototypes/stage_2_4_6/build.sh "$sdk" out/legacy
+          gcc -std=c11 -Wall -Wextra -Werror prototypes/stage_2_4_6A_1/test_policy.c -lm -o out/policy-test.exe
+          ./out/policy-test.exe
+          PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s prototypes/stage_2_4_6A_1 -p 'test_*.py' -v
+          objdump -p out/visual/mpv-preview.exe > out/imports.txt
+      - name: Package only own executable and source
+        shell: pwsh
+        run: py prototypes/stage_2_4_6A_1/package.py out/visual/mpv-preview.exe delivery .
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        id: package
+        with:
+          name: libmpv-stage246A1-win64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: delivery/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: ${{ steps.package.outputs.artifact-id }}
+          path: readback
+          merge-multiple: true
+      - name: Verify independent ZIP readback
+        shell: pwsh
+        run: |
+          $entry = (Get-Content delivery/SHA256SUMS).Split(' ',[StringSplitOptions]::RemoveEmptyEntries)
+          if ((Get-FileHash -Algorithm SHA256 "readback/$($entry[1])").Hash.ToLowerInvariant() -ne $entry[0]) { throw 'Checksum mismatch' }
+          py -m zipfile -t "readback/$($entry[1])"
+          if ($LASTEXITCODE -ne 0) { throw 'ZIP integrity failure' }
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: needs.fixture.outputs.available == 'true'
+        with:
+          name: visual-hevc-fixture-${{ github.run_id }}-${{ github.run_attempt }}
+          path: fixture
+      - name: Same-file paced visual/diagnostic/baseline software smoke (not GPU acceptance)
+        if: needs.fixture.outputs.available == 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory results | Out-Null
+          foreach ($mode in @('visual','timing','capture')) {
+            py prototypes/stage_2_4_6A_1/replay.py --exe out/visual/mpv-preview.exe --runtime "$env:RUNNER_TEMP/libmpv-sdk" --media fixture/hevc10.mkv --output "results/$mode" --renderer sw --mode $mode --samples 6 --bursts 2
+            if ($LASTEXITCODE -ne 0) { throw "Replay failed: $mode" }
+          }
+          py prototypes/stage_2_4_6A_1/replay.py --exe out/legacy/mpv-preview.exe --runtime "$env:RUNNER_TEMP/libmpv-sdk" --media fixture/hevc10.mkv --output results/legacy --renderer sw --mode capture --legacy --samples 6 --bursts 2
+          if ($LASTEXITCODE -ne 0) { throw 'Baseline replay failed' }
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: visual-performance-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            results/
+            cpu.json
+            out/**/*.txt
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: false
+
+  accuracy:
+    needs: [fixture, windows]
+    if: needs.fixture.outputs.available == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: visual-performance-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: visual-hevc-fixture-${{ github.run_id }}-${{ github.run_attempt }}
+          path: fixture
+      - name: Provisional image-content accuracy, never player-clock proof
+        run: |
+          sources=/etc/apt/sources.list.d/ubuntu.sources
+          test -f "$sources"
+          apt_options=(-o "Dir::Etc::sourcelist=$sources" -o 'Dir::Etc::sourceparts=-' -o 'APT::Get::List-Cleanup=0' -o 'DPkg::Lock::Timeout=15' -o 'Acquire::Retries=0' -o 'Acquire::http::Timeout=20' -o 'Acquire::https::Timeout=20')
+          if ! command -v ffmpeg >/dev/null || ! command -v tesseract >/dev/null; then
+            timeout 120s sudo apt-get "${apt_options[@]}" update
+            timeout 180s sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg tesseract-ocr
+          fi
+          python3 prototypes/stage_2_4_6A_1/score_burned_pts.py evidence fixture accuracy
+      - name: Preserve provisional image evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: visual-accuracy-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: accuracy/
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: false

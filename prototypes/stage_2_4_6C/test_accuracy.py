@@ -21,6 +21,12 @@ class Accuracy(unittest.TestCase):
             data=bytearray(image.read_bytes());struct.pack_into('<i',data,22,180)
             data[54:]=b''.join(pixels[y*1280:(y+1)*1280] for y in range(179,-1,-1))
             image.write_bytes(data);self.assertEqual(score.scene_id(image),'white')
+            # LibVLC can expose a coded aspect ratio rather than 16:9.
+            small=bytearray(b'\xff\x00\x00\xff'*(313*180))
+            small[(130*313+156)*4:((130*313+156)*4)+4]=b'\xff\xff\xff\xff'
+            header=bytearray(data[:54]);struct.pack_into('<i',header,18,313)
+            struct.pack_into('<i',header,22,-180)
+            image.write_bytes(header+small);self.assertEqual(score.scene_id(image),'white')
             image.write_bytes(b'not a BMP')
             with self.assertRaises(ValueError):score.scene_id(image)
 

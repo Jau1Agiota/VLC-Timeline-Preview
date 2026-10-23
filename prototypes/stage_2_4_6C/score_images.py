@@ -28,10 +28,13 @@ def scene_id(path):
     if len(data)>320*180*4+54 or len(data)<54 or data[:2]!=b'BM':raise ValueError('bounded BMP required')
     width,height=struct.unpack_from('<ii',data,18)
     offset=struct.unpack_from('<I',data,10)[0]
-    if width!=320 or abs(height)!=180 or struct.unpack_from('<H',data,28)[0]!=32:raise ValueError('unexpected scene probe BMP')
-    if not 54<=offset<=len(data)-320*180*4:raise ValueError('invalid scene pixel payload')
-    y=130 if height<0 else 179-130
-    sample=data[offset+(y*320+160)*4:][:3]
+    if not 1<=width<=320 or not 1<=abs(height)<=180 or struct.unpack_from('<H',data,28)[0]!=32:raise ValueError('unexpected scene probe BMP')
+    if not 54<=offset<=len(data)-width*abs(height)*4:raise ValueError('invalid scene pixel payload')
+    # LibVLC preserves coded-frame aspect ratio; its bounded BMP need not be
+    # exactly 320x180. Sample the same relative point below the timestamp band.
+    y=130*abs(height)//180
+    if height>0:y=abs(height)-1-y
+    sample=data[offset+(y*width+width//2)*4:][:3]
     return 'white' if len(sample)==3 and min(sample)>220 else 'blue'
 
 
@@ -107,8 +110,13 @@ def main():
             cases=[r for r in rows if r['engine']==engine and r['media']==media]
             errors=[r['absolute_error_ms'] for r in cases if r['absolute_error_ms'] is not None]
             by_media[engine+':'+media]=dict(n=len(cases),plausible=len(errors),error=stats(errors) if errors else None)
-            print('::notice title=Stage 2.4.6C image cases::'+json.dumps(dict(engine=engine,media=media,
-                observations=[dict(requested_ms=r['requested_ms'],observed_ms=r['observed_burned_ms'],error_ms=r['absolute_error_ms']) for r in cases])))
+    for engine in ('fast','exact','libvlc'):
+        print('::notice title=Stage 2.4.6C media accuracy::'+json.dumps(dict(engine=engine,
+            media={k.split(':',1)[1]:v for k,v in by_media.items() if k.startswith(engine+':')})))
+    for media in ('scene_cuts.mp4','offset.mp4','hevc/hevc10.mp4'):
+        cases=[r for r in rows if r['engine']=='exact' and r['media']==media and r['workload']!='rapid']
+        print('::notice title=Stage 2.4.6C exact cases::'+json.dumps(dict(media=media,
+            observations=[dict(requested_ms=r['requested_ms'],observed_ms=r['observed_burned_ms'],error_ms=r['absolute_error_ms']) for r in cases])))
     result = dict(scene_comparison=scene_comparison,by_media=by_media, scope='Synthetic H.264/Main10 HEVC burned-in PTS OCR; human/device review pending',
                   summary=summary, rows=rows, failures=failures, frame_pts_accuracy_gate_passed=False)
     (args.output/'accuracy.json').write_text(json.dumps(result, indent=2))

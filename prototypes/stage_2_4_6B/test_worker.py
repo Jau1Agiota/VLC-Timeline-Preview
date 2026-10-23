@@ -8,6 +8,7 @@ import json
 import math
 from pathlib import Path
 import queue
+import shutil
 import struct
 import subprocess
 import threading
@@ -90,6 +91,65 @@ def stats(values):
             'p95_ms': values[math.ceil(.95*len(values))-1]}
 
 
+def compare_libvlc(command, media, output):
+    """Mirror Controller::launch: consume candidate, preserve it, then remove its
+    working BMP before requesting another. CREATE_NEW is a helper safety guard.
+    """
+    process = subprocess.Popen(command+['--worker', str(media), str(output), 'baseline'],
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    answers = queue.Queue(maxsize=4)
+    def receive():
+        try:
+            while True:
+                line = process.stdout.readline(4097)
+                if not line or len(line) > 4096 or not line.endswith(b'\n'):
+                    raise RuntimeError('LibVLC missing/bounded result line')
+                answers.put(json.loads(line), timeout=1)
+        except Exception as error:
+            try:
+                answers.put(error, timeout=1)
+            except queue.Full:
+                pass
+    reader = threading.Thread(target=receive, daemon=True)
+    reader.start()
+    records = []
+    try:
+        for ident, target in enumerate((1000, 25000, 5000), 1):
+            # output belongs only to this new results directory, never a user's file.
+            output.unlink(missing_ok=True)
+            begin = time.perf_counter()
+            process.stdin.write(f'{ident} {target} 5000\n'.encode())
+            process.stdin.flush()
+            record = answers.get(timeout=18)
+            if isinstance(record, Exception):
+                raise record
+            if record.get('request_id') != ident or record.get('requested_ms') != target or record.get('exit_code') != 0:
+                raise RuntimeError(f'LibVLC candidate failed: {record}')
+            if not output.is_file() or not 54 < output.stat().st_size <= 320*180*4+54:
+                raise RuntimeError('LibVLC missing/bounded BMP')
+            record.update(media=media.name, received_ms=(time.perf_counter()-begin)*1000,
+                          physical_display_verified=False)
+            preserved = output.with_name(output.stem+f'-{ident}.bmp')
+            if preserved.exists():
+                raise RuntimeError('comparison evidence must be new')
+            shutil.copyfile(output, preserved)
+            record['bmp'] = preserved.name
+            records.append(record)
+        process.stdin.close()
+        process.wait(timeout=7)
+        if process.returncode:
+            raise RuntimeError(f'LibVLC exit {process.returncode}')
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=3)
+        if not process.stdin.closed:
+            process.stdin.close()
+        reader.join(timeout=1)
+        process.stdout.close()
+    return records
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('worker', type=Path)
@@ -118,24 +178,11 @@ def main():
             if worker.p.returncode != 0:
                 failures.append({'media': media.name, 'exit_code': worker.p.returncode})
             if args.libvlc:
-                # Isolated Stage 2.4.5 worker and official runtime, same file and targets.
-                p = subprocess.Popen([str(args.libvlc.resolve()), '--worker', str(media),
-                                      str((args.output/f'libvlc-{stem}-{ext}.bmp').resolve()), 'baseline'],
-                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-                # communicate is bounded and leaves no reader/process on error.
-                begin = time.perf_counter()
                 try:
-                    output, _ = p.communicate(b'1 1000 5000\n2 25000 5000\n3 5000 5000\n', timeout=30)
-                    for line in output.splitlines():
-                        r = json.loads(line)
-                        r['media'] = media.name
-                        comparison.append(r)
-                    if p.returncode or len(output.splitlines()) != 3:
-                        failures.append({'libvlc': media.name, 'exit_code': p.returncode})
+                    comparison.extend(compare_libvlc([str(args.libvlc.resolve())], media,
+                        (args.output/f'libvlc-{stem}-{ext}.bmp').resolve()))
                 except Exception as error:
-                    p.kill(); p.communicate(timeout=3)
                     failures.append({'libvlc': media.name, 'error': str(error)})
-                comparison.append({'media': media.name, 'three_request_wall_ms': (time.perf_counter()-begin)*1000})
     # Invalid input must fail boundedly, not emit a candidate. Audio-only is startup-timeout bounded.
     for name in ('corrupt.mp4', 'audio_only.mp4'):
         worker = Worker(args.worker.resolve(), (args.fixtures/name).resolve())
@@ -153,10 +200,22 @@ def main():
     worker.p.stdin.write(b'1 25000 5000\n'); worker.p.stdin.flush(); worker.p.kill(); worker.close()
     first = [r['received_ms'] for r in rows if r['request_id'] == 1]
     warm = [r['received_ms'] for r in rows if r['request_id'] > 1]
+    matched = [r['received_ms'] for r in rows if r['request_id'] in (2, 3)]
+    lvfirst = [r['received_ms'] for r in comparison if r.get('request_id') == 1]
+    lvwarm = [r['received_ms'] for r in comparison if r.get('request_id') in (2, 3)]
+    renders = [r['render_ms'] for r in rows]
+    transfers = [r['previous_pipe_write_ms'] for r in rows if r.get('previous_pipe_write_ms', -1) >= 0]
     report = {'scope': 'native Windows synthetic SW worker; not Qt/physical display or real movie',
               'worker_sha256': hashlib.sha256(args.worker.read_bytes()).hexdigest(),
               'rows': rows, 'failures': failures, 'libvlc': comparison,
               'first': stats(first) if first else None, 'warm': stats(warm) if warm else None,
+              'matched_warm_mpv': stats(matched) if matched else None,
+              'libvlc_first': stats(lvfirst) if lvfirst else None,
+              'libvlc_warm': stats(lvwarm) if lvwarm else None,
+              'render': stats(renders) if renders else None,
+              'previous_pipe_write': stats(transfers) if transfers else None,
+              'max_sampled_private_bytes': max((r.get('private_bytes', 0) for r in rows), default=0) or None,
+              'cpu_ms_by_media': {r['media']: r.get('cpu_total_ms') for r in rows if r['request_id'] == 7},
               'frame_pts_accuracy_verified': False, 'gpu_usage_measured': False}
     (args.output/'results.json').write_text(json.dumps(report, indent=2))
     print(json.dumps({k: report[k] for k in ('scope', 'first', 'warm', 'failures')}))

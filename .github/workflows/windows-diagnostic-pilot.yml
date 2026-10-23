@@ -14,12 +14,21 @@ on:
         type: boolean
         default: false
 
+      native_only:
+        description: Retest an existing Stage 2.4.6B package without rebuilding VLC
+        type: boolean
+        default: false
+      package_run_id:
+        description: Existing successful Stage 2.4.6B build run ID (required for native_only)
+        type: string
+        default: ''
+
 permissions:
   contents: read
 
 jobs:
   build:
-    if: ${{ inputs.stage != '2.4.6A' }}
+    if: ${{ inputs.stage != '2.4.6A' && !inputs.native_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
@@ -131,7 +140,10 @@ jobs:
     uses: ./.github/workflows/libmpv-preview-experiment.yml
 
   native-mpv:
-    if: ${{ inputs.stage == '2.4.6B' }}
+    if: ${{ !cancelled() && inputs.stage == '2.4.6B' && (needs.build.result == 'success' || (inputs.native_only && inputs.package_run_id != '')) }}
+    permissions:
+      contents: read
+      actions: read
     needs: build
     runs-on: windows-2025
     timeout-minutes: 15
@@ -141,18 +153,24 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.package_run_id || github.run_id }}
           pattern: vlc-stage246B-win64-*
           path: delivery
           merge-multiple: true
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
-          name: stage246B-fixtures-${{ github.run_id }}-${{ github.run_attempt }}
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.package_run_id || github.run_id }}
+          pattern: stage246B-fixtures-*
+          merge-multiple: true
           path: fixtures
       - name: Verify package, initialize private runtime and exercise persistent worker
         shell: pwsh
         run: |
           $manifest=Get-Content delivery/PACKAGE_MANIFEST.json -Raw | ConvertFrom-Json
           Write-Output ("::notice title=Stage 2.4.6B package::"+($manifest | ConvertTo-Json -Compress))
+          if($manifest.source_commit -ne '5cfebdb9718b3477e17c5ffcb6d14a2876974350'){throw 'Unexpected application source'}
           $zip=Join-Path delivery $manifest.zip
           if((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $manifest.sha256){throw 'ZIP checksum mismatch'}
           7z x "-o$env:RUNNER_TEMP/app" $zip | Out-Null
@@ -164,7 +182,7 @@ jobs:
           $testExit=$LASTEXITCODE
           if(Test-Path results/results.json){
             $r=Get-Content results/results.json -Raw | ConvertFrom-Json
-            $summary=@{first=$r.first;warm=$r.warm;failures=$r.failures;rows=$r.rows.Count;physical_display_verified=$false}
+            $summary=@{first=$r.first;warm=$r.warm;matched_warm_mpv=$r.matched_warm_mpv;libvlc_first=$r.libvlc_first;libvlc_warm=$r.libvlc_warm;render=$r.render;previous_pipe_write=$r.previous_pipe_write;max_sampled_private_bytes=$r.max_sampled_private_bytes;cpu_ms_by_media=$r.cpu_ms_by_media;failures=$r.failures;rows=$r.rows.Count;physical_display_verified=$false}
             Write-Output ("::notice title=Stage 2.4.6B synthetic worker::"+($summary | ConvertTo-Json -Compress -Depth 5))
           }
           if($testExit -ne 0){throw 'Native worker test failed'}

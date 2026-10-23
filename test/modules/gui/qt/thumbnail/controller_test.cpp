@@ -123,6 +123,12 @@ public:
         assert(!geometryTip.moved.isEmpty());
         for(const QRect &seen : geometryTip.moved) assert(seen.size()==geometryTip.size());
 
+        geometryTip.moved.clear();
+        geometryTip.setPreview(QImage(),-1,QRect());
+        assert(!geometryTip.moved.isEmpty() && geometryTip.height()<100);
+        for(const QRect &seen : geometryTip.moved) assert(seen.size()==geometryTip.size());
+        geometryTip.setPreview(preview,1000,window);
+
         // Cache/worker updates must use the live timeline top even if no mouse
         // event followed a toolbar/layout move. Fullscreen keeps monitor bounds.
         QWidget anchorOwner;anchorOwner.setGeometry(0,0,800,600);

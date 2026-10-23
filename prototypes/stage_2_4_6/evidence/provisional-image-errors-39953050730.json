@@ -1,0 +1,55 @@
+{
+  "run_id": 39953050730,
+  "job_conclusion": "failure during later comparison-image analysis; these four mpv summaries completed",
+  "human_review_pending": true,
+  "measurements": [
+    {
+      "media": "vfr.mp4",
+      "seek": "keyframes",
+      "images": 48,
+      "ocr_plausible": 48,
+      "provisional_absolute_error": {
+        "n": 48,
+        "median_ms": 2800.0,
+        "p95_ms": 6200.0
+      },
+      "human_review_pending": true
+    },
+    {
+      "media": "ordinary.mp4",
+      "seek": "keyframes",
+      "images": 95,
+      "ocr_plausible": 95,
+      "provisional_absolute_error": {
+        "n": 95,
+        "median_ms": 500.0,
+        "p95_ms": 1000.0
+      },
+      "human_review_pending": true
+    },
+    {
+      "media": "long_gop.mkv",
+      "seek": "keyframes",
+      "images": 75,
+      "ocr_plausible": 75,
+      "provisional_absolute_error": {
+        "n": 75,
+        "median_ms": 5517.8499999999985,
+        "p95_ms": 9513.650000000001
+      },
+      "human_review_pending": true
+    },
+    {
+      "media": "long_gop.mkv",
+      "seek": "exact",
+      "images": 36,
+      "ocr_plausible": 36,
+      "provisional_absolute_error": {
+        "n": 36,
+        "median_ms": 14.100000000000364,
+        "p95_ms": 24.600000000000364
+      },
+      "human_review_pending": true
+    }
+  ]
+}

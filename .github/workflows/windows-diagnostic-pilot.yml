@@ -6,7 +6,7 @@ on:
       stage:
         description: Pinned diagnostic source (Stage 2.4.3 remains the default)
         type: choice
-        options: ['2.4.3', '2.4.4', '2.4.5']
+        options: ['2.4.3', '2.4.4', '2.4.5', '2.4.6A']
         default: '2.4.3'
 
       benchmark_only:
@@ -19,6 +19,7 @@ permissions:
 
 jobs:
   build:
+    if: ${{ inputs.stage != '2.4.6A' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
@@ -114,3 +115,7 @@ jobs:
               echo '```'
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+  libmpv-experiment:
+    if: ${{ inputs.stage == '2.4.6A' }}
+    uses: ./.github/workflows/libmpv-preview-experiment.yml

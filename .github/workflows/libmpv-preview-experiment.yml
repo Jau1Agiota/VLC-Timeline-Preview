@@ -1,0 +1,160 @@
+name: Standalone libmpv experiment (2.4.6A)
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  fixtures:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Generate unchanged Stage 2.3 fixtures
+        run: |
+          if ! command -v ffmpeg >/dev/null || ! test -f /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf; then
+            timeout 120s sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
+            timeout 180s sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y --no-install-recommends ffmpeg fonts-dejavu-core
+          fi
+          ffmpeg -version
+          sha256sum /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+          python3 prototypes/stage_2_3/generate_fixtures.py "$RUNNER_TEMP/fixtures" --font /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: stage246-fixtures-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/fixtures/
+          retention-days: 7
+          overwrite: false
+  windows:
+    needs: fixtures
+    if: ${{ !cancelled() }}
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
+        with:
+          path-type: inherit
+          msystem: UCRT64
+          update: true
+          install: mingw-w64-ucrt-x86_64-gcc
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: needs.fixtures.result == 'success'
+        with:
+          name: stage246-fixtures-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/fixtures
+      - name: Verify identified SDK and runtime
+        shell: pwsh
+        run: |
+          ./prototypes/stage_2_4_6/Get-Runtime.ps1 -Destination "$env:RUNNER_TEMP/libmpv-sdk"
+          $lock = Get-Content prototypes/stage_2_4_6/dependencies.json -Raw | ConvertFrom-Json
+          $archive = "$env:RUNNER_TEMP/vlc-sdk.7z"
+          Invoke-WebRequest -Uri $lock.comparison_vlc_sdk.url -OutFile $archive
+          if ((Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant() -ne $lock.comparison_vlc_sdk.sha256) { throw 'Comparison VLC SDK checksum mismatch' }
+          & "$env:ProgramFiles/7-Zip/7z.exe" x -y "-o$env:RUNNER_TEMP/vlc-sdk" $archive
+          if ($LASTEXITCODE -ne 0) { throw 'VLC SDK extraction failed' }
+          Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors | ConvertTo-Json | Set-Content "$env:RUNNER_TEMP/cpu.json"
+          if (Test-Path C:/VulkanSDK) { Get-ChildItem C:/VulkanSDK -Directory | ForEach-Object { "$($_.FullName)/Bin" } | Out-File -FilePath $env:GITHUB_PATH -Append }
+      - name: Strict Windows compile and policy tests
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          # Python is GitHub's native Windows Python, available on the inherited PATH.
+          export CC=gcc PYTHON=python
+          bash prototypes/stage_2_4_6/build.sh "$(cygpath -u "$RUNNER_TEMP")/libmpv-sdk" out
+          gcc -std=c11 -Wall -Wextra -Werror prototypes/stage_2_4_6/test_policy.c -o policy-test.exe
+          ./policy-test.exe
+          PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s prototypes/stage_2_4_6 -p 'test_*.py' -v
+          sdk="$(cygpath -u "$RUNNER_TEMP")/vlc-sdk/vlc-3.0.24"
+          gcc -std=c11 -O2 -Wall -Wextra -Werror -municode -D__USE_MINGW_ANSI_STDIO=1 -I"$sdk/sdk/include" prototypes/stage_2_3/thumbnail_helper.c "$sdk/sdk/lib/libvlc.lib" -o "$sdk/thumbnail-helper.exe"
+          objdump -p out/mpv-preview.exe > out/pe-imports.txt
+          objdump -p "$(cygpath -u "$RUNNER_TEMP")/libmpv-sdk/libmpv-2.dll" > out/runtime-imports.txt
+      - name: Native Windows software-render benchmark
+        if: needs.fixtures.result == 'success'
+        shell: pwsh
+        run: |
+          $root = "$env:RUNNER_TEMP/results"
+          New-Item -ItemType Directory $root | Out-Null
+          foreach ($file in @('ordinary.mp4','long_gop.mkv','vfr.mp4')) {
+            py prototypes/stage_2_4_6/benchmark.py --exe out/mpv-preview.exe --runtime "$env:RUNNER_TEMP/libmpv-sdk" --media "$env:RUNNER_TEMP/fixtures/$file" --output "$root/$file-keyframes" --renderer sw --samples 30
+            if ($LASTEXITCODE -ne 0) { throw "Keyframe benchmark failed: $file" }
+          }
+          py prototypes/stage_2_4_6/benchmark.py --exe out/mpv-preview.exe --runtime "$env:RUNNER_TEMP/libmpv-sdk" --media "$env:RUNNER_TEMP/fixtures/long_gop.mkv" --output "$root/long-gop-exact" --renderer sw --seek exact --samples 30
+          if ($LASTEXITCODE -ne 0) { throw 'Exact-seek comparison failed' }
+          foreach ($name in @('ordinary.mp4-keyframes','long_gop.mkv-keyframes','vfr.mp4-keyframes','long-gop-exact')) {
+            py prototypes/stage_2_4_6/compare_libvlc.py --helper "$env:RUNNER_TEMP/vlc-sdk/vlc-3.0.24/thumbnail-helper.exe" --mpv-benchmark "$root/$name/benchmark.json" --output "$root/$name-libvlc"
+            if ($LASTEXITCODE -ne 0) { throw "Unmodified Stage 2.4.5 comparison failed: $name" }
+          }
+      - name: Package own executable and source (no third-party runtime)
+        shell: pwsh
+        run: py prototypes/stage_2_4_6/package.py out/mpv-preview.exe delivery .
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        id: package
+        with:
+          name: libmpv-stage246A-win64-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: delivery/
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: ${{ steps.package.outputs.artifact-id }}
+          path: readback
+          merge-multiple: true
+      - name: Verify independent package readback
+        shell: pwsh
+        run: |
+          $entry = (Get-Content delivery/SHA256SUMS).Split(' ',[StringSplitOptions]::RemoveEmptyEntries)
+          if ((Get-FileHash -Algorithm SHA256 "readback/$($entry[1])").Hash.ToLowerInvariant() -ne $entry[0]) { throw 'Readback checksum mismatch' }
+          py -m zipfile -t "readback/$($entry[1])"
+          if ($LASTEXITCODE -ne 0) { throw 'Readback ZIP integrity failed' }
+      - name: Preserve raw measurements and diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: libmpv-stage246A-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/results/
+            ${{ runner.temp }}/cpu.json
+            out/*.txt
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: false
+
+  accuracy:
+    needs: [windows, fixtures]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: libmpv-stage246A-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: stage246-fixtures-${{ github.run_id }}-${{ github.run_attempt }}
+          path: fixtures
+      - name: Read actual burned image timestamps (OCR, not player clocks)
+        run: |
+          if ! command -v ffmpeg >/dev/null || ! command -v tesseract >/dev/null; then
+            timeout 120s sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
+            timeout 180s sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y --no-install-recommends ffmpeg tesseract-ocr
+          fi
+          ffmpeg -version
+          tesseract --version
+          python3 prototypes/stage_2_4_6/score_burned_pts.py evidence fixtures accuracy
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: libmpv-stage246A-accuracy-${{ github.run_id }}-${{ github.run_attempt }}
+          path: accuracy/
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: false

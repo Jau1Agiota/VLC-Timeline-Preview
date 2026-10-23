@@ -8,7 +8,7 @@ import unittest
 import zipfile
 import benchmark
 import package
-from score_burned_pts import parse_pts
+from score_burned_pts import parse_pts, score
 
 ROOT=Path(__file__).resolve().parents[2]
 
@@ -22,6 +22,17 @@ class MetricsTests(unittest.TestCase):
         self.assertEqual(parse_pts('PTS 01:02:03.004'),3723004)
         for text in ('00:00:99.001','00:99:01.001','000029900','requested=29900'):
             self.assertIsNone(parse_pts(text))
+
+    def test_analysis_preserves_failure_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);evidence=root/'evidence';evidence.mkdir()
+            (evidence/'comparison.json').write_text('{}')
+            output=root/'accuracy'
+            with contextlib.redirect_stdout(io.StringIO()),self.assertRaises(ValueError):
+                score(evidence,root/'fixtures',output)
+            data=json.loads((output/'accuracy.json').read_text())
+            self.assertEqual(len(data['failures']),1)
+            self.assertEqual(data['failures'][0]['report'],'comparison.json')
 
     def test_lock_identity(self):
         lock=json.loads((ROOT/'prototypes/stage_2_4_6/dependencies.json').read_text())

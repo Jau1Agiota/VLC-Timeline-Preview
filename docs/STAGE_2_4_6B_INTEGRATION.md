@@ -33,7 +33,9 @@ the existing popup. No BMP/files/shared writable mappings or GPU readback. Pipe
 transfer and GUI copy ARE CPU copies; software scaling can be expensive. This is
 not the direct-GL zero-readback standalone path and performance parity is unproven.
 The worker logs pipe-write time only when diagnostics are enabled; controller
-records request-to-present, SW render and Qt-copy timings. Pipe-write may include
+records request-to-present, SW render and Qt copy/cache/present-callback timings.
+The `copy_ms` field spans those three GUI operations; it excludes actual paint
+and scanout and must not be described as a pure memcpy benchmark. Pipe-write may include
 backpressure, and controller end-to-end latency includes debounce/startup/transit.
 
 Older in-flight candidates may be displayed with their OWN approximate image-
@@ -88,3 +90,86 @@ per-file hashes and manifest. No previous artifacts are reused or removed.
 
 Results and remaining gates: see STAGE_2_4_6B_RESULTS.md. Stop for device approval;
 no claim of MPC-QT parity or frame-accuracy acceptance.
+
+## Verified delivery and reproduction
+
+Portable build: [run 39987670316](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39987670316),
+application source `5cfebdb9718b3477e17c5ffcb6d14a2876974350`, CI driver
+`6536f38c35fd49980b1d6b32aa334155328f2c48`.
+The subsequent commits add harness fixes, image analysis, regression coverage and
+reports; production application/worker code remains identical to the ZIP.
+[Native retest and image analysis](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39991618918)
+reuse that ZIP and do NOT compile VLC again.
+
+[Download the portable artifact](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39987670316/artifacts/12516713005)
+(14-day retention, approximately 489 MiB). GitHub wraps the delivery in an outer
+artifact ZIP. Extract that first; it contains the versioned application ZIP,
+SHA256SUMS and PACKAGE_MANIFEST.json. Verify and extract the INNER ZIP:
+
+```powershell
+$delivery=Get-Content .\PACKAGE_MANIFEST.json -Raw | ConvertFrom-Json
+if((Get-FileHash -LiteralPath $delivery.zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $delivery.sha256){throw 'ZIP checksum mismatch'}
+if(Test-Path C:\VLC-246B-App1){throw 'Choose a new extraction folder'}
+Expand-Archive -LiteralPath $delivery.zip -DestinationPath C:\VLC-246B-App1
+Set-Location (Join-Path C:\VLC-246B-App1 $delivery.root)
+```
+
+Inner ZIP SHA-256:
+`b3ffec9b91ccc6cd2180b05876deef6dec496644a432a80b75a3f26ddcf9dc00`.
+Then use the setup/start commands above. To collect diagnostics, add `-Diagnostics`
+to Start-Preview.ps1 and inspect the newest `%TEMP%\vlc246B-*.log` after closing
+only the experimental VLC window. `event=mpv-present` includes image request,
+wanted generation, request-to-present, render and GUI copy/callback measurements.
+Image labels are approximate request labels, not the decoded frame PTS.
+
+For a quiet timing run after checksum-verified setup, the explicit equivalent is:
+
+```powershell
+$env:VLC_THUMBNAIL_BACKEND='libmpv'
+$env:VLC_MPV_HELPER='C:\VLC-246B-Runtime1\mpv-thumbnail-worker.exe'
+$env:VLC_TIMELINE_HOVER_DEBUG='0'
+.\vlc.exe --no-one-instance --verbose=0 'C:\Videos\movie.mkv'
+```
+
+These environment settings affect applications subsequently launched from that
+PowerShell; use a separate shell for the LibVLC comparison (or set backend to
+`libvlc`). Start-Preview.ps1 instead confines its selection to the child and uses
+VLC verbosity 2, with timeline diagnostics enabled only by `-Diagnostics`.
+
+Reproduce native synthetic tests from a checkout (Python required):
+
+```powershell
+python .\prototypes\stage_2_4_6B\test_worker.py C:\VLC-246B-Runtime1\mpv-thumbnail-worker.exe C:\Fixtures C:\Results-246B-New --libvlc C:\VLC-246B-App1\VLC-3.0.24-stage246B-ci1-win64-5cfebdb9718b-39987670316-1\thumbnail-preview\thumbnail-helper.exe
+```
+
+Use the fixture artifact from build run 39987670316 or regenerate it with
+`prototypes/stage_2_3/generate_fixtures.py`; these are timecoded H.264 samples,
+not the user's HEVC movie. `test_worker.py` saves BMPs only as test evidence;
+normal libmpv integration uses no BMP files. Each new results directory must not
+exist. The native-only workflow inputs are `stage=2.4.6B`, `native_only=true`,
+`package_run_id=39987670316`. Cross-run download jobs use only narrowly scoped
+`actions: read` plus `contents: read` on the built-in workflow token. No PAT,
+additional secret, Release upload, automatic trigger or merge is used.
+
+The verified public API surface in `worker.c` is `mpv_create`,
+`mpv_set_option_string`, `mpv_initialize`, `mpv_command_async`, `mpv_wait_event`,
+`mpv_render_context_create/update/get_info/render/free`, and
+`mpv_terminate_destroy`. The SW render parameters are SW_SIZE, SW_FORMAT (`bgr0`),
+SW_STRIDE, SW_POINTER and BLOCK_FOR_TARGET_TIME=0. NEXT_FRAME_INFO flags distinguish
+new pictures from redraw/repeat, but are NOT media PTS. Exact declarations are in
+the checksum-pinned SDK `include/mpv/client.h` and `include/mpv/render.h`.
+
+A full clean reproducible Actions build can be requested manually from this branch:
+
+```bash
+gh workflow run windows-diagnostic-pilot.yml \
+  --repo Jau1Agiota/VLC-Timeline-Preview \
+  --ref experiment/stage-2.4.6B-vlc-libmpv \
+  -f stage=2.4.6B -f benchmark_only=false -f native_only=false
+```
+
+The workflow pins application source `5cfebdb9718b3477e17c5ffcb6d14a2876974350`
+independently of its checked-out CI driver. Existing builds are not reused or
+modified. No automatic trigger is added. To repeat only native tests/image analysis,
+use `-f native_only=true -f package_run_id=39987670316` instead, while the source
+artifacts remain within retention; that path skips compilation entirely.

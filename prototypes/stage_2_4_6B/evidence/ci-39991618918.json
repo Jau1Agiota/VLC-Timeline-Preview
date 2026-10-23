@@ -1,0 +1,96 @@
+{
+  "build_run": 39987670316,
+  "validation_run": 39991618918,
+  "extraction": {
+    "previous_pipe_write": {
+      "n": 48,
+      "median_ms": 0.1615,
+      "p95_ms": 0.241
+    },
+    "first": {
+      "n": 8,
+      "median_ms": 67.74984999999845,
+      "p95_ms": 691.382300000015
+    },
+    "failures": [],
+    "render": {
+      "n": 56,
+      "median_ms": 0.2285,
+      "p95_ms": 0.396
+    },
+    "libvlc_first": {
+      "n": 8,
+      "median_ms": 223.1239500000015,
+      "p95_ms": 1646.3856999999962
+    },
+    "cpu_ms_by_media": {
+      "ordinary.mp4": 171.875,
+      "ordinary.mkv": 125.0,
+      "bframes.mp4": 156.25,
+      "bframes.mkv": 140.625,
+      "long_gop.mp4": 109.375,
+      "long_gop.mkv": 203.125,
+      "vfr.mp4": 156.25,
+      "vfr.mkv": 203.125
+    },
+    "physical_display_verified": false,
+    "warm": {
+      "n": 48,
+      "median_ms": 11.112099999991187,
+      "p95_ms": 11.63259999998445
+    },
+    "rows": 56,
+    "max_sampled_private_bytes": 35741696,
+    "matched_warm_mpv": {
+      "n": 16,
+      "median_ms": 10.499200000012365,
+      "p95_ms": 11.482400000005555
+    },
+    "libvlc_warm": {
+      "n": 16,
+      "median_ms": 116.04344999999228,
+      "p95_ms": 203.74089999998546
+    }
+  },
+  "accuracy": {
+    "summary": {
+      "libmpv": {
+        "images": 56,
+        "plausible_ocr": 56,
+        "provisional_absolute_error": {
+          "n": 56,
+          "median_ms": 1250.0,
+          "p95_ms": 8000
+        },
+        "within_250_ms": 2,
+        "human_review_pending": true
+      },
+      "libvlc": {
+        "images": 24,
+        "plausible_ocr": 24,
+        "provisional_absolute_error": {
+          "n": 24,
+          "median_ms": 33.0,
+          "p95_ms": 200
+        },
+        "within_250_ms": 24,
+        "human_review_pending": true
+      }
+    },
+    "failures": []
+  },
+  "package": {
+    "driver_commit": "6536f38c35fd49980b1d6b32aa334155328f2c48",
+    "embedded_manifest_sha256": "cbbb31e45837475ac61958dbaeb7404fa55f675d0db4c991aaf11c30c4a2754d",
+    "root": "VLC-3.0.24-stage246B-ci1-win64-5cfebdb9718b-39987670316-1",
+    "sha256": "b3ffec9b91ccc6cd2180b05876deef6dec496644a432a80b75a3f26ddcf9dc00",
+    "size_bytes": 512230494,
+    "source_commit": "5cfebdb9718b3477e17c5ffcb6d14a2876974350",
+    "zip": "VLC-3.0.24-stage246B-ci1-win64-5cfebdb9718b-39987670316-1.zip"
+  },
+  "source": "GitHub Checks annotations; complete, untruncated JSON summaries",
+  "raw_native_artifact": 12516879654,
+  "raw_accuracy_artifact": 12518835567,
+  "physical_windows_gui_tested": false,
+  "human_image_review_pending": true
+}

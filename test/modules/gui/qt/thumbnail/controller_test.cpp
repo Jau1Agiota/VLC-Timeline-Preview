@@ -9,6 +9,10 @@
 #include <QDir>
 #include <QThread>
 #include <QWindow>
+#include <QSlider>
+#include <QProxyStyle>
+#include <QStyleFactory>
+#include <QStyleOptionSlider>
 #include <QElapsedTimer>
 #include <QEvent>
 #include <cstdio>
@@ -35,6 +39,27 @@ public:
     static void run(const QString &helper) {
         assert(bucket(0)==0 && bucket(249)==0 && bucket(250)==250);
         assert(bucket(-1)==-1 && bucket(86400001)==-1);
+        // Model VLC SeekStyle's Windows base and 18px handle metric using real
+        // Qt subControlRect/sliderValueFromPosition, not a hand-coded rectangle.
+        class FixedHandle : public QProxyStyle {
+        public:
+            FixedHandle():QProxyStyle(QStyleFactory::create(QStringLiteral("Windows"))) {}
+            int pixelMetric(PixelMetric m,const QStyleOption *o=nullptr,const QWidget *w=nullptr) const override {
+                return m==PM_SliderLength || m==PM_SliderThickness ? 18 : QProxyStyle::pixelMetric(m,o,w);
+            }
+        };
+        QSlider reference(Qt::Horizontal);reference.resize(1280,18);reference.setRange(0,10000);
+        FixedHandle *metric=new FixedHandle;metric->setParent(&reference);reference.setStyle(metric);
+        QStyleOptionSlider opt;opt.initFrom(&reference);opt.orientation=Qt::Horizontal;
+        opt.minimum=0;opt.maximum=10000;opt.sliderPosition=0;opt.sliderValue=0;
+        const int a=metric->subControlRect(QStyle::CC_Slider,&opt,QStyle::SC_SliderHandle,&reference).center().x();
+        opt.sliderPosition=opt.sliderValue=10000;
+        const int b=metric->subControlRect(QStyle::CC_Slider,&opt,QStyle::SC_SliderHandle,&reference).center().x();
+        const int clickValue=QStyle::sliderValueFromPosition(0,10000,640-18/2,1280-18,false);
+        const qint64 clickTime=SeekHover::clickTimestamp(clickValue,10000,7200000);
+        const qint64 oldRequest=bucket(SeekHover::map(640,9,1280,18,a,b,7200000,true).timestampMs);
+        assert(clickTime==3600000 && oldRequest-clickTime==5500);
+        std::printf("::notice title=Click geometry::width=1280 handle=18 duration_ms=7200000 x=640 style_start=%d style_end=%d fast_ms=%d click_ms=%d delta_ms=%d; host Qt geometry model, not Windows device test\n",a,b,int(oldRequest),int(clickTime),int(oldRequest-clickTime));
         const auto point=SeekHover::map(160,9,320,18,9,311,30021,true);
         assert(bucket(point.timestampMs)==15000);
         const QRect bounds(100,50,800,600);

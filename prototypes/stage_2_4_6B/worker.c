@@ -23,7 +23,8 @@ static volatile LONG armed=1;
 static ULONGLONG expiry;
 static CRITICAL_SECTION lock;
 static unsigned char pixels[WIDTH*HEIGHT*4];
-static double now(void) { return (double)GetTickCount64(); }
+static LARGE_INTEGER frequency;
+static double now(void) { LARGE_INTEGER counter;QueryPerformanceCounter(&counter);return (double)counter.QuadPart*1000.0/(double)frequency.QuadPart; }
 static void arm(unsigned ms) { EnterCriticalSection(&lock);expiry=GetTickCount64()+ms;LeaveCriticalSection(&lock); }
 static DWORD WINAPI watchdog(void *unused) {
     (void)unused;
@@ -41,6 +42,7 @@ static int opt(mpv_handle *p,const char *key,const char *value) {
 }
 int wmain(int argc,wchar_t **argv) {
     if(argc!=2)return 2;
+    if(!QueryPerformanceFrequency(&frequency))return 3;
     InitializeCriticalSection(&lock);arm(15000);
     HANDLE watch=CreateThread(NULL,0,watchdog,NULL,0,NULL);
     if(!watch)return 3;

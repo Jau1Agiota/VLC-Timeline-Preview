@@ -115,6 +115,7 @@ Controller::Controller(QWidget *widget, Current check, Present update, Log logge
         helper = QString::fromLocal8Bit(qgetenv("VLC_MPV_HELPER"));
     if(!backend.isEmpty() && backend != "libvlc" && !mpvBackend)
         helper.clear(); // Explicit unknown selection fails closed; never silently substitutes.
+    if(helper.isEmpty() && log) log(QStringLiteral("preview backend unavailable: select libvlc or set VLC_MPV_HELPER for libmpv"));
     debounce.setSingleShot(true); debounce.setInterval(mpvBackend ? 16 : delay);
     deadline.setSingleShot(true); deadline.setInterval(timeout);
     health.setInterval(100);
@@ -250,6 +251,7 @@ bool Controller::eventFilter(QObject *object, QEvent *event)
 void Controller::hover(const QString &path, const QString &token, qint64 ms)
 {
     if(closing) return;
+    if(helper.isEmpty()) { cancel(); return; }
     const qint64 time = bucket(ms);
     const QString file = identity(path);
     if(trace.isEnabled()) diagnose(QStringLiteral("hover"), QStringLiteral("requested_ms=%1 bucket_ms=%2 closing=%3 token_empty=%4 local_identity_ok=%5")

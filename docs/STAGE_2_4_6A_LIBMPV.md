@@ -213,95 +213,95 @@ promising; acceptable movie behavior must be decided on the user's PC. No frame
 PTS is fabricated from a command acknowledgement or player clock.
 
 Raw benchmark summaries: `prototypes/stage_2_4_6/evidence/windows-run-39953050730.json`.
-Complete raw JSONL/BMP evidence: Actions artifact `12501611143` on that run.
-Package artifact [12500414250](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39953050730/artifacts/12500414250)
-contains `libmpv-stage246A-win64-c5cbbb9d8691.zip` and `SHA256SUMS`.
-Inner ZIP SHA-256: `ac30aef36564b2003b53d419379d49883641820ec09940603469cd29e410071f`.
-Artifacts are temporary (14 days), not permanent Release links. The ZIP contains
-our executable/source only; run `Get-Runtime.ps1` to assemble the private runtime.
-
-Recommendation: **user-PC OpenGL evaluation, not VLC integration yet**. The
-persistent engine shows promising responsiveness; keyframe accuracy and combined
-runtime redistribution remain material gates. Preserve Stage 2.4.5 as-is. Stop
-before Stage 2.4.6B until Windows movie testing and user acceptance.
-
-Local regression verification: strict GCC 6.4.0 compilation and final linking,
-request-policy executable, five Python tests, Bash syntax, ShellCheck 0.10.0 and
-actionlint 1.7.7 passed. The existing CI safety suite ran 42 tests successfully
-(41 passed; one intentional stage-specific skip). A baseline diff confirmed no
-changes to `modules/` or `prototypes/stage_2_3/thumbnail_helper.c`.
-
-Latest executable/source delivery (reporting-only correction, preview engine
-unchanged): source `0fb671f3f161a1ce3db280097eb714ccefb434ea`,
-[package artifact 12501088618](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39954190209/artifacts/12501088618).
-Inner ZIP: `libmpv-stage246A-win64-0fb671f3f161.zip`.
-SHA-256: `a24b501d85b362dd462c06f5a5d41ff45ed40a738e415a40ef8bfac66dd41754`.
-Its native Windows build, all four benchmarks/comparisons and independent readback
-also passed. Raw evidence artifact: `12500719775`. Benchmark table above deliberately
-identifies the earlier measured run; it does not combine samples across runs.
-
-
-Follow-up run `39954190209` again passed its Windows benchmark/package job;
-the Ubuntu analysis job exceeded its 15-minute limit without an accuracy
-artifact. Cloud retrieval of job logs was blocked by HTTP 403, so the precise
-internal command is not established. The workflow now reuses trusted
-runner-provided FFmpeg/fonts when present, records their identity and bounds
-APT update/install fallback to 120/180 seconds with one retry. Tesseract fallback
-has the same bounds. These are dependency preparation changes, not decoder or
-measurement changes. No all-green workflow or completed accuracy gate is claimed.
-
-
-Run `39956694820` confirmed APT fallback exit 124 in fixture preparation (step
-12:53:06–12:56:13 UTC); Windows/analysis were skipped because the prerequisite
-failed. Exact download/service cause remains unavailable through cloud log
-retrieval. It is not a decoder/compiler failure. Windows compilation/package
-eligibility is now independent of fixture success: failed fixture preparation
-explicitly skips download/benchmarks/accuracy, while strict compilation, unit
-tests and package/readback checks still run. The overall workflow retains the
-fixture failure; no skipped benchmark is reported as passed. This permits
-current standalone binary delivery without weakening measurement prerequisites.
-
-## Final engine delivery
-
+Complete raw JSONL/BMP evidence: artifact `12501611143` on that run. Source/sample
+sets are identified deliberately; results are not combined across runs.
 Run [39957341975](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39957341975)
-built engine source `5c30cce3b7d7ac1dc3aebc9f0f39171205496472`, including the
-failed-presentation lock-release correction. Fixture generation and the Windows
-job passed: strict compile/link, native policy/five Python tests, all four
-benchmark cases and paired LibVLC comparisons, ZIP creation and independent
-checksum/ZIP readback. This is the current engine package, superseding the older
-links above without deleting them.
+independently passed all four Windows benchmarks and paired comparisons after
+the presentation-failure cleanup correction. Its four mpv OCR summaries repeated
+the same median/p95 errors; raw evidence artifact is `12503750668`.
 
-[Download artifact 12503386782](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39957341975/artifacts/12503386782)
-contains `libmpv-stage246A-win64-5c30cce3b7d7.zip`.
-Inner ZIP SHA-256: `b76c701a202104b794e442d0dd27919c20faf612f2f56d46d2e0e7ca0f148b94`.
-Raw current-run evidence artifact: `12503750668`. Retention remains 14 days.
-Final documentation/analysis corrections may follow this source commit; no
-unbuilt change to the preview engine is implied by a later documentation SHA.
+## Latest delivery and verification
+
+[Download Windows x64 artifact 12503437384](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39958215438/artifacts/12503437384).
+Source: `b2d83ffaf56e953bcd9d981f21d60b6a8b58d8c9`.
+Inner ZIP: `libmpv-stage246A-win64-b2d83ffaf56e.zip`.
+SHA-256: `f45149fff53fd7bce62aee46a3af416f75c7640dfcad85d4824dd98f1dcd8be0`.
+Includes our EXE/source, setup scripts, manifest and checksum, **not libmpv**.
+Artifacts expire after 14 days; no GitHub Release was created. All earlier builds
+and artifacts remain preserved. Later documentation commits do not change this
+executable; its C source is identical to the fully benchmarked `5c30cce3b7d7`.
+
+The Windows job on [39958215438](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39958215438)
+passed strict compile/link, native request-policy/Python suite, packaging and
+independent checksum/ZIP readback. **The overall workflow failed**: Ubuntu fixture
+preparation's APT fallback exited 124; benchmarks/accuracy were explicitly skipped
+on this final packaging run. These skipped tests are not reported as passed.
+The earlier successful benchmark runs provide the measured results above.
+
+Local verification passed: GCC 6.4.0 compilation/final linking, request-policy
+executable, six Python tests (including real FFmpeg/Tesseract narrow-image
+processing), Bash syntax, ShellCheck 0.10.0, actionlint 1.7.7 and diff checks.
+The existing CI safety suite ran 42 tests (41 passed; one intentional stage
+skip). The optional offline OCR regression skips on machines lacking its tools.
+A baseline diff confirmed no changes to `modules/` or the Stage 2.3 helper.
+
+Fixture preparation reuses trusted runner-provided FFmpeg/fonts when present
+and records their identity. APT fallback has one retry and explicit 120/180-second
+update/install limits. Windows compilation/package delivery runs independently
+of fixture success, while benchmark/accuracy prerequisites remain mandatory.
+Earlier Ubuntu jobs also hit their 15-minute limits; cloud job-log retrieval
+returned HTTP 403, so the exact stalled package/URL is unverified. No dependency
+mirror or certificate-validation workaround was introduced.
+
+A separate analysis defect was reproduced and corrected: run `39957341975`'s
+LibVLC comparison-BMP conversion failed with FFmpeg exit 234 before OCR. The
+scorer demanded a 320-pixel crop although the unchanged helper permits narrower
+images. A real 313×180 BMP reproduced the invalid-crop error; using actual image
+width fixes the regression. Partial error/image results remain in accuracy
+artifact `12504240084`. Each offline FFmpeg/Tesseract subprocess now has a
+30-second limit. Full comparison-image OCR with this correction remains pending;
+no decoder or preview-executable change was required.
+
+## Windows PC acceptance
 
 Extract the Actions download, verify/extract its inner ZIP, then change into
-`libmpv-stage246A-win64`. Requires official 7-Zip. For downloaded unsigned scripts,
-these launches affect execution policy only in each child PowerShell process:
+`libmpv-stage246A-win64`. Requires official 7-Zip. These commands affect execution
+policy only in each child PowerShell process, for the supplied unsigned scripts:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Get-Runtime.ps1 -Destination "$env:USERPROFILE\VLC-246A-Runtime"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Run-Preview.ps1 -Runtime "$env:USERPROFILE\VLC-246A-Runtime" -Media 'C:\Videos\movie.mkv' -Results "$env:USERPROFILE\VLC-246A-Test1"
 ```
 
-Use new destination/results folders. This opens only the independent experimental
-window, with default OpenGL rendering and CPU decoding. Hover its strip, enter
+Use new destination/results folders. This opens only the experimental window,
+with default OpenGL rendering and CPU decoding. Hover its strip, enter
 milliseconds in the console, or enter `quit`. Benchmark commands and the manual
-acceptance checklist are above and in the package README. Do not replace any VLC
-files or the Stage 2.4.5 runtime.
+checklist are above and in the package README. Do not replace VLC files or the
+Stage 2.4.5 runtime.
 
+For independent image re-analysis without rebuilding either player, check out
+this branch and use a machine with GitHub CLI, FFmpeg and Tesseract:
 
-The final engine run's four mpv image analyses completed with the same
-provisional median/p95 errors listed above (62 VFR, 101 ordinary, 79 long-GOP
-keyframe and 36 exact images). Comparison-image conversion failed with FFmpeg
-exit 234 before OCR; partial results/error details were preserved in accuracy
-artifact `12504240084`. Inspection found the scorer incorrectly demanded a
-320-pixel crop while the unchanged LibVLC helper permits narrower output. A real
-313×180 BMP reproduced FFmpeg's invalid-crop failure locally. Cropping the actual
-input width fixes that regression; six local Python tests pass, including real
-FFmpeg/Tesseract processing of the narrow BMP and rejection of a blank image as
-a timestamp. Each offline FFmpeg/Tesseract subprocess now has a 30-second limit.
-This analysis-only correction does not change either decoder or the executable.
+```sh
+gh run download 39957341975 -R Jau1Agiota/VLC-Timeline-Preview -n libmpv-stage246A-evidence-39957341975-1 -D evidence-246A
+gh run download 39957341975 -R Jau1Agiota/VLC-Timeline-Preview -n stage246-fixtures-39957341975-1 -D fixtures-246A
+python3 prototypes/stage_2_4_6/score_burned_pts.py evidence-246A fixtures-246A accuracy-246A-new
+```
+
+The output directory must be new. Read actual BMP text for human review; OCR
+plausibility never sets `frame_timestamp_verified=true`. MKV remuxing can offset
+container timestamps relative to burned original PTS; raw absolute errors include
+that offset, with no hidden normalization.
+
+Prototype bounds: fixed-drive local MP4/MKV only; console requests at most 24
+hours, 10,000 accepted requests and 128 saved images/process; 15-second
+initialization and 5-second request/teardown deadlines. Real movies, identical
+consecutive targets, unusual aspect ratios/HDR, hardware decode, corrupt/audio-only
+inputs, GUI close/driver errors and foreground-VLC coexistence require manual
+acceptance tests. A watchdog exit is a failure, never an accurate frame.
+
+Recommendation: **user-PC OpenGL evaluation, not VLC integration yet**. The
+persistent engine is promising, but keyframe image error exceeds the previous
+250 ms target on these clips. Exact seeking is a useful measured comparison.
+Target-PC responsiveness/quality, human accuracy review and combined-runtime
+licensing remain gates. Stop before Stage 2.4.6B until user acceptance.

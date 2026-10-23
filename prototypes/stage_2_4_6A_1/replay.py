@@ -12,10 +12,13 @@ import time
 from benchmark import stats, process_cpu_ms
 
 FIELDS=('display_handoff_ms','queue_ms','command_ack_ms','restart_ms','render_ms',
-        'render_call_ms','readback_ms','swap_ms','bmp_ms','stream_log_ms','ui_message_age_ms')
+        'render_call_ms','readback_ms','swap_ms','bmp_ms','stream_log_ms','ui_message_age_ms','seek_pipeline_ms','render_to_handoff_ms')
 
 
 def summarize(rows,planned):
+    for row in rows:
+        if 'queue_ms' in row:row['seek_pipeline_ms']=row['restart_ms']-row['queue_ms']
+        if 'render_ms' in row:row['render_to_handoff_ms']=row['display_handoff_ms']-row['render_ms']
     by_id={r['id']:r for r in rows}
     for item in planned:
         if item['id'] in by_id:by_id[item['id']]['workload']=item['workload']
@@ -42,7 +45,7 @@ def run(args):
     env=dict(os.environ,PATH=str(Path(args.runtime).resolve())+os.pathsep+os.environ['PATH'])
     planned=[];messages=[];records=[];errors=[];opened=None;child=None;reader=None
     stderr=(output/'stderr.txt').open('wb')
-    started=time.perf_counter();ready_wall=None;summary={};session=None;external_cpu=None
+    started=time.perf_counter();ready_wall=None;summary={};session=None;external_cpu=None;external_wall=None
     try:
         command=[str(exe),str(Path(args.media).resolve()),str(output/'engine'),args.renderer,args.hardware,args.seek]
         if not args.legacy:command.append(args.mode)
@@ -82,6 +85,7 @@ def run(args):
             time.sleep(args.interval)
         time.sleep(args.interval)
         external_cpu=process_cpu_ms(child)
+        external_wall=(time.perf_counter()-started)*1000
         child.stdin.write(b'quit\n');child.stdin.flush();child.wait(timeout=8)
         if child.returncode:raise ValueError(f'engine exit {child.returncode}')
     except (ValueError,OSError,TimeoutError,queue.Empty,subprocess.TimeoutExpired) as exc:
@@ -108,7 +112,7 @@ def run(args):
             errors.append('normal visual path performed capture/logging')
         if args.mode=='visual' and any(r.get('type')=='displayed' for r in messages):errors.append('visual streamed per-frame stdout')
         data=dict(media=str(Path(args.media).resolve()),mode=args.mode,legacy=args.legacy,seek=args.seek,renderer=args.renderer,
-                  external_cpu_before_quit_ms=external_cpu,
+                  external_cpu_before_quit_ms=external_cpu,external_wall_before_quit_ms=external_wall,
                   discarded_records=[r for r in records if r['type']=='discarded'],
                   hardware_request=args.hardware,opening=opened,process_start_to_ready_ms=ready_wall,
                   records=frames,session=session,summary=summary,planned=planned,errors=errors,
@@ -116,7 +120,7 @@ def run(args):
                   note='paced replay; accepted-input to presentation handoff, not scanout or human hover latency')
         (output/'benchmark.json').write_text(json.dumps(data,indent=2),encoding='utf-8')
         print('::notice title=Visual replay::'+json.dumps(dict(mode=args.mode,renderer=args.renderer,
-              summary=summary,session=session,errors=errors),separators=(',',':')))
+              legacy=args.legacy,summary=summary,session=session,external_cpu_before_quit_ms=external_cpu,external_wall_before_quit_ms=external_wall,errors=errors),separators=(',',':')))
     if errors:raise ValueError('; '.join(errors))
     return data
 

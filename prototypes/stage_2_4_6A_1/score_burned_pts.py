@@ -60,7 +60,8 @@ def score_report(report,evidence,fixtures,all_rows,summaries):
                  absolute_error_ms=abs(observed-record['requested_ms']) if plausible else None)
         rows.append(row);all_rows.append(row)
     errors=[r['absolute_error_ms'] for r in rows if r['absolute_error_ms'] is not None]
-    summary=dict(media=media,seek=source['seek'],images=len(rows),ocr_plausible=len(errors),
+    summary=dict(report=str(report.relative_to(evidence)),media=media,seek=source['seek'],
+                 mode=source.get('mode','unknown'),legacy=source.get('legacy',False),images=len(rows),ocr_plausible=len(errors),
                  provisional_absolute_error=stats(errors) if errors else None,human_review_pending=True)
     summaries.append(summary)
     print('::notice title=Burned-image OCR (provisional)::'+json.dumps(summary))

@@ -144,3 +144,40 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
           overwrite: false
+
+  accuracy:
+    needs: [fixture, windows]
+    if: needs.fixture.outputs.available == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: visual-performance-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: visual-hevc-fixture-${{ github.run_id }}-${{ github.run_attempt }}
+          path: fixture
+      - name: Provisional image-content accuracy, never player-clock proof
+        run: |
+          sources=/etc/apt/sources.list.d/ubuntu.sources
+          test -f "$sources"
+          apt_options=(-o "Dir::Etc::sourcelist=$sources" -o 'Dir::Etc::sourceparts=-' -o 'APT::Get::List-Cleanup=0' -o 'DPkg::Lock::Timeout=15' -o 'Acquire::Retries=0' -o 'Acquire::http::Timeout=20' -o 'Acquire::https::Timeout=20')
+          if ! command -v ffmpeg >/dev/null || ! command -v tesseract >/dev/null; then
+            timeout 120s sudo apt-get "${apt_options[@]}" update
+            timeout 180s sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg tesseract-ocr
+          fi
+          python3 prototypes/stage_2_4_6A_1/score_burned_pts.py evidence fixture accuracy
+      - name: Preserve provisional image evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: visual-accuracy-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: accuracy/
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: false

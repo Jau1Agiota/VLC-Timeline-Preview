@@ -7,6 +7,7 @@
 #include <thread>
 #include <cstdint>
 #include <sstream>
+#include <algorithm>
 static void put(unsigned char *p, uint32_t value, int n=4) {
     for(int i=0;i<n;++i) p[i]=static_cast<unsigned char>(value>>(8*i));
 }
@@ -29,7 +30,24 @@ static int capture(int argc,char **argv,unsigned id) {
     return 0;
 }
 
+static int mpv_worker(const std::string &source) {
+    std::string line;
+    while(std::getline(std::cin,line)) {
+        unsigned id,target,timeout; std::istringstream in(line);
+        if(!(in>>id>>target>>timeout))return 2;
+        if(source.find("error")!=std::string::npos)return 3;
+        std::this_thread::sleep_for(std::chrono::milliseconds(source.find("timeout")!=std::string::npos?3000:80));
+        std::cout<<"{\"protocol\":1,\"request_id\":"<<(source.find("badid")!=std::string::npos?id+1:id)
+                 <<",\"requested_ms\":"<<target<<",\"width\":320,\"height\":180,\"bytes\":230400,\"frame_timestamp_verified\":false}\n"<<std::flush;
+        std::string pixels(320*180*4,static_cast<char>(255));
+        // Fragment both header/payload independently of the GUI's read boundaries.
+        for(size_t i=0;i<pixels.size();i+=511)std::cout.write(pixels.data()+i,std::min(size_t(511),pixels.size()-i));
+        std::cout.flush();
+    }
+    return 0;
+}
 int main(int argc,char **argv) {
+    if(argc==2 && std::string(argv[1])!="--worker")return mpv_worker(argv[1]);
     if(argc<2 || std::string(argv[1])!="--worker") return capture(argc,argv,0);
     if(argc!=5)return 2;
     std::string line;

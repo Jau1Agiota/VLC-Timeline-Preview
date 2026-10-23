@@ -337,6 +337,50 @@ public:
         }
         if(savedDebug.isNull()) qunsetenv("VLC_TIMELINE_HOVER_DEBUG");
         else qputenv("VLC_TIMELINE_HOVER_DEBUG",savedDebug);
+        qputenv("VLC_THUMBNAIL_BACKEND","libmpv");
+        {
+            published.clear(); last=QImage();
+            Controller mpv(&host,[](const QString &){return true;},
+                [&](const QImage &image,qint64 time){last=image;if(!image.isNull())published.append(time);},
+                [](const QString &){},helper,1,700);
+            assert(mpv.mpvBackend && mpv.debounce.interval()==16);
+            mpv.cancel(true);mpv.hover(normal,session,1000);
+            assert(until([&]{return mpv.showing();}));
+            assert(!mpv.directory && mpv.output.isEmpty());
+            const qint64 pid=mpv.process.processId();
+            mpv.hover(normal,session,2000);assert(!last.isNull());
+            assert(until([&]{return mpv.workerBusy;}));
+            mpv.hover(normal,session,3000);mpv.hover(normal,session,9000);
+            assert(until([&]{return !published.isEmpty() && published.last()==9000;}));
+            assert(published.contains(2000) && !published.contains(3000));
+            assert(mpv.process.processId()==pid && mpv.workerRequests==3);
+            // Newer cached completion cannot be overwritten by older in-flight output.
+            mpv.hover(normal,session,10000);assert(until([&]{return mpv.workerBusy;}));
+            mpv.hover(normal,session,1000);const int publications=published.size();spin(150);
+            assert(published.size()==publications && published.last()==1000);
+            mpv.hover(normal,session,11000);assert(until([&]{return mpv.workerBusy;}));
+            mpv.cancel();spin(150);assert(last.isNull() && !mpv.showing());
+            assert(mpv.process.state()==QProcess::Running); // leave does not destroy persistent decoder
+            mpv.hover(normal,session,12000);assert(until([&]{return mpv.showing();}));
+            assert(mpv.process.processId()==pid);
+            mpv.hover(normal,session,13000);assert(until([&]{return mpv.workerBusy;}));
+            mpv.cancel(true);assert(until([&]{return mpv.process.state()==QProcess::NotRunning;}));
+            assert(last.isNull() && mpv.cache->count()==0);
+            mpv.hover(error,session,14000);assert(until([&]{return mpv.failedAt.isValid();}));
+            assert(!mpv.showing());
+            mpv.hover(normal,session,15000);assert(until([&]{return mpv.showing();}));
+            const QString bad=file("mpv-badid.mp4");mpv.failedAt.invalidate();
+            mpv.hover(bad,session,16000);assert(until([&]{return mpv.failedAt.isValid();}));
+            assert(until([&]{return mpv.process.state()==QProcess::NotRunning;}));
+            mpv.failedAt.invalidate();mpv.hover(timeout,session,17000);
+            assert(until([&]{return mpv.failedAt.isValid();}));
+            assert(until([&]{return mpv.process.state()==QProcess::NotRunning;}));
+            mpv.hover(normal,session,18000);assert(until([&]{return mpv.showing();}));
+            mpv.hover(normal,session,19000);assert(until([&]{return mpv.workerBusy;}));
+            // Destructor below terminates an active child; bounded existing teardown path.
+        }
+        qunsetenv("VLC_THUMBNAIL_BACKEND");
+        std::puts("libmpv protocol/persistence/latest-pending/intermediate-label/cache-order/leave/crash/timeout/cleanup tests passed");
         std::puts("Qt preview mapping/debounce/stale/cache/cancellation/lifecycle tests passed");
         std::puts("Diagnostics opt-in/rate-limit/controller/visibility/placement tests passed");
     }

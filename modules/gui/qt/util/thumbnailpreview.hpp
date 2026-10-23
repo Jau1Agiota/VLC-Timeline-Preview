@@ -83,6 +83,10 @@ private:
     void *job = nullptr;
     int launches = 0, workerRequests = 0;
     bool workerBusy = false, stopping = false;
+    bool mpvBackend = false;
+    QByteArray frameHeader;
+    quint64 lastPresented = 0;
+    void mpvResult(const QByteArray &, const QByteArray &);
     QString workerPath;
     Diagnostics trace;
     void diagnose(const QString &, const QString &, int intervalMs = 250) const;

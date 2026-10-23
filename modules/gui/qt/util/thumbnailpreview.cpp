@@ -109,7 +109,13 @@ Controller::Controller(QWidget *widget, Current check, Present update, Log logge
       helper(program.isEmpty() ? QCoreApplication::applicationDirPath() +
              QStringLiteral("/thumbnail-preview/thumbnail-helper.exe") : program), cache(sharedCache())
 {
-    debounce.setSingleShot(true); debounce.setInterval(delay);
+    const QByteArray backend = qgetenv("VLC_THUMBNAIL_BACKEND");
+    mpvBackend = backend == "libmpv";
+    if(mpvBackend && program.isEmpty())
+        helper = QString::fromLocal8Bit(qgetenv("VLC_MPV_HELPER"));
+    if(!backend.isEmpty() && backend != "libvlc" && !mpvBackend)
+        helper.clear(); // Explicit unknown selection fails closed; never silently substitutes.
+    debounce.setSingleShot(true); debounce.setInterval(mpvBackend ? 16 : delay);
     deadline.setSingleShot(true); deadline.setInterval(timeout);
     health.setInterval(100);
     idle.setSingleShot(true); idle.setInterval(30000);
@@ -117,7 +123,7 @@ Controller::Controller(QWidget *widget, Current check, Present update, Log logge
     connect(&debounce, &QTimer::timeout, this, [this] { launch(); });
     connect(&deadline, &QTimer::timeout, this, [this] {
         if(running.generation != generation) { stopProcess(); return; }
-        failed(QStringLiteral("helper timeout")); cancel();
+        failed(QStringLiteral("helper timeout")); cancel(); stopProcess();
     });
     connect(&health, &QTimer::timeout, this, [this] {
         if(!current(wanted.token) || identity(wanted.path) != wanted.identity) cancel(true);
@@ -141,7 +147,7 @@ Controller::Controller(QWidget *widget, Current check, Present update, Log logge
         JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits = {};
         limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE |
                                                  JOB_OBJECT_LIMIT_PROCESS_MEMORY;
-        limits.ProcessMemoryLimit = SIZE_T(512) * 1024 * 1024;
+        limits.ProcessMemoryLimit = SIZE_T(mpvBackend ? 1024 : 512) * 1024 * 1024;
         if(SetInformationJobObject(handle, JobObjectExtendedLimitInformation, &limits, sizeof(limits))) job = handle;
         else CloseHandle(handle);
     }
@@ -153,9 +159,9 @@ Controller::Controller(QWidget *widget, Current check, Present update, Log logge
         const bool assigned = job && child && AssignProcessToJobObject(HANDLE(job), child);
         if(assigned) SetPriorityClass(child, BELOW_NORMAL_PRIORITY_CLASS);
         if(child) CloseHandle(child);
-        if(!assigned) { failed(QStringLiteral("cannot contain helper in job")); cancel(); return; }
+        if(!assigned) { failed(QStringLiteral("cannot contain helper in job")); cancel(); stopProcess(); return; }
 #endif
-        if(running.generation != generation) stopProcess();
+        if(running.generation != generation && !mpvBackend) stopProcess();
         else send();
     });
     qApp->installEventFilter(this);
@@ -199,7 +205,7 @@ void Controller::cancel(bool clearCache)
         QStringLiteral("event=cancel generation=%1 elapsed_ms=%2").arg(generation).arg(wanted.clock.elapsed()), 0);
     ++generation; pending = false; wanted = Request();
     debounce.stop(); health.stop(); hide();
-    if(workerBusy || clearCache || closing) stopProcess();
+    if((workerBusy && !mpvBackend) || clearCache || closing) stopProcess();
     // Keep the deadline during Starting: started() also rejects canceled work.
     if(process.state() == QProcess::NotRunning) {
         deadline.stop(); if(!output.isEmpty()) QFile::remove(output);
@@ -249,10 +255,10 @@ void Controller::hover(const QString &path, const QString &token, qint64 ms)
     if(trace.isEnabled()) diagnose(QStringLiteral("hover"), QStringLiteral("requested_ms=%1 bucket_ms=%2 closing=%3 token_empty=%4 local_identity_ok=%5")
         .arg(ms).arg(time).arg(closing).arg(token.isEmpty()).arg(!file.isEmpty()));
     if(time < 0 || token.isEmpty() || file.isEmpty() || !current(token)) { cancel(); return; }
-    const QString source = token + QChar(0) + file;
+    const QString source = (mpvBackend ? QStringLiteral("libmpv") : QStringLiteral("libvlc")) + QChar(0) + token + QChar(0) + file;
     if(activePreview && activePreview != this) activePreview->cancel();
     activePreview = this;
-    if(sourceKey != source) { cancel(); stopProcess(); sourceKey = source; }
+    if(sourceKey != source) { cancel(); stopProcess(); sourceKey = source; lastPresented = 0; }
     activePreview = this;
     if(ownerWindow != host->window()) {
         if(ownerWindow) ownerWindow->removeEventFilter(this);
@@ -275,12 +281,13 @@ void Controller::hover(const QString &path, const QString &token, qint64 ms)
     wanted.clock.start();
     ++generation; wanted.path = path; wanted.token = token; wanted.identity = file;
     wanted.time = time; wanted.key = key; wanted.generation = generation;
-    pending = false; debounce.stop(); hide();
-    if(workerBusy) stopProcess();
+    pending = false; if(!mpvBackend) debounce.stop();
+    if(!mpvBackend) hide(); // Keep last image with its OWN request label during a newer seek.
+    if(workerBusy && !mpvBackend) stopProcess();
     QImage image = cache->get(key);
     if(!image.isNull()) {
         diagnose(QStringLiteral("cache-hit"), QStringLiteral("bucket_ms=%1").arg(time));
-        visible = true; present(image,time);
+        visible = true; lastPresented = wanted.generation; present(image,time);
         if(trace.isEnabled()) diagnose(QStringLiteral("performance"), QStringLiteral(
             "event=present cache=hit generation=%1 bucket_ms=%2 request_to_present_ms=%3 entries=%4 bytes=%5")
             .arg(generation).arg(time).arg(wanted.clock.elapsed()).arg(cache->count()).arg(cache->bytes()), 0);
@@ -289,7 +296,7 @@ void Controller::hover(const QString &path, const QString &token, qint64 ms)
     if(key == failedKey && failedAt.isValid() && failedAt.elapsed() < 2000) return;
     if(trace.isEnabled()) diagnose(QStringLiteral("performance"), QStringLiteral(
         "event=cache-miss generation=%1 bucket_ms=%2 debounce_ms=%3").arg(generation).arg(time).arg(debounce.interval()), 0);
-    pending = true; debounce.start();
+    pending = true; if(!mpvBackend || !debounce.isActive()) debounce.start();
 }
 void Controller::launch()
 {
@@ -305,13 +312,13 @@ void Controller::launch()
         return;
     }
     if(!current(wanted.token) || identity(wanted.path) != wanted.identity) { cancel(true); return; }
-    pending = false; running = wanted; stdoutData.clear();
+    pending = false; running = wanted; stdoutData.clear(); frameHeader.clear();
     idle.stop();
     if(!localPath(helper) || !QFileInfo(helper).isExecutable()) { failed(QStringLiteral("helper unavailable")); return; }
-    if(!localPath(QDir::tempPath())) { failed(QStringLiteral("temporary path is not a fixed local drive")); return; }
-    if(!directory) directory.reset(new QTemporaryDir(QDir::tempPath() + QStringLiteral("/vlc-preview-XXXXXX")));
-    if(!directory->isValid()) { failed(QStringLiteral("temporary directory unavailable")); return; }
-    output = directory->path() + QStringLiteral("/frame.bmp");
+    if(!mpvBackend && !localPath(QDir::tempPath())) { failed(QStringLiteral("temporary path is not a fixed local drive")); return; }
+    if(!mpvBackend && !directory) directory.reset(new QTemporaryDir(QDir::tempPath() + QStringLiteral("/vlc-preview-XXXXXX")));
+    if(!mpvBackend && !directory->isValid()) { failed(QStringLiteral("temporary directory unavailable")); return; }
+    output = mpvBackend ? QString() : directory->path() + QStringLiteral("/frame.bmp");
     if(!output.isEmpty()) QFile::remove(output);
     if(QFileInfo::exists(output)) { failed(QStringLiteral("temporary frame still locked")); return; }
     QProcessEnvironment environment = QProcessEnvironment::systemEnvironment();
@@ -325,19 +332,50 @@ void Controller::launch()
     workerBusy = true;
     if(process.state() == QProcess::Running) { send(); return; }
     workerRequests = 0; stopping = false; workerPath = wanted.path;
-    process.start(helper, QStringList() << QStringLiteral("--worker") << wanted.path << output << QStringLiteral("baseline"));
+    process.start(helper, mpvBackend ? (QStringList() << wanted.path) :
+                  (QStringList() << QStringLiteral("--worker") << wanted.path << output << QStringLiteral("baseline")));
 }
 void Controller::send()
 {
-    if(stopping || !workerBusy || running.generation != generation || workerPath != running.path) {
+    if(stopping || !workerBusy || (!mpvBackend && running.generation != generation) || workerPath != running.path) {
         stopProcess(); return;
     }
     const QByteArray request = QByteArray::number(++workerRequests) + ' ' + QByteArray::number(running.time) + " 5000\n";
-    if(process.write(request) != request.size()) { failed(QStringLiteral("worker input failed")); cancel(); }
+    if(process.write(request) != request.size()) { failed(QStringLiteral("worker input failed")); cancel(); stopProcess(); }
 }
 void Controller::drain()
 {
     process.setReadChannel(QProcess::StandardOutput);
+    if(mpvBackend) {
+        while(process.bytesAvailable()) {
+            if(stopping) { process.read(4096); stdoutData.clear(); frameHeader.clear(); continue; }
+            stdoutData.append(process.read(4096));
+            if(frameHeader.isEmpty()) {
+                const int newline = stdoutData.indexOf('\n');
+                if(newline < 0) {
+                    if(stdoutData.size() > 1024) { failed(QStringLiteral("mpv header limit")); cancel(); stopProcess(); return; }
+                    continue;
+                }
+                if(newline > 1024 || !workerBusy) { failed(QStringLiteral("unexpected mpv header")); cancel(); stopProcess(); return; }
+                frameHeader = stdoutData.left(newline); stdoutData.remove(0,newline+1);
+                const QJsonObject h = QJsonDocument::fromJson(frameHeader).object();
+                if(h.value(QStringLiteral("bytes")).toInt() != 320*180*4) {
+                    failed(QStringLiteral("mpv payload limit")); cancel(); stopProcess(); return;
+                }
+            }
+            if(stdoutData.size() >= 320*180*4) {
+                if(stdoutData.size() != 320*180*4) { failed(QStringLiteral("mpv trailing payload")); cancel(); stopProcess(); return; }
+                const QByteArray header = frameHeader, payload = stdoutData;
+                frameHeader.clear(); stdoutData.clear(); mpvResult(header,payload);
+            }
+        }
+        process.setReadChannel(QProcess::StandardError);
+        while(process.bytesAvailable()) {
+            const QByteArray detail = process.read(4096);
+            if(trace.isEnabled()) diagnose(QStringLiteral("mpv-worker"), QString::fromLocal8Bit(detail), 250);
+        }
+        return;
+    }
     while(process.bytesAvailable()) {
         const QByteArray chunk = process.read(4096);
         if(stopping) { stdoutData.clear(); continue; }
@@ -367,6 +405,40 @@ void Controller::finished(int code, QProcess::ExitStatus status)
         failed(QStringLiteral("worker exited without a candidate (%1/%2)").arg(code).arg(int(status)));
     workerBusy = false; stopping = false; workerRequests = 0;
     if(!output.isEmpty()) QFile::remove(output);
+    if(pending && !debounce.isActive()) QTimer::singleShot(0,this,[this] { launch(); });
+}
+void Controller::mpvResult(const QByteArray &header, const QByteArray &pixels)
+{
+    const QJsonObject h = QJsonDocument::fromJson(header).object();
+    if(!workerBusy || h.value(QStringLiteral("protocol")).toInt() != 1 ||
+       h.value(QStringLiteral("request_id")).toInt(-1) != workerRequests ||
+       h.value(QStringLiteral("requested_ms")).toDouble(-1) != running.time ||
+       h.value(QStringLiteral("width")).toInt() != 320 || h.value(QStringLiteral("height")).toInt() != 180 ||
+       !h.value(QStringLiteral("frame_timestamp_verified")).isBool() ||
+       h.value(QStringLiteral("frame_timestamp_verified")).toBool() || pixels.size() != 320*180*4) {
+        failed(QStringLiteral("invalid mpv candidate")); cancel(); stopProcess(); return;
+    }
+    deadline.stop(); workerBusy = false;
+    // In-flight intermediate frames may progress while the latest pending seek
+    // waits. Media/lifecycle must still match; monotonic generations reject older output.
+    const bool eligible = activePreview == this && !wanted.key.isEmpty() &&
+        running.token == wanted.token && running.identity == wanted.identity &&
+        running.generation > lastPresented && current(wanted.token) &&
+        identity(wanted.path) == wanted.identity;
+    if(eligible) {
+        QElapsedTimer copy; copy.start();
+        const QImage image = QImage(reinterpret_cast<const uchar *>(pixels.constData()),
+            320,180,320*4,QImage::Format_ARGB32).copy();
+        if(image.isNull()) { failed(QStringLiteral("mpv image allocation failed")); cancel(); stopProcess(); return; }
+        cache->put(running.key,image); visible = true; lastPresented = running.generation;
+        present(image,running.time);
+        if(trace.isEnabled()) diagnose(QStringLiteral("performance"), QStringLiteral(
+            "event=mpv-present generation=%1 wanted=%2 image_request_ms=%3 request_to_present_ms=%4 seek_render_ms=%5 render_ms=%6 copy_ms=%7 ready_ms=%8 frame_pts_verified=0")
+            .arg(running.generation).arg(generation).arg(running.time).arg(running.clock.elapsed())
+            .arg(h.value(QStringLiteral("seek_render_ms")).toDouble(-1))
+            .arg(h.value(QStringLiteral("render_ms")).toDouble(-1)).arg(copy.elapsed())
+            .arg(h.value(QStringLiteral("ready_ms")).toDouble(-1)), 0);
+    }
     if(pending && !debounce.isActive()) QTimer::singleShot(0,this,[this] { launch(); });
 }
 void Controller::result(const QByteArray &line)

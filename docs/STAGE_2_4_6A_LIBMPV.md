@@ -260,3 +260,48 @@ explicitly skips download/benchmarks/accuracy, while strict compilation, unit
 tests and package/readback checks still run. The overall workflow retains the
 fixture failure; no skipped benchmark is reported as passed. This permits
 current standalone binary delivery without weakening measurement prerequisites.
+
+## Final engine delivery
+
+Run [39957341975](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39957341975)
+built engine source `5c30cce3b7d7ac1dc3aebc9f0f39171205496472`, including the
+failed-presentation lock-release correction. Fixture generation and the Windows
+job passed: strict compile/link, native policy/five Python tests, all four
+benchmark cases and paired LibVLC comparisons, ZIP creation and independent
+checksum/ZIP readback. This is the current engine package, superseding the older
+links above without deleting them.
+
+[Download artifact 12503386782](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39957341975/artifacts/12503386782)
+contains `libmpv-stage246A-win64-5c30cce3b7d7.zip`.
+Inner ZIP SHA-256: `b76c701a202104b794e442d0dd27919c20faf612f2f56d46d2e0e7ca0f148b94`.
+Raw current-run evidence artifact: `12503750668`. Retention remains 14 days.
+Final documentation/analysis corrections may follow this source commit; no
+unbuilt change to the preview engine is implied by a later documentation SHA.
+
+Extract the Actions download, verify/extract its inner ZIP, then change into
+`libmpv-stage246A-win64`. Requires official 7-Zip. For downloaded unsigned scripts,
+these launches affect execution policy only in each child PowerShell process:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Get-Runtime.ps1 -Destination "$env:USERPROFILE\VLC-246A-Runtime"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Run-Preview.ps1 -Runtime "$env:USERPROFILE\VLC-246A-Runtime" -Media 'C:\Videos\movie.mkv' -Results "$env:USERPROFILE\VLC-246A-Test1"
+```
+
+Use new destination/results folders. This opens only the independent experimental
+window, with default OpenGL rendering and CPU decoding. Hover its strip, enter
+milliseconds in the console, or enter `quit`. Benchmark commands and the manual
+acceptance checklist are above and in the package README. Do not replace any VLC
+files or the Stage 2.4.5 runtime.
+
+
+The final engine run's four mpv image analyses completed with the same
+provisional median/p95 errors listed above (62 VFR, 101 ordinary, 79 long-GOP
+keyframe and 36 exact images). Comparison-image conversion failed with FFmpeg
+exit 234 before OCR; partial results/error details were preserved in accuracy
+artifact `12504240084`. Inspection found the scorer incorrectly demanded a
+320-pixel crop while the unchanged LibVLC helper permits narrower output. A real
+313×180 BMP reproduced FFmpeg's invalid-crop failure locally. Cropping the actual
+input width fixes that regression; six local Python tests pass, including real
+FFmpeg/Tesseract processing of the narrow BMP and rejection of a blank image as
+a timestamp. Each offline FFmpeg/Tesseract subprocess now has a 30-second limit.
+This analysis-only correction does not change either decoder or the executable.

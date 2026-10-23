@@ -26,7 +26,7 @@ def score(evidence,fixtures,output):
     for report in reports:
         try:
             score_report(report,evidence,fixtures,all_rows,summaries)
-        except (KeyError,ValueError,OSError,subprocess.CalledProcessError) as exc:
+        except (KeyError,ValueError,OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as exc:
             failure=dict(report=str(report.relative_to(evidence)),error=str(exc))
             failures.append(failure)
             print('::error title=Image analysis failed::'+json.dumps(failure))
@@ -48,9 +48,9 @@ def score_report(report,evidence,fixtures,all_rows,summaries):
         with tempfile.TemporaryDirectory(prefix='burned-pts-') as tmp:
             crop=Path(tmp)/'crop.png'
             subprocess.run(['ffmpeg','-nostdin','-v','error','-i',str(image),'-vf',
-                            'crop=320:30:0:0,scale=1280:120','-frames:v','1',str(crop)],check=True)
+                            'crop=iw:30:0:0,scale=1280:120','-frames:v','1',str(crop)],check=True,timeout=30)
             text=subprocess.check_output(['tesseract',str(crop),'stdout','--psm','7',
-                                          '-c','tessedit_char_whitelist=0123456789:.'],stderr=subprocess.DEVNULL,text=True).strip()
+                                          '-c','tessedit_char_whitelist=0123456789:.'],stderr=subprocess.DEVNULL,text=True,timeout=30).strip()
         observed=parse_pts(text)
         plausible=observed is not None and min(abs(t-observed) for t in valid)<=2
         row=dict(report=str(report.relative_to(evidence)),media=media,seek=source['seek'],id=record['id'],

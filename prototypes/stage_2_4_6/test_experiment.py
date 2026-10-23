@@ -2,6 +2,8 @@
 import contextlib
 import io
 import json
+import shutil
+import struct
 from pathlib import Path
 import tempfile
 import unittest
@@ -33,6 +35,24 @@ class MetricsTests(unittest.TestCase):
             data=json.loads((output/'accuracy.json').read_text())
             self.assertEqual(len(data['failures']),1)
             self.assertEqual(data['failures'][0]['report'],'comparison.json')
+
+    @unittest.skipUnless(shutil.which('ffmpeg') and shutil.which('tesseract'), 'offline OCR tools unavailable')
+    def test_narrow_libvlc_bmp_uses_actual_width(self):
+        # The unchanged LibVLC helper bounds width <=320, not width ==320.
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);evidence=root/'evidence';evidence.mkdir();fixtures=root/'fixtures';fixtures.mkdir()
+            (fixtures/'ordinary.mp4.frames.json').write_text(json.dumps(dict(frames=[dict(best_effort_timestamp_time='0.0')])))
+            (evidence/'comparison.json').write_text(json.dumps(dict(media='C:/ordinary.mp4',seek='libvlc-accurate',
+                records=[dict(id=1,bmp_saved=True,requested_ms=0)])))
+            width,height=313,180;stride=(width*3+3)&~3;size=stride*height
+            header=struct.pack('<2sIHHI',b'BM',54+size,0,0,54)+struct.pack('<IiiHHIIiiII',40,width,height,1,24,0,size,0,0,0,0)
+            (evidence/'frame-000001.bmp').write_bytes(header+(b'\xff'*(width*3)+b'\x00'*(stride-width*3))*height)
+            with contextlib.redirect_stdout(io.StringIO()):score(evidence,fixtures,root/'analysis')
+            result=json.loads((root/'analysis/accuracy.json').read_text())
+            self.assertEqual(result['failures'],[])
+            self.assertEqual(len(result['rows']),1)
+            self.assertFalse(result['rows'][0]['frame_timestamp_verified'])
+            self.assertFalse(result['rows'][0]['plausible_source_frame'])  # Blank is not a timestamp.
 
     def test_lock_identity(self):
         lock=json.loads((ROOT/'prototypes/stage_2_4_6/dependencies.json').read_text())

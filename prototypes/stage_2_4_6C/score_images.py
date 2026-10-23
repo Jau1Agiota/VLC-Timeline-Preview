@@ -98,6 +98,9 @@ def main():
             cases=[dict(request_ms=r['requested_ms'],scene=r['scene_id'],libvlc_scene=cut_reference[r['requested_ms']]) for r in paired],
             reference='isolated LibVLC start-time probe, not actual Qt click')
     print('::notice title=Stage 2.4.6C cut alignment::'+json.dumps(scene_comparison))
+    # GitHub retains at most ten notice annotations per step. Emit the decision
+    # summary first; complete per-image evidence remains in accuracy.json.
+    print('::notice title=Stage 2.4.6C burned PTS OCR::'+json.dumps(dict(summary=summary, failure_count=len(failures), failures=failures[:3])))
     by_media={}
     for engine in ('fast','exact','libvlc'):
         for media in sorted({r['media'] for r in rows if r['engine']==engine}):
@@ -109,7 +112,6 @@ def main():
     result = dict(scene_comparison=scene_comparison,by_media=by_media, scope='Synthetic H.264/Main10 HEVC burned-in PTS OCR; human/device review pending',
                   summary=summary, rows=rows, failures=failures, frame_pts_accuracy_gate_passed=False)
     (args.output/'accuracy.json').write_text(json.dumps(result, indent=2))
-    print('::notice title=Stage 2.4.6C burned PTS OCR::'+json.dumps(dict(summary=summary, failures=failures)))
     return bool(failures)
 
 

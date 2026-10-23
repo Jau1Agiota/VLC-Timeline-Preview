@@ -68,11 +68,13 @@ py .\replay.py --exe .\mpv-preview.exe --runtime C:\VLC-246A-Runtime --media C:\
 ```
 
 JSON includes accepted-input→handoff, pending-queue, command reply, restart,
-render-call CPU wall time, readback/flip, swap, BMP and stream-log cost. Final
+last/total render-call CPU wall time, last/total readback/flip, swap, BMP and stream-log cost. Final
 journal samples include superseded work. `restart_ms - queue_ms` estimates the
 seek-to-restart pipeline (I/O/demux/decode/synchronization), **not decoder-only
 CPU time**. `ui_message_age_ms` estimates queued Windows mouse-event age;
-stdin replay does not measure physical mouse/scanout latency. Render-call time
+stdin replay does not measure physical mouse/scanout latency. Session pump/paint
+totals and maxima expose main-thread work; render totals include redraws, not
+just the last call. These counters overlap other stages and must not be summed. Render-call time
 is not GPU execution time. Memory in visual mode is a shutdown snapshot, not a
 peak; session CPU includes all threads and idle/teardown time. Timing/capture
 per-frame CPU has Windows timer granularity. Counters/history are bounded (last

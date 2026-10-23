@@ -48,6 +48,8 @@ static char *media;
 static wchar_t result_dir[32768];
 static unsigned char pixels[W*H*4];
 static unsigned captures, completed, discarded, deduplicated;
+static double request_render_total, request_readback_total, pump_total, pump_max, paint_total, paint_max;
+static unsigned request_render_calls, pump_calls, paint_calls;
 /* visual=0: buffered numeric samples only; timing=1: streamed samples; capture=2: readback/BMP. */
 static int mode;
 static double issued_ms, render_call_ms, readback_ms, swap_ms, last_launch_ms;
@@ -57,7 +59,8 @@ static double displayed_target;
 static int last_mouse_x=-1;
 typedef struct {
     unsigned id; double requested, effective, queue, ack, restart, render, handoff;
-    double render_call, readback, swap, bmp, emit, cpu, position, input_age;
+    double render_call, readback, swap, bmp, emit, cpu, position, input_age, render_total, readback_total;
+    unsigned render_calls;
     SIZE_T private_bytes, working_set; int captured, shown;
     char hw[128];
 } FrameSample;
@@ -148,10 +151,10 @@ static void emit_sample(FILE *out,const FrameSample *r) {
     fprintf(out,"{\"type\":\"%s\",\"id\":%u,\"requested_ms\":%.3f,\"effective_seek_ms\":%.3f,"
         "\"ui_message_age_ms\":%.3f,\"queue_ms\":%.3f,\"command_ack_ms\":%.3f,\"restart_ms\":%.3f,\"render_ms\":%.3f,"
         "\"display_handoff_ms\":%.3f,\"render_call_ms\":%.3f,\"readback_ms\":%.3f,\"swap_ms\":%.3f,"
-        "\"bmp_ms\":%.3f,\"stream_log_ms\":%.3f,\"cpu_ms\":%s,\"private_bytes\":%s,\"working_set_bytes\":%s,"
+        "\"render_total_ms\":%.3f,\"readback_total_ms\":%.3f,\"render_calls\":%u,\"bmp_ms\":%.3f,\"stream_log_ms\":%.3f,\"cpu_ms\":%s,\"private_bytes\":%s,\"working_set_bytes\":%s,"
         "\"playback_position_ms\":%.3f,\"frame_timestamp_verified\":false,\"physical_display_verified\":false,"
         "\"bmp_saved\":%s,\"hwdec_current\":",r->shown?"displayed":"discarded",r->id,r->requested,r->effective,r->input_age,r->queue,r->ack,r->restart,r->render,
-        r->handoff,r->render_call,r->readback,r->swap,r->bmp,r->emit,cpu,private_bytes,
+        r->handoff,r->render_call,r->readback,r->swap,r->render_total,r->readback_total,r->render_calls,r->bmp,r->emit,cpu,private_bytes,
         working_set,r->position,r->captured?"true":"false");
     json_string(out,r->hw);fputs("}\n",out);
 }
@@ -162,6 +165,7 @@ static void record_frame(int shown) {
     r->queue=issued_ms-policy.active.emitted_ms;r->ack=command_ms-policy.active.emitted_ms;
     r->restart=restart_ms-policy.active.emitted_ms;r->render=render_ms-policy.active.emitted_ms;
     r->handoff=shown?display_ms-policy.active.emitted_ms:-1;r->render_call=render_call_ms;
+    r->render_total=request_render_total;r->readback_total=request_readback_total;r->render_calls=request_render_calls;
     r->readback=readback_ms;r->swap=shown?swap_ms:0;r->position=-1;snprintf(r->hw,sizeof(r->hw),"%s",reported_hw);
     if(mode) {
         PROCESS_MEMORY_COUNTERS_EX memory={0};memory.cb=sizeof(memory);
@@ -235,6 +239,7 @@ static void render_update(void) {
         }
     }
     if(software)render_call_ms=now_ms()-started;
+    if(policy.busy&&!policy.presented){request_render_total+=render_call_ms;request_readback_total+=readback_ms;request_render_calls++;}
     if(result<0){fail(mpv_error_string(result));return;}
     if(actual) {
         if(!ready){initial_frame=1;initial_render_ms=now_ms();if(!present_surface())return;initial_display_ms=now_ms();}
@@ -243,6 +248,7 @@ static void render_update(void) {
     maybe_ready();finish_candidate();
 }
 static void pump(void) {
+    double pump_started=now_ms();
     InterlockedExchange(&notified,0);
     if(InterlockedCompareExchange(&quit_input,0,0)){PostMessageW(window,WM_CLOSE,0,0);return;}
     if(InterlockedCompareExchange(&bad_input,0,0)){fail("invalid request or request limit");return;}
@@ -280,7 +286,7 @@ static void pump(void) {
     maybe_ready();render_update();finish_candidate();
     EnterCriticalSection(&lock);policy.latest=latest;LeaveCriticalSection(&lock);
     if(ready&&!policy.busy&&policy.latest.id>policy.active.id&&now_ms()-last_launch_ms>=16) {
-        begin_latest(&policy);effective_seek=fmin(policy.active.target_ms,fmax(0,duration_ms-1));
+        begin_latest(&policy);request_render_total=request_readback_total=0;request_render_calls=0;effective_seek=fmin(policy.active.target_ms,fmax(0,duration_ms-1));
         char target[64];snprintf(target,sizeof(target),"%.6f",effective_seek/1000);
         const char *command[]={"seek",target,seek_mode,NULL};
         issued_ms=now_ms();last_launch_ms=issued_ms;cpu_start=mode?cpu_ms():0;deadline=issued_ms+5000;arm(5000);
@@ -289,6 +295,7 @@ static void pump(void) {
         if(result<0)fail(mpv_error_string(result));
     }
     if(policy.busy&&now_ms()>deadline)fail("seek/render deadline exceeded; no valid candidate claimed");
+    double elapsed=now_ms()-pump_started;pump_calls++;pump_total+=elapsed;if(elapsed>pump_max)pump_max=elapsed;
 }
 static void *get_proc(void *unused,const char *name) {
     (void)unused; union { PROC proc;void *pointer; } value;
@@ -301,6 +308,7 @@ static void format_time(wchar_t *text,double milliseconds) {
     swprintf(text,40,L"%02u:%02u:%02u.%03u",value/3600000,(value/60000)%60,(value/1000)%60,value%1000);
 }
 static void paint_timeline(HWND hwnd) {
+    double paint_started=now_ms();
     PAINTSTRUCT ps;HDC out=BeginPaint(hwnd,&ps);HDC draw=CreateCompatibleDC(out);
     HBITMAP bitmap=CreateCompatibleBitmap(out,UI_WIDTH,112);HGDIOBJ old=SelectObject(draw,bitmap);
     RECT area={0,0,UI_WIDTH,112};HBRUSH background=CreateSolidBrush(RGB(25,29,36));FillRect(draw,&area,background);
@@ -330,6 +338,7 @@ static void paint_timeline(HWND hwnd) {
     BitBlt(out,0,H,UI_WIDTH,112,draw,0,0,SRCCOPY);
     SelectObject(draw,old);DeleteObject(bitmap);DeleteDC(draw);
     DeleteObject(background);DeleteObject(muted);DeleteObject(accent);EndPaint(hwnd,&ps);
+    double elapsed=now_ms()-paint_started;paint_calls++;paint_total+=elapsed;if(elapsed>paint_max)paint_max=elapsed;
 }
 static LRESULT CALLBACK procedure(HWND hwnd,UINT message,WPARAM wp,LPARAM lp) {
     if(message==WAKE||message==WM_TIMER){
@@ -433,8 +442,8 @@ cleanup:
         PROCESS_MEMORY_COUNTERS_EX memory={0};memory.cb=sizeof(memory);
         GetProcessMemoryInfo(GetCurrentProcess(),(PROCESS_MEMORY_COUNTERS *)&memory,sizeof(memory));
         fprintf(journal,"{\"type\":\"session\",\"mode\":%d,\"completed\":%u,\"discarded\":%u,\"deduplicated\":%u,"
-            "\"cpu_ms\":%.3f,\"wall_ms\":%.3f,\"private_bytes\":%.0f,\"working_set_bytes\":%.0f,\"exit_code\":%d}\n",
-            mode,completed,discarded,deduplicated,cpu_ms(),now_ms()-start_ms,(double)memory.PrivateUsage,(double)memory.WorkingSetSize,rc);
+            "\"cpu_ms\":%.3f,\"wall_ms\":%.3f,\"private_bytes\":%.0f,\"working_set_bytes\":%.0f,\"pump_calls\":%u,\"pump_total_ms\":%.3f,\"pump_max_ms\":%.3f,\"paint_calls\":%u,\"paint_total_ms\":%.3f,\"paint_max_ms\":%.3f,\"exit_code\":%d}\n",
+            mode,completed,discarded,deduplicated,cpu_ms(),now_ms()-start_ms,(double)memory.PrivateUsage,(double)memory.WorkingSetSize,pump_calls,pump_total,pump_max,paint_calls,paint_total,paint_max,rc);
         fclose(journal);
     }
     if(shutdown_event)SetEvent(shutdown_event);

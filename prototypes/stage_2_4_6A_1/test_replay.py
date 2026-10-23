@@ -22,3 +22,9 @@ class SummaryTests(unittest.TestCase):
         self.assertEqual(data['first_hover']['display_handoff_ms']['median_ms'],10)
         self.assertEqual(data['warm_random']['display_handoff_ms']['median_ms'],20)
         self.assertEqual(data['repeat_same']['display_handoff_ms']['median_ms'],30)
+
+    def test_independent_stage_intervals(self):
+        row=dict(id=1,queue_ms=3,restart_ms=20,render_ms=18,display_handoff_ms=21)
+        data=summarize([row],[dict(id=1,workload='first_hover')])
+        self.assertEqual(data['first_hover']['seek_pipeline_ms']['median_ms'],17)
+        self.assertEqual(data['first_hover']['render_to_handoff_ms']['median_ms'],3)

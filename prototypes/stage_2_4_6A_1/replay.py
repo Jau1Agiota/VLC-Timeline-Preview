@@ -12,7 +12,7 @@ import time
 from benchmark import stats, process_cpu_ms
 
 FIELDS=('display_handoff_ms','queue_ms','command_ack_ms','restart_ms','render_ms',
-        'render_call_ms','readback_ms','swap_ms','bmp_ms','stream_log_ms','ui_message_age_ms','seek_pipeline_ms','render_to_handoff_ms')
+        'render_call_ms','readback_ms','swap_ms','bmp_ms','stream_log_ms','ui_message_age_ms','render_total_ms','readback_total_ms','seek_pipeline_ms','render_to_handoff_ms')
 
 
 def summarize(rows,planned):

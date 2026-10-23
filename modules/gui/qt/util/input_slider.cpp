@@ -646,7 +646,7 @@ void SeekSlider::updateTooltipContext()
     QWidget *owner = window();
     MainInterface *main = p_intf->p_sys->p_mi;
     QWidget *fullscreen = main ? main->getFullscreenControllerWidget() : NULL;
-    mTimeTooltip->setPlacementContext(owner, TimelinePreview::popupContext(owner, fullscreen));
+    mTimeTooltip->setPlacementContext(owner, TimelinePreview::popupContext(owner, fullscreen), this);
 }
 
 void SeekSlider::leaveEvent( QEvent * )

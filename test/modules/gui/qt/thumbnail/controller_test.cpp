@@ -2,6 +2,7 @@
 #include "modules/gui/qt/util/thumbnailpreview.hpp"
 #include "modules/gui/qt/util/seekhover.hpp"
 #include "modules/gui/qt/util/timetooltip.hpp"
+#include "modules/gui/qt/util/playbackdiagnostics.hpp"
 #include <QApplication>
 #include <QWidget>
 #include <QTemporaryDir>
@@ -62,6 +63,31 @@ public:
         std::printf("::notice title=Click geometry::width=1280 handle=18 duration_ms=7200000 x=640 style_start=%d style_end=%d fast_ms=%d click_ms=%d delta_ms=%d; host Qt geometry model, not Windows device test\n",a,b,int(oldRequest),int(clickTime),int(oldRequest-clickTime));
         const auto point=SeekHover::map(160,9,320,18,9,311,30021,true);
         assert(bucket(point.timestampMs)==15000);
+        // Diagnostic observations must not accuse a paused input, cross media
+        // generations, or compare an unavailable/backward/late sample blindly.
+        PlaybackStability::Progress progress;
+        PlaybackStability::Sample s;s.playing=true;s.available=true;s.timeMs=1000;
+        assert(progress.observe(s,1000).contains(QStringLiteral("observation=baseline")));
+        s.timeMs=2000;s.audio=24;s.playedAudio=24;
+        assert(progress.observe(s,1000).contains(QStringLiteral("observation=audio-progress-video-static")));
+        s.timeMs=3000;s.decoded=24;
+        assert(progress.observe(s,1000).contains(QStringLiteral("observation=decode-progress-no-display")));
+        s.timeMs=4000;s.displayed=24;
+        assert(progress.observe(s,1000).contains(QStringLiteral("observation=display-counter-progress")));
+        s.playing=false;
+        assert(progress.observe(s,1000).contains(QStringLiteral("observation=not-playing")));
+        s.playing=true;
+        assert(progress.observe(s,1000).contains(QStringLiteral("observation=baseline")));
+        s.available=false;
+        assert(progress.observe(s,1000).contains(QStringLiteral("observation=stats-unavailable")));
+        s.available=true;
+        assert(progress.observe(s,1000).contains(QStringLiteral("observation=baseline")));
+        s.timeMs=1000;
+        assert(progress.observe(s,1000).contains(QStringLiteral("observation=seek-or-counter-reset")));
+        progress.reset();
+        const QString resetSample=progress.observe(s,4000);
+        assert(resetSample.contains(QStringLiteral("observation=baseline")) &&
+               resetSample.contains(QStringLiteral("gui_gap=1")));
         const QRect bounds(100,50,800,600);
         assert(popupRect(QSize(320,200),QPoint(101,600),bounds).left()==100);
         assert(popupRect(QSize(320,200),QPoint(899,600),bounds).right()==899);
@@ -81,6 +107,45 @@ public:
         tooltip.setPreview(QImage(),-1,QRect());assert(tooltip.height()<100);
         tooltip.setTip(QPoint(300,20),QStringLiteral("00:01"),QString());
         tooltip.setPreview(preview,1000,window);assert(tooltip.height()<100);
+        // Stage D: geometry observers must never see a new position with the
+        // previous timestamp-only dimensions during an image handoff.
+        class GeometryTooltip : public TimeTooltip {
+        public:
+            QList<QRect> moved;
+            bool event(QEvent *e) override {
+                if(e->type()==QEvent::Move) moved.append(geometry());
+                return TimeTooltip::event(e);
+            }
+        } geometryTip;
+        geometryTip.setTip(QPoint(400,550),QStringLiteral("00:01"),QString());
+        geometryTip.show();spin(5);geometryTip.moved.clear();
+        geometryTip.setPreview(preview,1000,window);
+        assert(!geometryTip.moved.isEmpty());
+        for(const QRect &seen : geometryTip.moved) assert(seen.size()==geometryTip.size());
+
+        // Cache/worker updates must use the live timeline top even if no mouse
+        // event followed a toolbar/layout move. Fullscreen keeps monitor bounds.
+        QWidget anchorOwner;anchorOwner.setGeometry(0,0,800,600);
+        QWidget timeline(&anchorOwner);timeline.setGeometry(0,500,800,18);
+        geometryTip.setPlacementContext(&anchorOwner,PopupContext::Windowed,&timeline);
+        geometryTip.setTip(QPoint(400,500),QStringLiteral("00:01"),QString());
+        geometryTip.setPreview(preview,1000,window);
+        const int beforeBottom=geometryTip.geometry().bottom();
+        timeline.move(0,470);
+        geometryTip.setPreview(preview,2000,window); // async/cache result; no setTip
+        assert(geometryTip.geometry().bottom()==beforeBottom-30);
+        const int anchoredY=geometryTip.y();
+        for(int i=0;i<100;++i) {
+            geometryTip.setTip(QPoint(i%2 ? 795 : 5,999),QStringLiteral("00:02"),QString());
+            geometryTip.setPreview(preview,2000+i,window);
+            assert(geometryTip.y()==anchoredY && window.contains(geometryTip.geometry()));
+        }
+        geometryTip.setPlacementContext(&anchorOwner,PopupContext::FullscreenController,&timeline);
+        geometryTip.setPreview(preview,4000,window);
+        assert(geometryTip.geometry().bottom()<timeline.mapToGlobal(QPoint()).y());
+        const int fullscreenY=geometryTip.y();
+        geometryTip.setPreview(preview,5000,window);assert(geometryTip.y()==fullscreenY);
+        geometryTip.hide();
         // Stage 2.4.4: the actual fullscreen controller is a distinct top-level
         // widget; ordinary small windows must never acquire fullscreen bounds.
         QWidget ordinaryOwner, fullscreenOwner;

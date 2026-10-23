@@ -33,6 +33,8 @@
 
 #include "qt.hpp"
 #include "util/singleton.hpp"
+#include "util/playbackdiagnostics.hpp"
+#include <QElapsedTimer>
 #include "adapters/variables.hpp"
 
 #include <QObject>
@@ -176,6 +178,10 @@ private:
     void UpdateVout();
     void UpdateAout();
     void UpdateStats();
+    void TracePlayback();
+    const bool stabilityDiagnostics = qgetenv("VLC_PLAYBACK_STABILITY_DEBUG") == "1";
+    QElapsedTimer stabilityClock;
+    PlaybackStability::Progress stabilityProgress;
     void UpdateCaching();
     void UpdateRecord();
     void UpdateProgramEvent();

@@ -40,6 +40,8 @@
 #include <QDir>
 #include <QSignalMapper>
 #include <QMessageBox>
+#include <QTimer>
+#include <QDateTime>
 
 #include <assert.h>
 
@@ -79,6 +81,15 @@ InputManager::InputManager( MainInputManager *mim, intf_thread_t *_p_intf) :
     f_cache      = -1.; /* impossible initial value, different from all */
     registerAndCheckEventIds( IMEvent::PositionUpdate, IMEvent::FullscreenControlPlanHide );
     registerAndCheckEventIds( PLEvent::PLItemAppended, PLEvent::PLEmpty );
+    if(stabilityDiagnostics) {
+        stabilityClock.start();
+        QTimer *heartbeat = new QTimer(this);
+        heartbeat->setInterval(1000);
+        connect(heartbeat, &QTimer::timeout, this, [this] { TracePlayback(); });
+        heartbeat->start();
+        msg_Dbg(p_intf, "playback-stability enabled pid=%s read_only=1 frame_pts_verified=0",
+                qUtf8Printable(QString::number(QCoreApplication::applicationPid())));
+    }
 }
 
 InputManager::~InputManager()
@@ -155,6 +166,10 @@ void InputManager::setInput( input_thread_t *_p_input )
    p_input is released once here */
 void InputManager::delInput()
 {
+    if(stabilityDiagnostics) {
+        stabilityProgress.reset();
+        msg_Dbg(p_intf, "playback-stability input-release input=%p", static_cast<void *>(p_input));
+    }
     if( !p_input ) return;
     msg_Dbg( p_intf, "IM: Deleting the input" );
 
@@ -639,6 +654,14 @@ void InputManager::UpdateVout()
     }
 
     /* */
+    if(stabilityDiagnostics) {
+        QStringList ids;
+        for(size_t i=0; i<i_vout; ++i)
+            ids << QString::number(reinterpret_cast<quintptr>(pp_vout[i]),16);
+        msg_Dbg(p_intf, "playback-stability vout-list input=%p count=%s ids=%s",
+            static_cast<void *>(p_input), qUtf8Printable(QString::number(qulonglong(i_vout))),
+            qUtf8Printable(ids.join(QLatin1Char(','))));
+    }
     emit voutListChanged( pp_vout, i_vout );
 
     /* */
@@ -750,6 +773,38 @@ void InputManager::setArt( input_item_t *p_item, QString fileUrl )
         input_item_SetArtURL( p_item , fileUrl.toUtf8().constData() );
         UpdateArt();
     }
+}
+
+// Diagnostic-only GUI heartbeat. No vout control, blocking stats lock, playback
+// writes, resets or seeks. InputManager owns p_input on this same GUI thread.
+void InputManager::TracePlayback()
+{
+    if(!stabilityDiagnostics) return;
+    const qint64 interval = stabilityClock.restart();
+    PlaybackStability::Sample sample;
+    int state = END_S;
+    if(p_input) {
+        state = var_GetInteger(p_input,"state");
+        sample.playing = state == PLAYING_S;
+        sample.timeMs = MS_FROM_VLC_TICK(var_GetInteger(p_input,"time"));
+        input_stats_t *stats = input_GetItem(p_input)->p_stats;
+        // Never wait for decoder/statistics threads. An unavailable sample
+        // invalidates delta comparisons instead of reporting a false plateau.
+        if(stats && var_InheritBool(p_input,"stats") && vlc_mutex_trylock(&stats->lock) == 0) {
+            sample.available = true;
+            sample.decoded = stats->i_decoded_video;
+            sample.displayed = stats->i_displayed_pictures;
+            sample.lost = stats->i_lost_pictures;
+            sample.audio = stats->i_decoded_audio;
+            sample.playedAudio = stats->i_played_abuffers;
+            vlc_mutex_unlock(&stats->lock);
+        }
+    }
+    const QString detail = stabilityProgress.observe(sample,interval);
+    msg_Dbg(p_intf, "playback-stability heartbeat wall_ms=%s input=%p state=%d time_ms=%s %s",
+        qUtf8Printable(QString::number(QDateTime::currentMSecsSinceEpoch())),
+        static_cast<void *>(p_input), state, qUtf8Printable(QString::number(sample.timeMs)),
+        qUtf8Printable(detail));
 }
 
 inline void InputManager::UpdateStats()

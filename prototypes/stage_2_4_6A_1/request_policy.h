@@ -25,6 +25,12 @@ static void begin_latest(Policy *p)
     p->active=p->latest; p->busy=1;
     p->command_done=p->seek_seen=p->restarted=p->frame_seen=p->presented=0;
 }
+/* Latest pending request wins scheduling. In-flight output may be shown with its
+ * OWN request label, but can never overwrite a newer completed image. */
+static int candidate_can_present(const Policy *p,unsigned displayed_id)
+{
+    return candidate_ready(p) && p->active.id>displayed_id;
+}
 /* Actual track boundaries; clamps for drawing, rejects hover outside hit region. */
 static int hover_target(int x,int left,int right,double duration,double *target)
 {

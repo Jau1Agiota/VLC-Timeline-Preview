@@ -47,7 +47,7 @@ static const char *hardware="no", *seek_mode="absolute+keyframes";
 static char *media;
 static wchar_t result_dir[32768];
 static unsigned char pixels[W*H*4];
-static unsigned captures, completed, discarded, deduplicated;
+static unsigned captures, completed, discarded, deduplicated, intermediate_frames;
 static double request_render_total, request_readback_total, pump_total, pump_max, paint_total, paint_max;
 static unsigned request_render_calls, pump_calls, paint_calls;
 /* visual=0: buffered numeric samples only; timing=1: streamed samples; capture=2: readback/BMP. */
@@ -60,7 +60,7 @@ static int last_mouse_x=-1;
 typedef struct {
     unsigned id; double requested, effective, queue, ack, restart, render, handoff;
     double render_call, readback, swap, bmp, emit, cpu, position, input_age, render_total, readback_total;
-    unsigned render_calls;
+    unsigned render_calls, latest_at_handoff;
     SIZE_T private_bytes, working_set; int captured, shown;
     char hw[128];
 } FrameSample;
@@ -148,19 +148,19 @@ static void emit_sample(FILE *out,const FrameSample *r) {
     char cpu[40]="null",private_bytes[40]="null",working_set[40]="null";
     if(mode){snprintf(cpu,sizeof(cpu),"%.3f",r->cpu);snprintf(private_bytes,sizeof(private_bytes),"%.0f",(double)r->private_bytes);
         snprintf(working_set,sizeof(working_set),"%.0f",(double)r->working_set);}
-    fprintf(out,"{\"type\":\"%s\",\"id\":%u,\"requested_ms\":%.3f,\"effective_seek_ms\":%.3f,"
+    fprintf(out,"{\"type\":\"%s\",\"id\":%u,\"latest_at_handoff\":%u,\"requested_ms\":%.3f,\"effective_seek_ms\":%.3f,"
         "\"ui_message_age_ms\":%.3f,\"queue_ms\":%.3f,\"command_ack_ms\":%.3f,\"restart_ms\":%.3f,\"render_ms\":%.3f,"
         "\"display_handoff_ms\":%.3f,\"render_call_ms\":%.3f,\"readback_ms\":%.3f,\"swap_ms\":%.3f,"
         "\"render_total_ms\":%.3f,\"readback_total_ms\":%.3f,\"render_calls\":%u,\"bmp_ms\":%.3f,\"stream_log_ms\":%.3f,\"cpu_ms\":%s,\"private_bytes\":%s,\"working_set_bytes\":%s,"
         "\"playback_position_ms\":%.3f,\"frame_timestamp_verified\":false,\"physical_display_verified\":false,"
-        "\"bmp_saved\":%s,\"hwdec_current\":",r->shown?"displayed":"discarded",r->id,r->requested,r->effective,r->input_age,r->queue,r->ack,r->restart,r->render,
+        "\"bmp_saved\":%s,\"hwdec_current\":",r->shown?"displayed":"discarded",r->id,r->latest_at_handoff,r->requested,r->effective,r->input_age,r->queue,r->ack,r->restart,r->render,
         r->handoff,r->render_call,r->readback,r->swap,r->render_total,r->readback_total,r->render_calls,r->bmp,r->emit,cpu,private_bytes,
         working_set,r->position,r->captured?"true":"false");
     json_string(out,r->hw);fputs("}\n",out);
 }
 static void record_frame(int shown) {
     FrameSample *r=&samples[(policy.active.id-1)%MAX_SAMPLES];memset(r,0,sizeof(*r));
-    r->shown=shown;r->id=policy.active.id;r->requested=policy.active.target_ms;r->effective=effective_seek;
+    r->shown=shown;r->latest_at_handoff=policy.latest.id;r->id=policy.active.id;r->requested=policy.active.target_ms;r->effective=effective_seek;
     r->input_age=policy.active.input_age_ms;
     r->queue=issued_ms-policy.active.emitted_ms;r->ack=command_ms-policy.active.emitted_ms;
     r->restart=restart_ms-policy.active.emitted_ms;r->render=render_ms-policy.active.emitted_ms;
@@ -193,12 +193,13 @@ static int present_surface(void) {
 static void finish_candidate(void) {
     if(!candidate_ready(&policy))return;
     EnterCriticalSection(&lock);policy.latest=latest;
-    if(!candidate_current(&policy)) {
+    if(!candidate_can_present(&policy,displayed_id)) {
         LeaveCriticalSection(&lock);discarded++;record_frame(0);return;
     }
     /* The lock prevents the stdin thread accepting a newer request during handoff. */
     if(!present_surface()){LeaveCriticalSection(&lock);return;}
     display_ms=now_ms();policy.presented=1;LeaveCriticalSection(&lock);
+    if(!candidate_current(&policy))intermediate_frames++;
     displayed_id=policy.active.id;displayed_target=policy.active.target_ms;
     record_frame(1);
 }
@@ -326,7 +327,7 @@ static void paint_timeline(HWND hwnd) {
     format_time(stamp,duration_ms);swprintf(label,180,L"%ls",stamp);TextOutW(draw,UI_WIDTH-110,7,label,(int)wcslen(label));
     if(!ready)swprintf(label,180,L"Opening video...");
     else if(target.id!=displayed_id){const wchar_t symbols[]=L"|/-\\";
-        swprintf(label,180,L"%lc Seeking latest target (image retained)",symbols[(GetTickCount64()/120)%4]);}
+        swprintf(label,180,L"%lc Seeking latest target; image request shown separately",symbols[(GetTickCount64()/120)%4]);}
     else swprintf(label,180,L"Ready - move across the blue timeline");
     SetTextColor(draw,RGB(160,205,235));TextOutW(draw,12,57,label,(int)wcslen(label));
     if(displayed_id){format_time(stamp,displayed_target);swprintf(label,180,L"Image request: %ls",stamp);}
@@ -441,9 +442,9 @@ cleanup:
         for(unsigned i=0;i<MAX_SAMPLES;++i)if(samples[i].id)emit_sample(journal,&samples[i]);
         PROCESS_MEMORY_COUNTERS_EX memory={0};memory.cb=sizeof(memory);
         GetProcessMemoryInfo(GetCurrentProcess(),(PROCESS_MEMORY_COUNTERS *)&memory,sizeof(memory));
-        fprintf(journal,"{\"type\":\"session\",\"mode\":%d,\"completed\":%u,\"discarded\":%u,\"deduplicated\":%u,"
+        fprintf(journal,"{\"type\":\"session\",\"mode\":%d,\"completed\":%u,\"discarded\":%u,\"intermediate_images\":%u,\"deduplicated\":%u,"
             "\"cpu_ms\":%.3f,\"wall_ms\":%.3f,\"private_bytes\":%.0f,\"working_set_bytes\":%.0f,\"pump_calls\":%u,\"pump_total_ms\":%.3f,\"pump_max_ms\":%.3f,\"paint_calls\":%u,\"paint_total_ms\":%.3f,\"paint_max_ms\":%.3f,\"exit_code\":%d}\n",
-            mode,completed,discarded,deduplicated,cpu_ms(),now_ms()-start_ms,(double)memory.PrivateUsage,(double)memory.WorkingSetSize,pump_calls,pump_total,pump_max,paint_calls,paint_total,paint_max,rc);
+            mode,completed,discarded,intermediate_frames,deduplicated,cpu_ms(),now_ms()-start_ms,(double)memory.PrivateUsage,(double)memory.WorkingSetSize,pump_calls,pump_total,pump_max,paint_calls,paint_total,paint_max,rc);
         fclose(journal);
     }
     if(shutdown_event)SetEvent(shutdown_event);

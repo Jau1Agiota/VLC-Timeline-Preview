@@ -28,3 +28,9 @@ class SummaryTests(unittest.TestCase):
         data=summarize([row],[dict(id=1,workload='first_hover')])
         self.assertEqual(data['first_hover']['seek_pipeline_ms']['median_ms'],17)
         self.assertEqual(data['first_hover']['render_to_handoff_ms']['median_ms'],3)
+
+    def test_honest_intermediate_not_counted_as_latest_target_success(self):
+        row=dict(id=1,latest_at_handoff=2,display_handoff_ms=20)
+        data=summarize([row],[dict(id=1,workload='warm_random')])
+        self.assertEqual(data['intermediate_presentations'],1)
+        self.assertEqual(data['missing_required_ids'],[1])

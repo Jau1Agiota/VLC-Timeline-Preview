@@ -48,17 +48,23 @@ teardown; abnormal termination can lose the buffered samples.
 
 `timing` streams measurements and collects extra CPU/memory/property diagnostics;
 `capture` adds readback and bounded BMP writing. Property replies are matched to
-request IDs and cannot block subsequent seeks. Capture/stream costs are measured
+request IDs for bookkeeping and cannot block subsequent seeks. A clock query
+can sample a later seek; ID matching does not make that clock the image PTS. Capture/stream costs are measured
 explicitly; diagnostic mode is not sold as uncontaminated visual performance.
 
 One active seek plus one latest pending value bounds decoder requests. Mouse
 positions are deduplicated, launches are spaced by at least 16 ms (first launch
 immediate), event draining yields after 64 events, and pending values coalesce.
-Superseded candidates are recorded but never replace the image. The conservative
-one-in-flight/event/frame gate is retained; it may still limit continuous-hover
-updates on expensive media. No arbitrary older frame is labeled as the newest
-request to create the appearance of speed. Real-movie starvation remains an
-acceptance risk if removing diagnostic overhead is insufficient.
+Completed in-flight candidates may be presented as explicitly labeled older
+intermediates while the latest target stays pending. Presentation IDs must increase;
+an old completion cannot overwrite a newer image. Only the newest pending target
+is decoded next. This is latest-pending-wins with monotonic presentation, not
+strict suppression of every frame behind the cursor. That distinction removes
+the deterministic continuous-motion starvation of the old strict gate. No older
+image is labeled as the latest target; raw samples record latest_at_handoff and
+intermediate_images. Required latest-target replay checks still fail if only an
+older intermediate was shown. One-in-flight serialization may still delay the
+latest target on expensive media; it is not a claim of MPC-QT parity.
 
 The 800-pixel dark seekbar has a blue target/progress marker, timestamp, seeking
 feedback and orange last-image-request marker. The 320×180 preview stays visible
@@ -79,7 +85,7 @@ Reviewed pinned MPC-QT commit `d2d0d15de6e9113df19a4d6e539897de2227a16d`:
   to a Qt FBO, and frameSwapped reports the swap. No mandatory glReadPixels/BMP
   capture exists on that ordinary preview path.
 - Unlike MPC-QT's direct queued seek/update model, our frame gate serializes
-  active seeks to retain conservative stale-result handling. Also WGL/Win32 is
+  active seeks, with ordered intermediate presentation and separate target/image labels. Also WGL/Win32 is
   not Qt's FBO/compositor; mpv/FFmpeg builds, configuration and drivers are not
   established as identical. Matching the media engine alone does not prove parity.
 

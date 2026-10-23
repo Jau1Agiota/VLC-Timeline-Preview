@@ -7,6 +7,8 @@ int main(void) {
     p.seek_seen=1;p.restarted=1;assert(!candidate_ready(&p)); /* no decoded frame */
     p.frame_seen=1;assert(candidate_ready(&p)&&candidate_current(&p));
     p.latest.id=2;p.latest.target_ms=1000;assert(candidate_ready(&p)&&!candidate_current(&p));
+    assert(candidate_can_present(&p,0)); /* Explicitly older intermediate, never labeled as target 2. */
+    assert(!candidate_can_present(&p,1));assert(!candidate_can_present(&p,2));
     for(unsigned i=3;i<1000;++i){p.latest.id=i;p.latest.target_ms=i;}
     begin_latest(&p);assert(p.active.id==999&&p.active.target_ms==999&&!candidate_ready(&p));
     p.command_done=p.seek_seen=p.restarted=p.frame_seen=1;p.presented=1;assert(!candidate_ready(&p));

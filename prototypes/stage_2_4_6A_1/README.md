@@ -24,8 +24,9 @@ required. No random DLL mirrors. The assembled private folder runs portably.
 
 The 800-pixel window has a blue hover track/marker, seeking feedback and an orange
 marker for the **last presented image request**. The 320×180 image stays visible
-while a different target is pending. Its request label does not change until a
-candidate is presented. Both labels are requests, not verified frame timestamps;
+while a different target is pending. Its request label changes only when a candidate is presented. Completed in-flight
+frames can appear as explicitly older intermediates; only the latest pending
+target is sought next, and an older completion cannot overwrite a newer image. Both labels are requests, not verified frame timestamps;
 keyframe output can be seconds early/late. Hover the actual track. The console
 also accepts milliseconds/newline, or `quit`. Close the window to flush results.
 
@@ -34,7 +35,8 @@ Modes (`-Mode`):
 - `visual` (default): OpenGL rendering, no GPU readback or BMP saving; no per-frame
   stdout/journal writes. Bounded numeric samples are flushed on normal exit.
 - `timing`: streams diagnostics and samples memory/CPU/properties, without GPU
-  readback/BMPs. Properties never gate subsequent seeks.
+  readback/BMPs. Properties never gate subsequent seeks; ID matching is bookkeeping, not proof
+  of a frame timestamp (the sampled clock can reflect a later seek).
 - `capture`: additionally reads back GL pixels and saves at most 128 BMPs. This
   deliberately perturbs timing; use only for image-content/accuracy investigation.
 
@@ -69,7 +71,7 @@ py .\replay.py --exe .\mpv-preview.exe --runtime C:\VLC-246A-Runtime --media C:\
 
 JSON includes accepted-input→handoff, pending-queue, command reply, restart,
 last/total render-call CPU wall time, last/total readback/flip, swap, BMP and stream-log cost. Final
-journal samples include superseded work. `restart_ms - queue_ms` estimates the
+journal samples identify intermediate images separately from current targets. `restart_ms - queue_ms` estimates the
 seek-to-restart pipeline (I/O/demux/decode/synchronization), **not decoder-only
 CPU time**. `ui_message_age_ms` estimates queued Windows mouse-event age;
 stdin replay does not measure physical mouse/scanout latency. Session pump/paint

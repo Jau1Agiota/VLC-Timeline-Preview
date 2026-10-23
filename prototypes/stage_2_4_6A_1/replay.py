@@ -29,7 +29,9 @@ def summarize(rows,planned):
     summary['planned_requests']=len(planned)
     summary['presented_requests']=len(rows)
     summary['missing_ids']=[p['id'] for p in planned if p['id'] not in by_id]
-    summary['missing_required_ids']=[p['id'] for p in planned if p['workload']!='rapid_intermediate' and p['id'] not in by_id]
+    summary['missing_required_ids']=[p['id'] for p in planned if p['workload']!='rapid_intermediate' and
+        (p['id'] not in by_id or by_id[p['id']].get('latest_at_handoff',p['id'])!=p['id'])]
+    summary['intermediate_presentations']=sum(r.get('latest_at_handoff',r['id'])!=r['id'] for r in rows)
     summary['frame_timestamp_verified']=False
     summary['physical_display_verified']=False
     return summary

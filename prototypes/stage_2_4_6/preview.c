@@ -40,7 +40,7 @@ static void arm(unsigned ms) { InterlockedExchange64(&expiration,ms?(LONGLONG)Ge
 static LARGE_INTEGER frequency;
 static Policy policy;
 static double start_ms, load_ms, duration_ms, command_ms, restart_ms, render_ms, display_ms;
-static double cpu_start, deadline, initial_render_ms, initial_display_ms, initialize_ms;
+static double effective_seek, cpu_start, deadline, initial_render_ms, initial_display_ms, initialize_ms;
 static int software, ready, file_loaded, load_restart, initial_frame, pts_done, hw_done, rc;
 static const char *hardware="no", *seek_mode="absolute+keyframes";
 static char *media;
@@ -135,11 +135,11 @@ static void record_frame(void) {
     snprintf(working_text,sizeof(working_text),"%.0f",(double)memory.WorkingSetSize);
     FILE *streams[]={stdout,journal};
     for(unsigned i=0;i<2;++i)if(streams[i]) {
-        fprintf(streams[i],"{\"type\":\"displayed\",\"id\":%u,\"requested_ms\":%.3f,\"command_ack_ms\":%.3f,"
+        fprintf(streams[i],"{\"type\":\"displayed\",\"id\":%u,\"requested_ms\":%.3f,\"effective_seek_ms\":%.3f,\"command_ack_ms\":%.3f,"
             "\"restart_ms\":%.3f,\"render_ms\":%.3f,\"display_handoff_ms\":%.3f,\"cpu_ms\":%.3f,"
             "\"private_bytes\":%s,\"working_set_bytes\":%s,\"playback_position_ms\":%.3f,"
             "\"frame_timestamp_verified\":false,\"physical_display_verified\":false,\"bmp_saved\":%s,\"hwdec_current\":",
-            policy.active.id,policy.active.target_ms,command_ms-policy.active.emitted_ms,
+            policy.active.id,policy.active.target_ms,effective_seek,command_ms-policy.active.emitted_ms,
             restart_ms-policy.active.emitted_ms,render_ms-policy.active.emitted_ms,
             display_ms-policy.active.emitted_ms,cpu_ms()-cpu_start,private_text,working_text,observed_pts,captured?"true":"false");
         json_string(streams[i],hw_current);fputs("}\n",streams[i]);fflush(streams[i]);
@@ -244,8 +244,8 @@ static void pump(void) {
     if(policy.busy&&policy.presented&&pts_done&&hw_done)record_frame();
     EnterCriticalSection(&lock);policy.latest=latest;LeaveCriticalSection(&lock);
     if(ready&&!policy.busy&&policy.latest.id>policy.active.id) {
-        begin_latest(&policy);policy.active.target_ms=fmin(policy.active.target_ms,fmax(0,duration_ms-1));
-        char target[64];snprintf(target,sizeof(target),"%.6f",policy.active.target_ms/1000);
+        begin_latest(&policy);effective_seek=fmin(policy.active.target_ms,fmax(0,duration_ms-1));
+        char target[64];snprintf(target,sizeof(target),"%.6f",effective_seek/1000);
         const char *command[]={"seek",target,seek_mode,NULL};
         cpu_start=cpu_ms();deadline=now_ms()+5000;arm(5000);
         int result=mpv_command_async(mpv,policy.active.id+100u,command);
@@ -340,7 +340,8 @@ int wmain(int argc,wchar_t **argv) {
     MSG event;while(GetMessageW(&event,NULL,0,0)>0){TranslateMessage(&event);DispatchMessageW(&event);}
 cleanup:
     arm(5001);
-    if(stdin_thread){CancelSynchronousIo(stdin_thread);WaitForSingleObject(stdin_thread,1000);CloseHandle(stdin_thread);}
+    InterlockedExchange(&quit_input,1);
+    if(stdin_thread){CancelSynchronousIo(stdin_thread);if(WaitForSingleObject(stdin_thread,1000)!=WAIT_OBJECT_0)TerminateProcess(GetCurrentProcess(),124);CloseHandle(stdin_thread);}
     if(render){mpv_render_context_set_update_callback(render,NULL,NULL);mpv_render_context_free(render);}
     if(mpv){mpv_set_wakeup_callback(mpv,NULL,NULL);mpv_terminate_destroy(mpv);}
     if(gl){wglMakeCurrent(NULL,NULL);wglDeleteContext(gl);}if(dc)ReleaseDC(image_window,dc);

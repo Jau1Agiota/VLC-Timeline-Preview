@@ -235,7 +235,8 @@ class Packaging(unittest.TestCase):
         self.assertNotRegex(workflow, r'contents: write|secrets\.|gh release|workflow_run:|pull_request:')
         uses = re.findall(r'uses: ([^\s#]+)', workflow)
         self.assertTrue(uses)
-        self.assertTrue(all(re.fullmatch(r'actions/[a-z-]+@[0-9a-f]{40}', use) for use in uses))
+        self.assertTrue(all(re.fullmatch(r'actions/[a-z-]+@[0-9a-f]{40}', use) or
+                            use == './.github/workflows/libmpv-preview-experiment.yml' for use in uses))
         self.assertIn('ref: ${{ github.workflow_sha }}', workflow)
         self.assertIn(p.SOURCE, workflow)
         self.assertIn('--expected-manifest', workflow)

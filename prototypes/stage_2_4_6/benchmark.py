@@ -18,6 +18,20 @@ def stats(values):
     return dict(n=len(values),median_ms=statistics.median(values),p95_ms=values[math.ceil(.95*len(values))-1])
 
 
+def process_cpu_ms(child):
+    # GetProcessTimes includes every thread; its granularity can make tiny samples zero.
+    import ctypes
+    from ctypes import wintypes
+    kernel=ctypes.WinDLL('kernel32',use_last_error=True)
+    function=kernel.GetProcessTimes
+    function.argtypes=[wintypes.HANDLE]+[ctypes.POINTER(wintypes.FILETIME)]*4
+    function.restype=wintypes.BOOL
+    values=[wintypes.FILETIME() for _ in range(4)]
+    if not function(int(child._handle),*[ctypes.byref(v) for v in values]):
+        raise ctypes.WinError(ctypes.get_last_error())
+    return sum((v.dwHighDateTime<<32)+v.dwLowDateTime for v in values[2:])/10000
+
+
 def run(executable,media,output,renderer,hardware,seek,samples,runtime):
     output=Path(output).resolve()
     if output.exists():raise ValueError('output must be new')
@@ -85,6 +99,9 @@ def run(executable,media,output,renderer,hardware,seek,samples,runtime):
         summary['hwdec_current']=sorted(set(r['hwdec_current'] for r in displayed))
         summary['frame_timestamp_verified']=False
         summary['physical_display_verified']=False
+        summary['session_process_cpu_ms']=process_cpu_ms(child)
+        summary['session_wall_ms']=(time.perf_counter()-started)*1000
+        summary['session_cpu_equivalent_cores']=summary['session_process_cpu_ms']/summary['session_wall_ms']
         child.stdin.write(b'quit\n');child.stdin.flush();child.wait(timeout=8)
         if child.returncode:raise ValueError('engine teardown failed')
     finally:

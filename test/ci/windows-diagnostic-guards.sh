@@ -115,7 +115,7 @@ class Packaging(unittest.TestCase):
         for name in p.BINARIES:
             file = self.staging / name
             file.parent.mkdir(parents=True, exist_ok=True)
-            file.write_bytes(binary + (p.MARKER+p.PERF_MARKER+p.MPV_MARKER if name.endswith('libqt_plugin.dll') else b'libvlc_init_ms'))
+            file.write_bytes(binary + (p.MARKER+p.PERF_MARKER+p.MPV_MARKER+p.EXACT_MARKER if name.endswith('libqt_plugin.dll') else b'libvlc_init_ms absolute+exact'))
         for name in ('COPYING.txt', 'thumbnail-preview/COPYING.txt',
                      'thumbnail-preview/plugins/codec/official.dll',
                      'thumbnail-preview/plugins/plugins.dat', 'plugins/plugins.dat',
@@ -124,12 +124,12 @@ class Packaging(unittest.TestCase):
             file.parent.mkdir(parents=True, exist_ok=True)
             file.write_bytes(b'fixture content\n')
 
-        if p.STAGE == '2.4.6B':
+        if p.STAGE in {'2.4.6B','2.4.6C'}:
             for name in ('Start-Preview.ps1', 'Setup-Runtime.ps1', 'Get-Runtime.ps1', 'dependencies.json', 'THIRD_PARTY.md'):
                 (self.staging / 'thumbnail-mpv' / name).write_text('fixture material')
 
     def test_no_unreviewed_mpv_runtime(self):
-        if p.STAGE != '2.4.6B': self.skipTest('stage-specific runtime guard')
+        if p.STAGE not in {'2.4.6B','2.4.6C'}: self.skipTest('stage-specific runtime guard')
         (self.staging / 'thumbnail-mpv' / 'libmpv-2.dll').write_bytes(b'not distributable')
         with self.assertRaises(ValueError): self.build()
 
@@ -239,7 +239,7 @@ class Packaging(unittest.TestCase):
         self.assertTrue(triggers.startswith('  workflow_dispatch:'))
         self.assertEqual(re.findall(r'(?m)^  ([a-z_]+):', triggers), ['workflow_dispatch'])
         self.assertIn("default: '2.4.3'", triggers)
-        self.assertIn("options: ['2.4.3', '2.4.4', '2.4.5', '2.4.6A', '2.4.6B']", triggers)
+        self.assertIn("options: ['2.4.3', '2.4.4', '2.4.5', '2.4.6A', '2.4.6B', '2.4.6C']", triggers)
         self.assertRegex(workflow, r'permissions:\n  contents: read\n')
         self.assertNotRegex(workflow, r'contents: write|secrets\.|gh release|workflow_run:|pull_request:')
         uses = re.findall(r'uses: ([^\s#]+)', workflow)

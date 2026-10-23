@@ -8,6 +8,7 @@ import re
 import subprocess
 import tempfile
 import sys
+import struct
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"stage_2_4_6B"))
 from test_worker import stats
 
@@ -20,6 +21,18 @@ def parse_pts(text):
     if minutes >= 60 or seconds >= 60:
         return None
     return ((hours*60+minutes)*60+seconds)*1000+ms
+
+
+def scene_id(path):
+    data=Path(path).read_bytes()
+    if len(data)>320*180*4+54 or len(data)<54 or data[:2]!=b'BM':raise ValueError('bounded BMP required')
+    width,height=struct.unpack_from('<ii',data,18)
+    offset=struct.unpack_from('<I',data,10)[0]
+    if width!=320 or abs(height)!=180 or struct.unpack_from('<H',data,28)[0]!=32:raise ValueError('unexpected scene probe BMP')
+    if not 54<=offset<=len(data)-320*180*4:raise ValueError('invalid scene pixel payload')
+    y=130 if height<0 else 179-130
+    sample=data[offset+(y*320+160)*4:][:3]
+    return 'white' if len(sample)==3 and min(sample)>220 else 'blue'
 
 
 def main():
@@ -64,6 +77,7 @@ def main():
                 plausible = observed is not None and min(abs(t-observed) for t in known[stem]) <= 2
                 rows.append(dict(engine=engine, media=media, image=image.name,
                     requested_ms=record['requested_ms'], observed_burned_ms=observed,
+                    workload=record.get('workload'),scene_id=scene_id(image) if media=='scene_cuts.mp4' else None,
                     ocr_text=text, plausible_source_time=plausible,
                     absolute_error_ms=abs(observed-record['requested_ms']) if plausible else None,
                     frame_timestamp_verified=False, human_review_pending=True))
@@ -76,6 +90,14 @@ def main():
         summary[engine] = dict(images=len(cases), plausible_ocr=len(errors),
             provisional_absolute_error=stats(errors) if errors else None,
             within_100_ms=sum(e <= 100 for e in errors), within_250_ms=sum(e <= 250 for e in errors), human_review_pending=True)
+    cut_reference={r['requested_ms']:r['scene_id'] for r in rows if r['engine']=='libvlc' and r['media']=='scene_cuts.mp4'}
+    scene_comparison={}
+    for engine in ('fast','exact'):
+        paired=[r for r in rows if r['engine']==engine and r['media']=='scene_cuts.mp4' and r['requested_ms'] in cut_reference and r['workload']!='rapid']
+        scene_comparison[engine]=dict(n=len(paired),matches=sum(r['scene_id']==cut_reference[r['requested_ms']] for r in paired),
+            cases=[dict(request_ms=r['requested_ms'],scene=r['scene_id'],libvlc_scene=cut_reference[r['requested_ms']]) for r in paired],
+            reference='isolated LibVLC start-time probe, not actual Qt click')
+    print('::notice title=Stage 2.4.6C cut alignment::'+json.dumps(scene_comparison))
     by_media={}
     for engine in ('fast','exact','libvlc'):
         for media in sorted({r['media'] for r in rows if r['engine']==engine}):
@@ -84,7 +106,7 @@ def main():
             by_media[engine+':'+media]=dict(n=len(cases),plausible=len(errors),error=stats(errors) if errors else None)
             print('::notice title=Stage 2.4.6C image cases::'+json.dumps(dict(engine=engine,media=media,
                 observations=[dict(requested_ms=r['requested_ms'],observed_ms=r['observed_burned_ms'],error_ms=r['absolute_error_ms']) for r in cases])))
-    result = dict(by_media=by_media, scope='Synthetic H.264/Main10 HEVC burned-in PTS OCR; human/device review pending',
+    result = dict(scene_comparison=scene_comparison,by_media=by_media, scope='Synthetic H.264/Main10 HEVC burned-in PTS OCR; human/device review pending',
                   summary=summary, rows=rows, failures=failures, frame_pts_accuracy_gate_passed=False)
     (args.output/'accuracy.json').write_text(json.dumps(result, indent=2))
     print('::notice title=Stage 2.4.6C burned PTS OCR::'+json.dumps(dict(summary=summary, failures=failures)))

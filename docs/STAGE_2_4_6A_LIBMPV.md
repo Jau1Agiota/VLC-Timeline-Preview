@@ -249,3 +249,14 @@ runner-provided FFmpeg/fonts when present, records their identity and bounds
 APT update/install fallback to 120/180 seconds with one retry. Tesseract fallback
 has the same bounds. These are dependency preparation changes, not decoder or
 measurement changes. No all-green workflow or completed accuracy gate is claimed.
+
+
+Run `39956694820` confirmed APT fallback exit 124 in fixture preparation (step
+12:53:06–12:56:13 UTC); Windows/analysis were skipped because the prerequisite
+failed. Exact download/service cause remains unavailable through cloud log
+retrieval. It is not a decoder/compiler failure. Windows compilation/package
+eligibility is now independent of fixture success: failed fixture preparation
+explicitly skips download/benchmarks/accuracy, while strict compilation, unit
+tests and package/readback checks still run. The overall workflow retains the
+fixture failure; no skipped benchmark is reported as passed. This permits
+current standalone binary delivery without weakening measurement prerequisites.

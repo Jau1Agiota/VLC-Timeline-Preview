@@ -29,6 +29,7 @@ jobs:
           overwrite: false
   windows:
     needs: fixtures
+    if: ${{ !cancelled() }}
     runs-on: windows-2025
     timeout-minutes: 30
     steps:
@@ -42,6 +43,7 @@ jobs:
           update: true
           install: mingw-w64-ucrt-x86_64-gcc
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        if: needs.fixtures.result == 'success'
         with:
           name: stage246-fixtures-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/fixtures
@@ -72,6 +74,7 @@ jobs:
           objdump -p out/mpv-preview.exe > out/pe-imports.txt
           objdump -p "$(cygpath -u "$RUNNER_TEMP")/libmpv-sdk/libmpv-2.dll" > out/runtime-imports.txt
       - name: Native Windows software-render benchmark
+        if: needs.fixtures.result == 'success'
         shell: pwsh
         run: |
           $root = "$env:RUNNER_TEMP/results"
@@ -123,7 +126,7 @@ jobs:
           overwrite: false
 
   accuracy:
-    needs: windows
+    needs: [windows, fixtures]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

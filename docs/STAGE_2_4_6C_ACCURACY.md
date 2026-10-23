@@ -1,4 +1,4 @@
-# Stage 2.4.6C accuracy investigation (work in progress)
+# Stage 2.4.6C accuracy investigation
 
 Base: PR #16 head 8161fa1a0e88efc0a2911255164ca22503c3d8f6.
 Stage B user-confirmed smooth/no blanks on RTX 3060/1080p Main10 HEVC is preserved
@@ -56,8 +56,8 @@ constant offset is added. Normal decoding uses presentation order, not packet DT
 Hybrid is not enabled: two seeks/updates may decode twice and visibly change an
 image. Measure fast/exact first rather than inventing a refinement schedule.
 No low-resolution stage, indexing, disk thumbnails in normal operation, or new
-playback engine is added. Actual performance/accuracy results and device setup
-will be recorded after the clean Windows build and native experiments.
+playback engine is added. Measured results and remaining failures are recorded in
+[STAGE_2_4_6C_RESULTS.md](STAGE_2_4_6C_RESULTS.md).
 
 ## Mapping reproduction and interpretation
 
@@ -82,6 +82,10 @@ custom input-fast-seek preferences, edit lists and unusual time origins may foll
 different semantics and remain separate test cases.
 
 ## Windows setup and backend/mode selection
+
+Exact mode remains experimental: nonzero-origin media have measured multi-second
+errors, and synthetic HEVC is slower. See the results report before comparison.
+The default fast mode remains the Stage B performance control.
 
 Extract the NEW portable ZIP into a new folder, never over an earlier VLC build.
 The artifact wraps an inner application ZIP plus SHA256SUMS/PACKAGE_MANIFEST.json.
@@ -177,7 +181,8 @@ at5ms cadence with one active/one latest pending. Diagnostic BMPs are saved only
 by the test harness. Rendering/pipe receipt are distinct from Qt paint or physical
 scanout. All exact runtime image timestamps remain unknown; OCR is independent,
 provisional and requires human review. Actual run IDs, checksums, raw evidence,
-measured results and remaining limitations follow after CI completes.
+measured results and remaining limitations are in
+[STAGE_2_4_6C_RESULTS.md](STAGE_2_4_6C_RESULTS.md).
 
 ## Verified local checks
 

@@ -55,6 +55,7 @@ public:
     void hover(const QString &path, const QString &mediaToken, qint64 milliseconds);
     void cancel(bool clearCache = false);
     void setDiagnosticLogger(Diagnostics::Log logger) { trace.setLogger(logger); }
+    bool exactSeeking() const { return mpvExact; }
     bool showing() const { return visible; }
 protected:
     bool eventFilter(QObject *, QEvent *) override;
@@ -83,7 +84,7 @@ private:
     void *job = nullptr;
     int launches = 0, workerRequests = 0;
     bool workerBusy = false, stopping = false;
-    bool mpvBackend = false;
+    bool mpvBackend = false, mpvExact = false;
     QByteArray frameHeader;
     quint64 lastPresented = 0;
     void mpvResult(const QByteArray &, const QByteArray &);

@@ -404,7 +404,28 @@ public:
             mpv.hover(normal,session,27000);assert(until([&]{return mpv.workerBusy;}));
             // Destructor below terminates an active child; bounded existing teardown path.
         }
+        qputenv("VLC_MPV_SEEK","exact");
+        {
+            published.clear();
+            Controller exact(&host,[](const QString &){return true;},
+                [&](const QImage &image,qint64 time){last=image;if(!image.isNull())published.append(time);},
+                [](const QString &){},helper,1,700);
+            exact.cancel(true);assert(exact.exactSeeking());
+            exact.hover(normal,session,1234);assert(until([&]{return exact.showing();}));
+            assert(published.last()==1234); // no 250ms floor
+            exact.hover(normal,session,1301);assert(until([&]{return exact.workerBusy;}));
+            exact.cancel();exact.hover(normal,session,7891);
+            assert(until([&]{return !published.isEmpty() && published.last()==7891;}));
+            assert(!published.contains(1301)); // canceled lifecycle may not resurface
+            exact.cancel(true);
+        }
+        qunsetenv("VLC_MPV_SEEK");
+        assert(SeekHover::clickTimestamp(4567,10000,7200123)==qint64(7200123.0*(4567/static_cast<float>(10000))+0.5));
+        assert(SeekHover::clickTimestamp(0,10000,7200123)==0);
+        assert(SeekHover::clickTimestamp(10000,10000,7200123)==7200123);
+        assert(SeekHover::clickTimestamp(1,0,7200123)==-1);
         qunsetenv("VLC_THUMBNAIL_BACKEND");
+        std::puts("Exact request precision/lifecycle fence/click-fraction mapping tests passed");
         std::puts("libmpv protocol/persistence/latest-pending/intermediate-label/cache-order/leave/crash/timeout/cleanup tests passed");
         std::puts("Qt preview mapping/debounce/stale/cache/cancellation/lifecycle tests passed");
         std::puts("Diagnostics opt-in/rate-limit/controller/visibility/placement tests passed");

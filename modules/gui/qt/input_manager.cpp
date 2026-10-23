@@ -787,17 +787,21 @@ void InputManager::TracePlayback()
         state = var_GetInteger(p_input,"state");
         sample.playing = state == PLAYING_S;
         sample.timeMs = MS_FROM_VLC_TICK(var_GetInteger(p_input,"time"));
-        input_stats_t *stats = input_GetItem(p_input)->p_stats;
-        // Never wait for decoder/statistics threads. An unavailable sample
-        // invalidates delta comparisons instead of reporting a false plateau.
-        if(stats && var_InheritBool(p_input,"stats") && vlc_mutex_trylock(&stats->lock) == 0) {
-            sample.available = true;
-            sample.decoded = stats->i_decoded_video;
-            sample.displayed = stats->i_displayed_pictures;
-            sample.lost = stats->i_lost_pictures;
-            sample.audio = stats->i_decoded_audio;
-            sample.playedAudio = stats->i_played_abuffers;
-            vlc_mutex_unlock(&stats->lock);
+        // Match the Statistics panel's item -> stats lock ordering, but never
+        // wait on either lock and do not call VLC variables while holding them.
+        input_item_t *item = input_GetItem(p_input);
+        if(var_InheritBool(p_input,"stats") && vlc_mutex_trylock(&item->lock) == 0) {
+            input_stats_t *stats = item->p_stats;
+            if(stats && vlc_mutex_trylock(&stats->lock) == 0) {
+                sample.available = true;
+                sample.decoded = stats->i_decoded_video;
+                sample.displayed = stats->i_displayed_pictures;
+                sample.lost = stats->i_lost_pictures;
+                sample.audio = stats->i_decoded_audio;
+                sample.playedAudio = stats->i_played_abuffers;
+                vlc_mutex_unlock(&stats->lock);
+            }
+            vlc_mutex_unlock(&item->lock);
         }
     }
     const QString detail = stabilityProgress.observe(sample,interval);

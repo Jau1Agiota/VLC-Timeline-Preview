@@ -337,7 +337,24 @@ public:
         }
         if(savedDebug.isNull()) qunsetenv("VLC_TIMELINE_HOVER_DEBUG");
         else qputenv("VLC_TIMELINE_HOVER_DEBUG",savedDebug);
+        qputenv("VLC_THUMBNAIL_BACKEND","unknown");
+        {
+            int errors=0;
+            Controller rejected(&host,[](const QString &){return true;},[](const QImage &,qint64){},
+                                [&](const QString &){++errors;},helper);
+            rejected.hover(normal,session,1000);spin(50);
+            assert(errors==1 && rejected.launches==0 && !rejected.showing());
+        }
         qputenv("VLC_THUMBNAIL_BACKEND","libmpv");
+        const QByteArray savedHelper=qgetenv("VLC_MPV_HELPER");qunsetenv("VLC_MPV_HELPER");
+        {
+            int errors=0;
+            Controller absentMpv(&host,[](const QString &){return true;},[](const QImage &,qint64){},
+                                 [&](const QString &){++errors;});
+            absentMpv.hover(normal,session,1000);spin(50);
+            assert(errors==1 && absentMpv.launches==0 && !absentMpv.showing());
+        }
+        if(savedHelper.isNull())qunsetenv("VLC_MPV_HELPER");else qputenv("VLC_MPV_HELPER",savedHelper);
         {
             published.clear(); last=QImage();
             Controller mpv(&host,[](const QString &){return true;},
@@ -377,6 +394,14 @@ public:
             assert(until([&]{return mpv.process.state()==QProcess::NotRunning;}));
             mpv.hover(normal,session,18000);assert(until([&]{return mpv.showing();}));
             mpv.hover(normal,session,19000);assert(until([&]{return mpv.workerBusy;}));
+            mpv.cancel();spin(120);mpv.hover(normal,session,20000);
+            assert(until([&]{return mpv.showing();}));const int beforeRapid=mpv.workerRequests;
+            for(int i=0;i<20;++i) {
+                mpv.hover(normal,session,21000+i*250);spin(5);assert(!last.isNull());
+            }
+            assert(until([&]{return !published.isEmpty() && published.last()==25750;}));
+            assert(mpv.workerRequests-beforeRapid<6); // bounded work, not 20 independent extractions
+            mpv.hover(normal,session,27000);assert(until([&]{return mpv.workerBusy;}));
             // Destructor below terminates an active child; bounded existing teardown path.
         }
         qunsetenv("VLC_THUMBNAIL_BACKEND");

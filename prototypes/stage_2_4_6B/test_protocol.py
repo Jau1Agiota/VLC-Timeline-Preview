@@ -6,6 +6,7 @@ import tempfile
 import sys
 import unittest
 from test_worker import exact, bmp, stats, compare_libvlc
+from score_images import parse_pts
 
 
 class Framing(unittest.TestCase):
@@ -48,6 +49,12 @@ for line in sys.stdin:
             self.assertEqual(len(list(base.glob('working-*.bmp'))), 3)
             self.assertEqual((base/'working-1.bmp').read_bytes()[2], 1)
             self.assertEqual((base/'working-3.bmp').read_bytes()[2], 3)
+
+    def test_burned_timestamp_parser(self):
+        self.assertEqual(parse_pts('00:00:29.900'), 29900)
+        self.assertEqual(parse_pts('PTS 01:02:03.456'), 3723456)
+        for text in ('00:60:01.000', '00:01:60.000', '00:00:01', 'garbled'):
+            self.assertIsNone(parse_pts(text))
 
     def test_percentiles(self):
         self.assertEqual(stats([9, 1, 2, 3]), {'n': 4, 'median_ms': 2.5, 'p95_ms': 9})

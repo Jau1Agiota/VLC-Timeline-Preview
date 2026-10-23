@@ -7,7 +7,7 @@ readonly CI_STAGE=${VLC_CI_STAGE:-2.4.3}
 case "$CI_STAGE" in
     2.4.3) CI_SOURCE_SHA=2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc ;;
     2.4.4) CI_SOURCE_SHA=e879ce656c218eddec13926f03b5f0615d14dc61 ;;
-    2.4.6B) CI_SOURCE_SHA=6a293ea143fdad49da58b71cf7a54ef814a489c2 ;;
+    2.4.6B) CI_SOURCE_SHA=5cfebdb9718b3477e17c5ffcb6d14a2876974350 ;;
     2.4.5) CI_SOURCE_SHA=d10df7f0a54326f122f54b2a2961a3e1b0ee1f66 ;;
     *) echo 'Unsupported diagnostic stage' >&2; exit 2 ;;
 esac

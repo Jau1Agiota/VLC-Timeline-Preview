@@ -20,7 +20,7 @@ import zipfile
 STAGE = os.environ.get("VLC_CI_STAGE", "2.4.3")
 SOURCE = {"2.4.3": "2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc",
           "2.4.4": "e879ce656c218eddec13926f03b5f0615d14dc61",
-          "2.4.6B": "6a293ea143fdad49da58b71cf7a54ef814a489c2",
+          "2.4.6B": "5cfebdb9718b3477e17c5ffcb6d14a2876974350",
           "2.4.5": "d10df7f0a54326f122f54b2a2961a3e1b0ee1f66"}[STAGE]
 IMAGE = "registry.videolan.org/vlc-debian-win64-3.0@sha256:b8e61c83d248cfb8fc3432d347f07f24de5a2ea6b0060cfe3053243e3674e6e7"
 CONTRIB = "910cc9cada6080dd777fbafb2ebdd0c24f702c30"

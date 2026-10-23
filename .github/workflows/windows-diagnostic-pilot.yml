@@ -25,7 +25,7 @@ jobs:
     env:
       VLC_CI_STAGE: ${{ inputs.stage || '2.4.3' }}
       VLC_CI_BENCHMARK_ONLY: ${{ inputs.benchmark_only && 'true' || 'false' }}
-      SOURCE_SHA: ${{ inputs.stage == '2.4.6B' && '6a293ea143fdad49da58b71cf7a54ef814a489c2' || inputs.stage == '2.4.5' && 'd10df7f0a54326f122f54b2a2961a3e1b0ee1f66' || inputs.stage == '2.4.4' && 'e879ce656c218eddec13926f03b5f0615d14dc61' || '2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc' }}
+      SOURCE_SHA: ${{ inputs.stage == '2.4.6B' && '5cfebdb9718b3477e17c5ffcb6d14a2876974350' || inputs.stage == '2.4.5' && 'd10df7f0a54326f122f54b2a2961a3e1b0ee1f66' || inputs.stage == '2.4.4' && 'e879ce656c218eddec13926f03b5f0615d14dc61' || '2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc' }}
     steps:
       - name: Set run-specific output directory
         shell: bash
@@ -152,6 +152,7 @@ jobs:
         shell: pwsh
         run: |
           $manifest=Get-Content delivery/PACKAGE_MANIFEST.json -Raw | ConvertFrom-Json
+          Write-Output ("::notice title=Stage 2.4.6B package::"+($manifest | ConvertTo-Json -Compress))
           $zip=Join-Path delivery $manifest.zip
           if((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $manifest.sha256){throw 'ZIP checksum mismatch'}
           7z x "-o$env:RUNNER_TEMP/app" $zip | Out-Null
@@ -160,7 +161,13 @@ jobs:
           & "$app/thumbnail-mpv/Setup-Runtime.ps1" -Destination "$env:RUNNER_TEMP/mpv-runtime"
           if(Test-Path C:/VulkanSDK){Get-ChildItem C:/VulkanSDK -Directory | ForEach-Object {$env:PATH="$($_.FullName)/Bin;$env:PATH"}}
           python prototypes/stage_2_4_6B/test_worker.py "$env:RUNNER_TEMP/mpv-runtime/mpv-thumbnail-worker.exe" fixtures results --libvlc "$app/thumbnail-preview/thumbnail-helper.exe"
-          if($LASTEXITCODE -ne 0){throw 'Native worker test failed'}
+          $testExit=$LASTEXITCODE
+          if(Test-Path results/results.json){
+            $r=Get-Content results/results.json -Raw | ConvertFrom-Json
+            $summary=@{first=$r.first;warm=$r.warm;failures=$r.failures;rows=$r.rows.Count;physical_display_verified=$false}
+            Write-Output ("::notice title=Stage 2.4.6B synthetic worker::"+($summary | ConvertTo-Json -Compress -Depth 5))
+          }
+          if($testExit -ne 0){throw 'Native worker test failed'}
           # Launch the fresh VLC executable without a GUI: this is not popup/device acceptance.
           $p=Start-Process "$app/vlc.exe" -ArgumentList '--no-one-instance','--intf=dummy','--vout=dummy','--aout=dummy','--play-and-exit',('"'+(Resolve-Path fixtures/ordinary.mp4).Path+'"') -PassThru
           if(-not $p.WaitForExit(45000)){$p.Kill();throw 'VLC process launch/exit timeout'}

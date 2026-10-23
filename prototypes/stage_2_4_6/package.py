@@ -20,7 +20,7 @@ def package(binary,output,repository):
     output.mkdir();stage=output/'libmpv-stage246A-win64';stage.mkdir()
     shutil.copy2(binary,stage/'mpv-preview.exe')
     for name in ('preview.c','request_policy.h','dependencies.json','Get-Runtime.ps1','Run-Preview.ps1',
-                 'benchmark.py','build.sh','README.md','THIRD_PARTY.md'):
+                 'benchmark.py','compare_libvlc.py','score_burned_pts.py','build.sh','README.md','THIRD_PARTY.md'):
         shutil.copy2(prototype/name,stage/name)
     shutil.copy2(root/'COPYING',stage/'COPYING')
     compiler=Path(binary).with_name('compiler.txt')

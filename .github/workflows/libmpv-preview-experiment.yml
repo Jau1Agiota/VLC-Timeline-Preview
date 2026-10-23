@@ -45,6 +45,12 @@ jobs:
         shell: pwsh
         run: |
           ./prototypes/stage_2_4_6/Get-Runtime.ps1 -Destination "$env:RUNNER_TEMP/libmpv-sdk"
+          $lock = Get-Content prototypes/stage_2_4_6/dependencies.json -Raw | ConvertFrom-Json
+          $archive = "$env:RUNNER_TEMP/vlc-sdk.7z"
+          Invoke-WebRequest -Uri $lock.comparison_vlc_sdk.url -OutFile $archive
+          if ((Get-FileHash -Algorithm SHA256 $archive).Hash.ToLowerInvariant() -ne $lock.comparison_vlc_sdk.sha256) { throw 'Comparison VLC SDK checksum mismatch' }
+          & "$env:ProgramFiles/7-Zip/7z.exe" x -y "-o$env:RUNNER_TEMP/vlc-sdk" $archive
+          if ($LASTEXITCODE -ne 0) { throw 'VLC SDK extraction failed' }
           Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors | ConvertTo-Json | Set-Content "$env:RUNNER_TEMP/cpu.json"
           if (Test-Path C:/VulkanSDK) { Get-ChildItem C:/VulkanSDK -Directory | ForEach-Object { "$($_.FullName)/Bin" } | Out-File -FilePath $env:GITHUB_PATH -Append }
       - name: Strict Windows compile and policy tests
@@ -56,6 +62,9 @@ jobs:
           bash prototypes/stage_2_4_6/build.sh "$(cygpath -u "$RUNNER_TEMP")/libmpv-sdk" out
           gcc -std=c11 -Wall -Wextra -Werror prototypes/stage_2_4_6/test_policy.c -o policy-test.exe
           ./policy-test.exe
+          PYTHONDONTWRITEBYTECODE=1 python -m unittest discover -s prototypes/stage_2_4_6 -p 'test_*.py' -v
+          sdk="$(cygpath -u "$RUNNER_TEMP")/vlc-sdk/vlc-3.0.24"
+          gcc -std=c11 -O2 -Wall -Wextra -Werror -municode -D__USE_MINGW_ANSI_STDIO=1 -I"$sdk/sdk/include" prototypes/stage_2_3/thumbnail_helper.c "$sdk/sdk/lib/libvlc.lib" -o "$sdk/thumbnail-helper.exe"
           objdump -p out/mpv-preview.exe > out/pe-imports.txt
           objdump -p "$(cygpath -u "$RUNNER_TEMP")/libmpv-sdk/libmpv-2.dll" > out/runtime-imports.txt
       - name: Native Windows software-render benchmark
@@ -69,6 +78,10 @@ jobs:
           }
           py prototypes/stage_2_4_6/benchmark.py --exe out/mpv-preview.exe --runtime "$env:RUNNER_TEMP/libmpv-sdk" --media "$env:RUNNER_TEMP/fixtures/long_gop.mkv" --output "$root/long-gop-exact" --renderer sw --seek exact --samples 30
           if ($LASTEXITCODE -ne 0) { throw 'Exact-seek comparison failed' }
+          foreach ($name in @('ordinary.mp4-keyframes','long_gop.mkv-keyframes','vfr.mp4-keyframes','long-gop-exact')) {
+            py prototypes/stage_2_4_6/compare_libvlc.py --helper "$env:RUNNER_TEMP/vlc-sdk/vlc-3.0.24/thumbnail-helper.exe" --mpv-benchmark "$root/$name/benchmark.json" --output "$root/$name-libvlc"
+            if ($LASTEXITCODE -ne 0) { throw "Unmodified Stage 2.4.5 comparison failed: $name" }
+          }
       - name: Package own executable and source (no third-party runtime)
         shell: pwsh
         run: py prototypes/stage_2_4_6/package.py out/mpv-preview.exe delivery .
@@ -101,6 +114,36 @@ jobs:
             ${{ runner.temp }}/results/
             ${{ runner.temp }}/cpu.json
             out/*.txt
+          if-no-files-found: warn
+          retention-days: 14
+          overwrite: false
+
+  accuracy:
+    needs: windows
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: libmpv-stage246A-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: stage246-fixtures-${{ github.run_id }}-${{ github.run_attempt }}
+          path: fixtures
+      - name: Read actual burned image timestamps (OCR, not player clocks)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg tesseract-ocr
+          python3 prototypes/stage_2_4_6/score_burned_pts.py evidence fixtures accuracy
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: libmpv-stage246A-accuracy-${{ github.run_id }}-${{ github.run_attempt }}
+          path: accuracy/
           if-no-files-found: warn
           retention-days: 14
           overwrite: false

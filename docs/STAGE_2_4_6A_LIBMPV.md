@@ -58,12 +58,12 @@ seek, playback restart and a new render frame, plus the latest ID at handoff.
 OpenGL handoff ends at SwapBuffers; software handoff ends at
 StretchDIBits/GdiFlush. Neither proves physical monitor scanout. The public
 render frame-info provides scheduling metadata, **not media PTS**. The sampled
-`video-pts` property after handoff is useful diagnostic evidence while paused,
+`time-pos` property after handoff is useful diagnostic evidence while paused,
 but is explicitly not independent proof of the saved image timestamp.
 `frame_timestamp_verified` and `physical_display_verified` remain false.
 
 Use burned-in PTS fixtures and read the BMP itself to measure actual image error.
-Keep `requested_ms`, `video_pts_property_ms` and independently observed burned PTS
+Keep `requested_ms`, `playback_position_ms` and independently observed burned PTS
 as separate columns. Keyframe seeks can be seconds early on long GOPs, or choose
 nearby keyframes; fast output must not be described as exact. An `exact` mode is
 provided solely as an explicit accuracy/latency comparison.

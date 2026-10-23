@@ -53,13 +53,15 @@ def run(executable,media,output,renderer,hardware,seek,samples,runtime):
         # Spread over nearly the full file; deterministic back-and-forth, not adjacency.
         fractions=(.03,.85,.22,.65,.07,.95,.40,.78,.12,.55)
         for index in range(samples):
+            sent=time.perf_counter()
             child.stdin.write(f'{duration*fractions[index%len(fractions)]:.3f}\n'.encode());child.stdin.flush()
-            row=until('displayed');row['workload']='first_hover' if index==0 else 'warm_random'
+            row=until('displayed');row['parent_response_ms']=(time.perf_counter()-sent)*1000;row['workload']='first_hover' if index==0 else 'warm_random'
         rapid=[]
         for cluster in range(6):
             before=time.perf_counter()
             for i in range(12):
                 target=duration*fractions[(i+cluster)%len(fractions)]
+                sent=time.perf_counter()
                 child.stdin.write(f'{target:.3f}\n'.encode());child.stdin.flush();time.sleep(.005)
             final_id=samples+(cluster+1)*12
             end=time.monotonic()+10
@@ -67,7 +69,7 @@ def run(executable,media,output,renderer,hardware,seek,samples,runtime):
                 row=until('displayed',10)
                 row['workload']='rapid_intermediate'
                 if row['id']==final_id:
-                    row['workload']='rapid_latest';rapid.append(row);break
+                    row['workload']='rapid_latest';row['parent_response_ms']=(time.perf_counter()-sent)*1000;rapid.append(row);break
                 if row['id']>final_id:raise ValueError('invalid request ordering')
             else:raise TimeoutError('latest rapid target')
             row['cluster_wall_ms']=(time.perf_counter()-before)*1000
@@ -75,11 +77,12 @@ def run(executable,media,output,renderer,hardware,seek,samples,runtime):
         for name in ('first_hover','warm_random','rapid_latest'):
             group=[r for r in displayed if r.get('workload')==name]
             summary[name]={field:stats([r[field] for r in group]) for field in
-                           ('display_handoff_ms','command_ack_ms','render_ms','cpu_ms')}
+                           ('display_handoff_ms','parent_response_ms','command_ack_ms','render_ms','cpu_ms')}
         summary['memory']={'peak_private_bytes':max(r['private_bytes'] for r in displayed),
                            'peak_working_set_bytes':max(r['working_set_bytes'] for r in displayed)}
-        summary['observed_property_errors_ms']=[abs(r['video_pts_property_ms']-r['requested_ms']) for r in displayed
-                                               if r['video_pts_property_ms']>=0]
+        summary['playback_position_deltas_ms']=[abs(r['playback_position_ms']-r['requested_ms']) for r in displayed
+                                               if r['playback_position_ms']>=0]
+        summary['hwdec_current']=sorted(set(r['hwdec_current'] for r in displayed))
         summary['frame_timestamp_verified']=False
         summary['physical_display_verified']=False
         child.stdin.write(b'quit\n');child.stdin.flush();child.wait(timeout=8)
@@ -92,6 +95,7 @@ def run(executable,media,output,renderer,hardware,seek,samples,runtime):
                   renderer=renderer,hardware_request=hardware,seek=seek,media=str(Path(media).resolve()),
                   summary=summary,records=records)
         (output/'benchmark.json').write_text(json.dumps(data,indent=2),encoding='utf-8')
+    print('::notice title=libmpv runtime::'+json.dumps(dict(environment=data['environment'],media=Path(media).name,runtime=[r for r in records if r['type'] in ('mpv-version','ffmpeg-version','mpv-configuration','opengl_renderer')]),separators=(',',':')))
     print('::notice title=libmpv benchmark::'+json.dumps(dict(media=Path(media).name,renderer=renderer,seek=seek,summary=summary),separators=(',',':')))
     return data
 

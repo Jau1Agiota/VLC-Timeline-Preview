@@ -37,7 +37,7 @@ no cache, pre-index or debounce. Older candidates cannot overwrite newer input.
 `command_ack_ms` is not a decoded frame. A candidate must also have a seek event,
 playback-restart event and a non-redraw/non-repeat render frame. `display_handoff_ms`
 ends after SwapBuffers (OpenGL) or StretchDIBits/GdiFlush (software); physical
-monitor scanout is **not verified**. `video_pts_property_ms` is a property sampled
+monitor scanout is **not verified**. `playback_position_ms` is a property sampled
 while paused after handoff, not independent proof of the BMP's PTS. Read burned-in
 PTS in known test footage, record observed milliseconds separately, and report
 absolute error. No accuracy gate is inferred from exit code or command reply.

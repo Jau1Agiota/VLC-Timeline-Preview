@@ -137,7 +137,7 @@ static void record_frame(void) {
     for(unsigned i=0;i<2;++i)if(streams[i]) {
         fprintf(streams[i],"{\"type\":\"displayed\",\"id\":%u,\"requested_ms\":%.3f,\"command_ack_ms\":%.3f,"
             "\"restart_ms\":%.3f,\"render_ms\":%.3f,\"display_handoff_ms\":%.3f,\"cpu_ms\":%.3f,"
-            "\"private_bytes\":%s,\"working_set_bytes\":%s,\"video_pts_property_ms\":%.3f,"
+            "\"private_bytes\":%s,\"working_set_bytes\":%s,\"playback_position_ms\":%.3f,"
             "\"frame_timestamp_verified\":false,\"physical_display_verified\":false,\"bmp_saved\":%s,\"hwdec_current\":",
             policy.active.id,policy.active.target_ms,command_ms-policy.active.emitted_ms,
             restart_ms-policy.active.emitted_ms,render_ms-policy.active.emitted_ms,
@@ -146,12 +146,14 @@ static void record_frame(void) {
     }
     policy.busy=0;arm(0);
 }
-static void present_surface(void) {
+static int present_surface(void) {
     if(software) {
         BITMAPINFO info={0};info.bmiHeader.biSize=sizeof(info.bmiHeader);info.bmiHeader.biWidth=W;
         info.bmiHeader.biHeight=-H;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
-        StretchDIBits(dc,0,0,W,H,0,0,W,H,pixels,&info,DIB_RGB_COLORS,SRCCOPY);GdiFlush();
-    } else {SwapBuffers(dc);mpv_render_context_report_swap(render);}
+        int lines=StretchDIBits(dc,0,0,W,H,0,0,W,H,pixels,&info,DIB_RGB_COLORS,SRCCOPY);
+        if(lines==0||lines==(int)GDI_ERROR||!GdiFlush()){fail("GDI handoff failed");return 0;}
+    } else {if(!SwapBuffers(dc)){fail("OpenGL swap failed");return 0;}mpv_render_context_report_swap(render);}
+    return 1;
 }
 static void finish_candidate(void) {
     if(!candidate_ready(&policy))return;
@@ -161,12 +163,12 @@ static void finish_candidate(void) {
         policy.busy=0;arm(0);return;
     }
     /* The lock prevents the stdin thread accepting a newer request during handoff. */
-    present_surface();
+    if(!present_surface())return;
     display_ms=now_ms();policy.presented=1;LeaveCriticalSection(&lock);
     observed_pts=-1;pts_done=hw_done=0;
-    if(mpv_get_property_async(mpv,100000u+policy.active.id,"video-pts",MPV_FORMAT_DOUBLE)<0||
+    if(mpv_get_property_async(mpv,100000u+policy.active.id,"time-pos",MPV_FORMAT_DOUBLE)<0||
        mpv_get_property_async(mpv,200000u+policy.active.id,"hwdec-current",MPV_FORMAT_STRING)<0)fail("property query failed");
-    wchar_t caption[200];swprintf(caption,200,L"libmpv experiment | request %.0f ms | keyframe output (PTS unverified)",policy.active.target_ms);
+    wchar_t caption[200];swprintf(caption,200,L"libmpv | %.0f ms | %ls (PTS unverified)",policy.active.target_ms,!strcmp(seek_mode,"absolute+exact")?L"exact":L"keyframes");
     SetWindowTextW(window,caption);
 }
 static void maybe_ready(void) {
@@ -203,7 +205,7 @@ static void render_update(void) {
     }
     if(result<0){fail(mpv_error_string(result));return;}
     if(actual) {
-        if(!ready){initial_frame=1;initial_render_ms=now_ms();present_surface();initial_display_ms=now_ms();}
+        if(!ready){initial_frame=1;initial_render_ms=now_ms();if(!present_surface())return;initial_display_ms=now_ms();}
         else if(policy.busy&&!policy.presented){policy.frame_seen=1;render_ms=now_ms();}
     }
     maybe_ready();finish_candidate();
@@ -287,9 +289,12 @@ int wmain(int argc,wchar_t **argv) {
     if(!n||n>=32768||path[1]!=L':')return 2;
     wchar_t root[]={path[0],L':',L'\\',0};DWORD attributes=GetFileAttributesW(path);
     if(GetDriveTypeW(root)!=DRIVE_FIXED||attributes==INVALID_FILE_ATTRIBUTES||(attributes&FILE_ATTRIBUTE_DIRECTORY))return 2;
+    const wchar_t *ext=wcsrchr(path,L'.');
+    if(!ext||(_wcsicmp(ext,L".mp4")&&_wcsicmp(ext,L".mkv")))return 2;
     media=utf8(path);if(!media)return 3;
     n=GetFullPathNameW(argv[2],32768,result_dir,NULL);
-    if(!n||n>=32000||!CreateDirectoryW(result_dir,NULL)){free(media);return 2;}
+    if(result_dir[1]==L':'){root[0]=result_dir[0];}
+    if(!n||n>=32000||result_dir[1]!=L':'||GetDriveTypeW(root)!=DRIVE_FIXED||!CreateDirectoryW(result_dir,NULL)){free(media);return 2;}
     swprintf(path,32768,L"%ls\\events.jsonl",result_dir);
     HANDLE output=CreateFileW(path,GENERIC_WRITE,0,NULL,CREATE_NEW,FILE_ATTRIBUTE_NORMAL,NULL);
     if(output==INVALID_HANDLE_VALUE){free(media);return 3;}

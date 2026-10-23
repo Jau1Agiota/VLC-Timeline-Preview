@@ -41,13 +41,19 @@ jobs:
             fi
           fi
           python3 prototypes/stage_2_4_6A_1/generate_hevc_fixture.py "$RUNNER_TEMP/hevc-fixture" --duration 12 --font "$font"
+          cp prototypes/stage_2_4_6A_1/FONT_NOTICES.txt "$RUNNER_TEMP/hevc-fixture/FONT_NOTICES.txt"
           echo 'available=true' >> "$GITHUB_OUTPUT"
           echo '::notice title=Fixture::12-second synthetic 1920x1080 HEVC Main10; not the user movie, not HDR.'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: steps.generate.outputs.available == 'true'
         with:
           name: visual-hevc-fixture-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/hevc-fixture/
+          path: |
+            ${{ runner.temp }}/hevc-fixture/hevc10.mp4
+            ${{ runner.temp }}/hevc-fixture/hevc10.mkv
+            ${{ runner.temp }}/hevc-fixture/hevc10.mp4.frames.json
+            ${{ runner.temp }}/hevc-fixture/manifest.json
+            ${{ runner.temp }}/hevc-fixture/FONT_NOTICES.txt
           retention-days: 14
           overwrite: false
       - name: Preserve fixture dependency diagnostics

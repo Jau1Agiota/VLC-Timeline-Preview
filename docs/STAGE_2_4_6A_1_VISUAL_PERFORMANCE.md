@@ -101,7 +101,7 @@ FFmpeg and static dependencies. See THIRD_PARTY.md and the Stage 2.4.6A report.
 ## Validation and performance protocol
 
 Local GCC 6.4.0 Windows x64 strict compile/link, policy/geometry tests and Python
-regressions pass. Native Windows build/replay outcomes will be recorded below.
+regressions pass. Native Windows build/replay outcomes are recorded below.
 No real-movie, RTX GPU, physical display, listening or foreground-VLC coexistence
 results have been performed in this cloud environment.
 
@@ -154,3 +154,100 @@ Acceptance is **pending user Windows testing**: smooth rapid hovering on the sam
 movie, satisfactory 320×180 quality, honest labels, bounded resources/cleanup and
 measured first/warm/rapid latency. If pipeline/render/queue times remain large,
 report which dominates. No success claim or VLC integration until approval.
+
+## Actual final CI results (2026-10-23)
+
+[Run 39974939100](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39974939100)
+completed successfully: official-repository fixture preparation, native Windows
+x64 strict compilation of both programs, policy/geometry/Python tests, all four
+same-file replay cases, ZIP readback/SHA-256 verification, and provisional
+burned-image analysis. Source: `f5760207c98691d2631c34f1240ed9d3af7f10b0`.
+No VLC build was invoked. Local GCC 6.4.0 compile/link and ten Python tests also
+passed, plus ShellCheck 0.10.0, actionlint 1.7.7 (including inline ShellCheck) and
+42 existing CI guard tests (one intentional stage-specific skip). The optional
+local OCR regression passed with actual FFmpeg/Tesseract; native unit tests may
+skip it if those tools are absent, independently of the successful Ubuntu OCR job.
+
+The input was a **12-second synthetic SDR 1920×1080 HEVC Main 10 MKV**, decoded on
+CPU and rendered with libmpv's **software** API on GitHub-hosted Windows 2025.
+It is not the user's movie or an RTX/OpenGL test. Both sources used the same
+compiler, SDK, file and input schedule. Six paced targets, three identical-target
+requests and two 12-request bursts gave 33 inputs/case. Eleven paced/final targets
+were required; all were presented while still current. There were no replay or
+process-exit failures. These are smoke-test sample sizes, not a device benchmark.
+
+| Case | First hover (n=1) | Warm handoff median / p95 (n=5) | Rapid final handoff median / p95 (n=2) |
+|---|---:|---:|---:|
+| A.1 visual | 25.384 ms | 20.099 / 26.391 ms | 42.008 / 53.468 ms |
+| A.1 timing | 27.889 ms | 20.262 / 27.086 ms | 32.308 / 35.928 ms |
+| A.1 capture | 29.848 ms | 21.221 / 27.128 ms | 39.378 / 51.251 ms |
+| Unchanged A, capture | 26.191 ms | 20.417 / 25.953 ms | 40.449 / 53.959 ms |
+
+**No meaningful warm-seek speedup is demonstrated here.** Rapid differences at
+n=2 are not reliable evidence of superiority. These handoffs are GDI calls, not
+physical scanout/perceived responsiveness. Order/cache/scheduling effects remain.
+Opening/loader timings are retained separately in each raw benchmark.json.
+
+A.1 visual showed 18 images, including seven explicitly older intermediate
+presentations; timing showed 17/six; capture showed 18/seven. The old strict gate
+showed 11/no intermediates. Only the newest pending seek was retained. Newer
+completed images were protected by the tested monotonically increasing ID guard.
+This demonstrates the functional starvation correction under the replay; it does
+not establish subjective smoothness on the user's movie. Every case still passed
+the required latest-target checks, so old intermediates were not counted as
+successful final-target responses.
+
+For visual warm samples, the seek-to-restart pipeline median/p95 was
+19.894/26.213 ms; total render-call wall time 1.223/1.820 ms; readback, BMP and
+stream-log costs were zero. Capture BMP cost was 1.527/1.761 ms and stream output
+0.098/0.103 ms. These overlapping counters must not be summed. The pipeline
+rather than GUI rendering dominates this **software synthetic** case; it does
+not establish decoder-only CPU time or the RTX bottleneck. No GL readback was
+exercised on this runner. Real-movie GPU/core/queue bottlenecks remain unconfirmed.
+
+Process CPU, session GUI pump/paint totals/maxima, resource snapshots, metadata,
+all request records and diagnostic images are preserved in the raw evidence.
+GPU utilization is **unmeasured here**, not zero. The normal-mode memory field
+is a shutdown snapshot after decoder teardown, not active/peak usage. Use the
+external sampler/Windows process monitoring for actual-device resource analysis.
+GitHub truncates large Checks notices at 4096 characters, so some session fields
+are absent there: full artifact JSON is authoritative. Cloud artifact retrieval
+returned HTTP 403; no missing resource values were invented from that limitation.
+
+Provisional OCR: new capture 18/18 source-plausible images, old capture 11/11.
+Both had **1,400 ms median / 7,800 ms p95 absolute error** against requested time.
+The long GOP intentionally exposes coarse keyframe selection; normal/timing
+produce no BMPs and therefore no direct image-accuracy score. Human review and
+normal-mode physical recordings remain pending. No accuracy gate is declared
+passed, and neither a command reply nor a sampled time-pos is treated as PTS.
+
+Full raw results/images: [artifact 12511251280](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39974939100/artifacts/12511251280).
+Provisional OCR: [artifact 12510842022](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39974939100/artifacts/12510842022).
+Fixture/manifest: artifact `12510078643` on that run. CI's DejaVu test-font
+notices are in `prototypes/stage_2_4_6A_1/FONT_NOTICES.txt`; future fixture exports
+include that notice and omit the copied font file. Existing artifacts remain
+preserved. The application ZIP never includes font software. This notice/export-filter-only
+follow-up was statically checked; the executed application/replay/accuracy source
+remains the pinned commit identified above. Extracted complete Checks
+subobjects, with truncation explicitly marked, are committed in
+`prototypes/stage_2_4_6A_1/evidence/ci-39974939100.json`.
+
+## Download and next decision
+
+[Download the Windows x64 package](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39974939100/artifacts/12510462696)
+(GitHub login; 14-day retention). Extract the Actions download and then its inner
+`libmpv-stage246A1-win64-f5760207c986.zip` into a new folder.
+Inner ZIP SHA-256:
+`4656cbe15fddfb44751d292c692831eeede4d7a31fc7ab838509bc556ccef518`.
+The manifest identifies built source `f5760207c98691d2631c34f1240ed9d3af7f10b0`;
+later documentation/evidence and fixture-export notice updates do not change that executable. Reuse the
+existing verified runtime and launch visual mode using the command above.
+The EXE, own source/build/test procedure, runtime lock, setup and comparison
+scripts are provided; the third-party DLL remains a separate verified setup.
+
+Recommendation: test the same HEVC movie in normal visual mode, then collect
+normal/timing/capture and optional old-binary comparisons. If latency remains
+250–527 ms, inspect pending queue versus seek/restart versus cumulative GL work,
+readback, swap and GUI work before changing decoding or declaring success.
+**No claim of MPC-QT parity, real-movie speed improvement, RTX validation or VLC
+integration is made.** Stop for the user's physical Windows results and approval.

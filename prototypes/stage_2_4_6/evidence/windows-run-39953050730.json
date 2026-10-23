@@ -1,0 +1,903 @@
+{
+  "run_url": "https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39953050730",
+  "source_commit": "c5cbbb9d869102e46ab87fe53dd9d8a6838af390",
+  "scope": "GitHub Checks summaries; complete raw JSONL/BMPs in Actions evidence artifact; Windows benchmark job passed, OCR job failed",
+  "measurements": [
+    {
+      "title": "Stage 2.4.5 same-file comparison",
+      "data": {
+        "media": "long_gop.mkv",
+        "note": "LibVLC accurate seek vs explicit mpv seek mode; identical file/targets within sub-ms rounding; response not screen latency",
+        "summary": {
+          "first_hover": {
+            "response_wall_ms": {
+              "n": 1,
+              "median_ms": 234.9679000000151,
+              "p95_ms": 234.9679000000151
+            },
+            "capture_latency_ms": {
+              "n": 1,
+              "median_ms": 188,
+              "p95_ms": 188
+            },
+            "total_latency_ms": {
+              "n": 1,
+              "median_ms": 219,
+              "p95_ms": 219
+            }
+          },
+          "warm_random": {
+            "response_wall_ms": {
+              "n": 29,
+              "median_ms": 128.911500000072,
+              "p95_ms": 208.56260000005022
+            },
+            "capture_latency_ms": {
+              "n": 29,
+              "median_ms": 94,
+              "p95_ms": 188
+            },
+            "total_latency_ms": {
+              "n": 29,
+              "median_ms": 140,
+              "p95_ms": 203
+            }
+          }
+        }
+      }
+    },
+    {
+      "title": "Stage 2.4.5 same-file comparison",
+      "data": {
+        "media": "ordinary.mp4",
+        "note": "LibVLC accurate seek vs explicit mpv seek mode; identical file/targets within sub-ms rounding; response not screen latency",
+        "summary": {
+          "first_hover": {
+            "response_wall_ms": {
+              "n": 1,
+              "median_ms": 856.7583999999897,
+              "p95_ms": 856.7583999999897
+            },
+            "capture_latency_ms": {
+              "n": 1,
+              "median_ms": 828,
+              "p95_ms": 828
+            },
+            "total_latency_ms": {
+              "n": 1,
+              "median_ms": 843,
+              "p95_ms": 843
+            }
+          },
+          "warm_random": {
+            "response_wall_ms": {
+              "n": 29,
+              "median_ms": 64.53890000000229,
+              "p95_ms": 88.9334000000872
+            },
+            "capture_latency_ms": {
+              "n": 29,
+              "median_ms": 47,
+              "p95_ms": 47
+            },
+            "total_latency_ms": {
+              "n": 29,
+              "median_ms": 63,
+              "p95_ms": 93
+            }
+          }
+        }
+      }
+    },
+    {
+      "title": "libmpv benchmark",
+      "data": {
+        "media": "long_gop.mkv",
+        "renderer": "sw",
+        "seek": "exact",
+        "summary": {
+          "process_start_to_ready_ms": 79.43790000001627,
+          "opening": {
+            "type": "ready",
+            "open_to_first_render_ms": 55.666,
+            "load_to_first_render_ms": 40.035,
+            "api_initialize_ms": 3.94,
+            "open_to_initial_display_ms": 55.784,
+            "duration_ms": 30021.0
+          },
+          "first_hover": {
+            "display_handoff_ms": {
+              "n": 1,
+              "median_ms": 18.189,
+              "p95_ms": 18.189
+            },
+            "parent_response_ms": {
+              "n": 1,
+              "median_ms": 22.259800000028918,
+              "p95_ms": 22.259800000028918
+            },
+            "command_ack_ms": {
+              "n": 1,
+              "median_ms": 3.458,
+              "p95_ms": 3.458
+            },
+            "render_ms": {
+              "n": 1,
+              "median_ms": 17.911,
+              "p95_ms": 17.911
+            },
+            "cpu_ms": {
+              "n": 1,
+              "median_ms": 46.875,
+              "p95_ms": 46.875
+            }
+          },
+          "warm_random": {
+            "display_handoff_ms": {
+              "n": 29,
+              "median_ms": 49.166,
+              "p95_ms": 80.767
+            },
+            "parent_response_ms": {
+              "n": 29,
+              "median_ms": 51.110200000039185,
+              "p95_ms": 82.76649999993424
+            },
+            "command_ack_ms": {
+              "n": 29,
+              "median_ms": 0.137,
+              "p95_ms": 0.364
+            },
+            "render_ms": {
+              "n": 29,
+              "median_ms": 49.025,
+              "p95_ms": 80.563
+            },
+            "cpu_ms": {
+              "n": 29,
+              "median_ms": 125.0,
+              "p95_ms": 203.125
+            }
+          },
+          "rapid_latest": {
+            "display_handoff_ms": {
+              "n": 6,
+              "median_ms": 56.809,
+              "p95_ms": 132.902
+            },
+            "parent_response_ms": {
+              "n": 6,
+              "median_ms": 58.903849999978775,
+              "p95_ms": 134.93860000005498
+            },
+            "command_ack_ms": {
+              "n": 6,
+              "median_ms": 13.1065,
+              "p95_ms": 54.187
+            },
+            "render_ms": {
+              "n": 6,
+              "median_ms": 56.6195,
+              "p95_ms": 132.743
+            },
+            "cpu_ms": {
+              "n": 6,
+              "median_ms": 148.4375,
+              "p95_ms": 234.375
+            }
+          },
+          "memory": {
+            "peak_private_bytes": 38469632,
+            "peak_working_set_bytes": 45219840
+          },
+          "playback_position_deltas_ms": [
+            0.6299999999999955,
+            15.150000000001455,
+            4.619999999999891,
+            19.349999999998545,
+            1.4699999999998,
+            13.049999999999272,
+            24.600000000000364,
+            16.61999999999898,
+            2.519999999999982,
+            21.450000000000728,
+            0.6299999999999955,
+            15.150000000001455,
+            4.619999999999891,
+            19.349999999998545,
+            1.4699999999998,
+            13.049999999999272,
+            24.600000000000364,
+            16.61999999999898,
+            2.519999999999982,
+            21.450000000000728,
+            0.6299999999999955,
+            15.150000000001455,
+            4.619999999999891,
+            19.349999999998545,
+            1.4699999999998,
+            13.049999999999272,
+            24.600000000000364,
+            16.61999999999898,
+            2.519999999999982,
+            21.450000000000728,
+            15.150000000001455,
+            4.619999999999891,
+            19.349999999998545,
+            1.4699999999998,
+            13.049999999999272,
+            24.600000000000364
+          ],
+          "hwdec_current": [
+            "no"
+          ],
+          "frame_timestamp_verified": false,
+          "physical_display_verified": false,
+          "session_process_cpu_ms": 5843.75,
+          "session_wall_ms": 2262.6176999999643,
+          "session_cpu_equivalent_cores": 2.5827385686941686
+        }
+      }
+    },
+    {
+      "title": "libmpv runtime",
+      "data": {
+        "environment": {
+          "platform": "Windows-2025Server-10.0.26100-SP0",
+          "processor": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+          "logical_cpus": 4
+        },
+        "media": "long_gop.mkv",
+        "runtime": [
+          {
+            "type": "mpv-version",
+            "message": "mpv v0.41.0-1227-ge471496c5"
+          },
+          {
+            "type": "ffmpeg-version",
+            "message": "N-127893-g9a861e968"
+          },
+          {
+            "type": "mpv-configuration",
+            "message": "-Dprefix=/__w/mpv-winbuild-cmake/mpv-winbuild-cmake/build_x86_64/x86_64-w64-mingw32 -Dlibdir=/__w/mpv-winbuild-cmake/mpv-winbuild-cmake/build_x86_64/x86_64-w64-mingw32/lib -Ddefault_library=shared -Dprefer_static=true -Ddebug=true -Db_ndebug=true -Doptimization=3 -Db_lto=true -Db_lto_mode=thin -Dlibmpv=true -Dpdf-build=enabled -Dlua=enabled -Djavascript=enabled -Dsdl2-gamepad=enabled -Dlibarchive=enabled -Dlibbluray=enabled -Ddvdnav=enabled -Duchardet=enabled -Drubberband=enabled -Dlcms2=enabled -Dopenal=enabled -Dspirv-cross=enabled -Dvulkan=enabled -Dvapoursynth=enabled -Dsubrandr=enabled -Dsixel=enabled -Dgl=enabled -Degl-angle=enabled -Dlibcurl=enabled -Dc_args=-Wno-error=int-conversion --cross-file=/__w/mpv-winbuild-cmake/mpv-winbuild-cmake/build_x86_64/meson_cross.txt"
+          }
+        ]
+      }
+    },
+    {
+      "title": "libmpv benchmark",
+      "data": {
+        "media": "vfr.mp4",
+        "renderer": "sw",
+        "seek": "keyframes",
+        "summary": {
+          "process_start_to_ready_ms": 82.91199999996479,
+          "opening": {
+            "type": "ready",
+            "open_to_first_render_ms": 58.664,
+            "load_to_first_render_ms": 43.418,
+            "api_initialize_ms": 2.813,
+            "open_to_initial_display_ms": 58.779,
+            "duration_ms": 30000.0
+          },
+          "first_hover": {
+            "display_handoff_ms": {
+              "n": 1,
+              "median_ms": 10.88,
+              "p95_ms": 10.88
+            },
+            "parent_response_ms": {
+              "n": 1,
+              "median_ms": 13.216599999964274,
+              "p95_ms": 13.216599999964274
+            },
+            "command_ack_ms": {
+              "n": 1,
+              "median_ms": 5.473,
+              "p95_ms": 5.473
+            },
+            "render_ms": {
+              "n": 1,
+              "median_ms": 10.629,
+              "p95_ms": 10.629
+            },
+            "cpu_ms": {
+              "n": 1,
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          },
+          "warm_random": {
+            "display_handoff_ms": {
+              "n": 29,
+              "median_ms": 5.387,
+              "p95_ms": 8.082
+            },
+            "parent_response_ms": {
+              "n": 29,
+              "median_ms": 7.439799999929164,
+              "p95_ms": 12.193599999932303
+            },
+            "command_ack_ms": {
+              "n": 29,
+              "median_ms": 0.193,
+              "p95_ms": 0.517
+            },
+            "render_ms": {
+              "n": 29,
+              "median_ms": 5.282,
+              "p95_ms": 7.958
+            },
+            "cpu_ms": {
+              "n": 29,
+              "median_ms": 0.0,
+              "p95_ms": 62.5
+            }
+          },
+          "rapid_latest": {
+            "display_handoff_ms": {
+              "n": 6,
+              "median_ms": 7.0065,
+              "p95_ms": 10.193
+            },
+            "parent_response_ms": {
+              "n": 6,
+              "median_ms": 8.79939999998669,
+              "p95_ms": 12.592199999971854
+            },
+            "command_ack_ms": {
+              "n": 6,
+              "median_ms": 2.128,
+              "p95_ms": 3.54
+            },
+            "render_ms": {
+              "n": 6,
+              "median_ms": 6.88,
+              "p95_ms": 10.041
+            },
+            "cpu_ms": {
+              "n": 6,
+              "median_ms": 0.0,
+              "p95_ms": 31.25
+            }
+          },
+          "memory": {
+            "peak_private_bytes": 37367808,
+            "peak_working_set_bytes": 45780992
+          },
+          "playback_position_deltas_ms": [
+            900.0,
+            6200.0,
+            200.0,
+            200.0,
+            2100.0,
+            2800.0,
+            5600.0,
+            4100.0,
+            3600.0,
+            3666.6669999999995,
+            900.0,
+            6200.0,
+            200.0,
+            200.0,
+            2100.0,
+            2800.0,
+            5600.0,
+            4100.0,
+            3600.0,
+            3666.6669999999995,
+            900.0,
+            6200.0,
+            200.0,
+            200.0,
+            2100.0,
+            2800.0,
+            5600.0,
+            4100.0,
+            3600.0,
+            3666.6669999999995,
+            900.0,
+            6200.0,
+            6200.0,
+            6200.0,
+            200.0,
+            200.0,
+            200.0,
+            200.0,
+            200.0,
+            2100.0,
+            2100.0,
+            2100.0,
+            2800.0,
+            2800.0,
+            2800.0,
+            3600.0,
+            200.0,
+            5600.0
+          ],
+          "hwdec_current": [
+            "no"
+          ],
+          "frame_timestamp_verified": false,
+          "physical_display_verified": false,
+          "session_process_cpu_ms": 1703.125,
+          "session_wall_ms": 760.8262999999624,
+          "session_cpu_equivalent_cores": 2.2385201457942294
+        }
+      }
+    },
+    {
+      "title": "libmpv runtime",
+      "data": {
+        "environment": {
+          "platform": "Windows-2025Server-10.0.26100-SP0",
+          "processor": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+          "logical_cpus": 4
+        },
+        "media": "vfr.mp4",
+        "runtime": [
+          {
+            "type": "mpv-version",
+            "message": "mpv v0.41.0-1227-ge471496c5"
+          },
+          {
+            "type": "ffmpeg-version",
+            "message": "N-127893-g9a861e968"
+          },
+          {
+            "type": "mpv-configuration",
+            "message": "-Dprefix=/__w/mpv-winbuild-cmake/mpv-winbuild-cmake/build_x86_64/x86_64-w64-mingw32 -Dlibdir=/__w/mpv-winbuild-cmake/mpv-winbuild-cmake/build_x86_64/x86_64-w64-mingw32/lib -Ddefault_library=shared -Dprefer_static=true -Ddebug=true -Db_ndebug=true -Doptimization=3 -Db_lto=true -Db_lto_mode=thin -Dlibmpv=true -Dpdf-build=enabled -Dlua=enabled -Djavascript=enabled -Dsdl2-gamepad=enabled -Dlibarchive=enabled -Dlibbluray=enabled -Ddvdnav=enabled -Duchardet=enabled -Drubberband=enabled -Dlcms2=enabled -Dopenal=enabled -Dspirv-cross=enabled -Dvulkan=enabled -Dvapoursynth=enabled -Dsubrandr=enabled -Dsixel=enabled -Dgl=enabled -Degl-angle=enabled -Dlibcurl=enabled -Dc_args=-Wno-error=int-conversion --cross-file=/__w/mpv-winbuild-cmake/mpv-winbuild-cmake/build_x86_64/meson_cross.txt"
+          }
+        ]
+      }
+    },
+    {
+      "title": "libmpv benchmark",
+      "data": {
+        "media": "long_gop.mkv",
+        "renderer": "sw",
+        "seek": "keyframes",
+        "summary": {
+          "process_start_to_ready_ms": 82.0449999999937,
+          "opening": {
+            "type": "ready",
+            "open_to_first_render_ms": 57.872,
+            "load_to_first_render_ms": 42.923,
+            "api_initialize_ms": 2.829,
+            "open_to_initial_display_ms": 57.989,
+            "duration_ms": 30021.0
+          },
+          "first_hover": {
+            "display_handoff_ms": {
+              "n": 1,
+              "median_ms": 10.635,
+              "p95_ms": 10.635
+            },
+            "parent_response_ms": {
+              "n": 1,
+              "median_ms": 12.689300000033654,
+              "p95_ms": 12.689300000033654
+            },
+            "command_ack_ms": {
+              "n": 1,
+              "median_ms": 5.685,
+              "p95_ms": 5.685
+            },
+            "render_ms": {
+              "n": 1,
+              "median_ms": 10.518,
+              "p95_ms": 10.518
+            },
+            "cpu_ms": {
+              "n": 1,
+              "median_ms": 0.0,
+              "p95_ms": 0.0
+            }
+          },
+          "warm_random": {
+            "display_handoff_ms": {
+              "n": 29,
+              "median_ms": 5.032,
+              "p95_ms": 5.95
+            },
+            "parent_response_ms": {
+              "n": 29,
+              "median_ms": 7.154200000059063,
+              "p95_ms": 8.384999999975662
+            },
+            "command_ack_ms": {
+              "n": 29,
+              "median_ms": 0.198,
+              "p95_ms": 0.276
+            },
+            "render_ms": {
+              "n": 29,
+              "median_ms": 4.883,
+              "p95_ms": 5.835
+            },
+            "cpu_ms": {
+              "n": 29,
+              "median_ms": 0.0,
+              "p95_ms": 62.5
+            }
+          },
+          "rapid_latest": {
+            "display_handoff_ms": {
+              "n": 6,
+              "median_ms": 6.577500000000001,
+              "p95_ms": 9.865
+            },
+            "parent_response_ms": {
+              "n": 6,
+              "median_ms": 8.351150000009966,
+              "p95_ms": 13.904700000011871
+            },
+            "command_ack_ms": {
+              "n": 6,
+              "median_ms": 1.692,
+              "p95_ms": 4.638
+            },
+            "render_ms": {
+              "n": 6,
+              "median_ms": 6.4544999999999995,
+              "p95_ms": 9.737
+            },
+            "cpu_ms": {
+              "n": 6,
+              "median_ms": 0.0,
+              "p95_ms": 46.875
+            }
+          },
+          "memory": {
+            "peak_private_bytes": 36544512,
+            "peak_working_set_bytes": 43556864
+          },
+          "playback_position_deltas_ms": [
+            900.63,
+            5517.8499999999985,
+            6604.62,
+            9513.650000000001,
+            2101.47,
+            8519.95,
+            2008.3999999999996,
+            3416.380000000001,
+            3602.52,
+            6511.549999999999,
+            900.63,
+            5517.8499999999985,
+            6604.62,
+            9513.650000000001,
+            2101.47,
+            8519.95,
+            2008.3999999999996,
+            3416.380000000001,
+            3602.52,
+            6511.549999999999,
+            900.63,
+            5517.8499999999985,
+            6604.62,
+            9513.650000000001,
+            2101.47,
+            8519.95,
+            2008.3999999999996,
+            3416.380000000001,
+            3602.52,
+            6511.549999999999,
+            900.63,
+            6604.62,
+            9513.650000000001,
+            2101.47,
+            2008.3999999999996,
+            3602.52,
+            5517.8499999999985,
+            5517.8499999999985,
+            6604.62,
+            9513.650000000001,
+            2101.47,
+            8519.95,
+            6604.62,
+            6604.62,
+            9513.650000000001,
+            2101.47,
+            6511.549999999999,
+            900.63,
+            5517.8499999999985,
+            9513.650000000001,
+            9513.650000000001,
+            2101.47,
+            8519.95,
+            3416.380000000001,
+            3602.52,
+            900.63,
+            5517.8499999999985,
+            6604.62,
+            2101.47,
+            2101.47,
+            8519.95,
+            3602.52,
+            5517.8499999999985,
+            6604.62,
+            9513.650000000001,
+            2101.47,
+            8519.95,
+            8519.95,
+            3416.380000000001,
+            3602.52,
+            900.63,
+            5517.8499999999985,
+            6604.62,
+            8519.95,
+            2008.3999999999996
+          ],
+          "hwdec_current": [
+            "no"
+          ],
+          "frame_timestamp_verified": false,
+          "physical_display_verified": false,
+          "session_process_cpu_ms": 1500.0,
+          "session_wall_ms": 746.1558999999625,
+          "session_cpu_equivalent_cores": 2.010303744834123
+        }
+      }
+    },
+    {
+      "title": "libmpv runtime",
+      "data": {
+        "environment": {
+          "platform": "Windows-2025Server-10.0.26100-SP0",
+          "processor": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+          "logical_cpus": 4
+        },
+        "media": "long_gop.mkv",
+        "runtime": [
+          {
+            "type": "mpv-version",
+            "message": "mpv v0.41.0-1227-ge471496c5"
+          },
+          {
+            "type": "ffmpeg-version",
+            "message": "N-127893-g9a861e968"
+          },
+          {
+            "type": "mpv-configuration",
+            "message": "-Dprefix=/__w/mpv-winbuild-cmake/mpv-winbuild-cmake/build_x86_64/x86_64-w64-mingw32 -Dlibdir=/__w/mpv-winbuild-cmake/mpv-winbuild-cmake/build_x86_64/x86_64-w64-mingw32/lib -Ddefault_library=shared -Dprefer_static=true -Ddebug=true -Db_ndebug=true -Doptimization=3 -Db_lto=true -Db_lto_mode=thin -Dlibmpv=true -Dpdf-build=enabled -Dlua=enabled -Djavascript=enabled -Dsdl2-gamepad=enabled -Dlibarchive=enabled -Dlibbluray=enabled -Ddvdnav=enabled -Duchardet=enabled -Drubberband=enabled -Dlcms2=enabled -Dopenal=enabled -Dspirv-cross=enabled -Dvulkan=enabled -Dvapoursynth=enabled -Dsubrandr=enabled -Dsixel=enabled -Dgl=enabled -Degl-angle=enabled -Dlibcurl=enabled -Dc_args=-Wno-error=int-conversion --cross-file=/__w/mpv-winbuild-cmake/mpv-winbuild-cmake/build_x86_64/meson_cross.txt"
+          }
+        ]
+      }
+    },
+    {
+      "title": "libmpv benchmark",
+      "data": {
+        "media": "ordinary.mp4",
+        "renderer": "sw",
+        "seek": "keyframes",
+        "summary": {
+          "process_start_to_ready_ms": 429.0538000000197,
+          "opening": {
+            "type": "ready",
+            "open_to_first_render_ms": 57.934,
+            "load_to_first_render_ms": 40.946,
+            "api_initialize_ms": 3.297,
+            "open_to_initial_display_ms": 58.032,
+            "duration_ms": 30000.0
+          },
+          "first_hover": {
+            "display_handoff_ms": {
+              "n": 1,
+              "median_ms": 6.521,
+              "p95_ms": 6.521
+            },
+            "parent_response_ms": {
+              "n": 1,
+              "median_ms": 10.593100000050981,
+              "p95_ms": 10.593100000050981
+            },
+            "command_ack_ms": {
+              "n": 1,
+              "median_ms": 2.815,
+              "p95_ms": 2.815
+            },
+            "render_ms": {
+              "n": 1,
+              "median_ms": 6.403,
+              "p95_ms": 6.403
+            },
+            "cpu_ms": {
+              "n": 1,
+              "median_ms": 46.875,
+              "p95_ms": 46.875
+            }
+          },
+          "warm_random": {
+            "display_handoff_ms": {
+              "n": 29,
+              "median_ms": 3.88,
+              "p95_ms": 5.377
+            },
+            "parent_response_ms": {
+              "n": 29,
+              "median_ms": 5.783100000030572,
+              "p95_ms": 7.496299999957046
+            },
+            "command_ack_ms": {
+              "n": 29,
+              "median_ms": 0.159,
+              "p95_ms": 0.315
+            },
+            "render_ms": {
+              "n": 29,
+              "median_ms": 3.711,
+              "p95_ms": 5.128
+            },
+            "cpu_ms": {
+              "n": 29,
+              "median_ms": 0.0,
+              "p95_ms": 46.875
+            }
+          },
+          "rapid_latest": {
+            "display_handoff_ms": {
+              "n": 6,
+              "median_ms": 4.1235,
+              "p95_ms": 5.373
+            },
+            "parent_response_ms": {
+              "n": 6,
+              "median_ms": 5.920300000013867,
+              "p95_ms": 7.462599999939812
+            },
+            "command_ack_ms": {
+              "n": 6,
+              "median_ms": 0.562,
+              "p95_ms": 1.206
+            },
+            "render_ms": {
+              "n": 6,
+              "median_ms": 3.9885,
+              "p95_ms": 5.249
+            },
+            "cpu_ms": {
+              "n": 6,
+              "median_ms": 0.0,
+              "p95_ms": 46.875
+            }
+          },
+          "memory": {
+            "peak_private_bytes": 36003840,
+            "peak_working_set_bytes": 44777472
+          },
+          "playback_position_deltas_ms": [
+            900.0,
+            500.0,
+            600.0,
+            500.0,
+            100.0,
+            500.0,
+            1000.0,
+            400.0,
+            600.0,
+            500.0,
+            900.0,
+            500.0,
+            600.0,
+            500.0,
+            100.0,
+            500.0,
+            1000.0,
+            400.0,
+            600.0,
+            500.0,
+            900.0,
+            500.0,
+            600.0,
+            500.0,
+            100.0,
+            500.0,
+            1000.0,
+            400.0,
+            600.0,
+            500.0,
+            900.0,
+            500.0,
+            600.0,
+            500.0,
+            100.0,
+            500.0,
+            1000.0,
+            400.0,
+            500.0,
+            900.0,
+            500.0,
+            500.0,
+            600.0,
+            500.0,
+            100.0,
+            500.0,
+            1000.0,
+            400.0,
+            600.0,
+            500.0,
+            900.0,
+            500.0,
+            600.0,
+            600.0,
+            500.0,
+            100.0,
+            500.0,
+            400.0,
+            600.0,
+            500.0,
+            900.0,
+            500.0,
+            600.0,
+            500.0,
+            500.0,
+            100.0,
+            500.0,
+            500.0,
+            900.0,
+            500.0,
+            600.0,
+            500.0,
+            100.0,
+            100.0,
+            500.0,
+            1000.0,
+            400.0,
+            600.0,
+            500.0,
+            900.0,
+            500.0,
+            600.0,
+            500.0,
+            100.0,
+            500.0,
+            500.0,
+            1000.0,
+            400.0,
+            600.0,
+            500.0,
+            500.0,
+            600.0,
+            500.0,
+            100.0,
+            1000.0
+          ],
+          "hwdec_current": [
+            "no"
+          ],
+          "frame_timestamp_verified": false,
+          "physical_display_verified": false,
+          "session_process_cpu_ms": 1390.625,
+          "session_wall_ms": 1087.9824000001008,
+          "session_cpu_equivalent_cores": 1.2781686541986994
+        }
+      }
+    },
+    {
+      "title": "libmpv runtime",
+      "data": {
+        "environment": {
+          "platform": "Windows-2025Server-10.0.26100-SP0",
+          "processor": "AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD",
+          "logical_cpus": 4
+        },
+        "media": "ordinary.mp4",
+        "runtime": [
+          {
+            "type": "mpv-version",
+            "message": "mpv v0.41.0-1227-ge471496c5"
+          },
+          {
+            "type": "ffmpeg-version",
+            "message": "N-127893-g9a861e968"
+          },
+          {
+            "type": "mpv-configuration",
+            "message": "-Dprefix=/__w/mpv-winbuild-cmake/mpv-winbuild-cmake/build_x86_64/x86_64-w64-mingw32 -Dlibdir=/__w/mpv-winbuild-cmake/mpv-winbuild-cmake/build_x86_64/x86_64-w64-mingw32/lib -Ddefault_library=shared -Dprefer_static=true -Ddebug=true -Db_ndebug=true -Doptimization=3 -Db_lto=true -Db_lto_mode=thin -Dlibmpv=true -Dpdf-build=enabled -Dlua=enabled -Djavascript=enabled -Dsdl2-gamepad=enabled -Dlibarchive=enabled -Dlibbluray=enabled -Ddvdnav=enabled -Duchardet=enabled -Drubberband=enabled -Dlcms2=enabled -Dopenal=enabled -Dspirv-cross=enabled -Dvulkan=enabled -Dvapoursynth=enabled -Dsubrandr=enabled -Dsixel=enabled -Dgl=enabled -Degl-angle=enabled -Dlibcurl=enabled -Dc_args=-Wno-error=int-conversion --cross-file=/__w/mpv-winbuild-cmake/mpv-winbuild-cmake/build_x86_64/meson_cross.txt"
+          }
+        ]
+      }
+    }
+  ]
+}

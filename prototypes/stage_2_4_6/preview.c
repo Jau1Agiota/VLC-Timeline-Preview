@@ -163,7 +163,7 @@ static void finish_candidate(void) {
         policy.busy=0;arm(0);return;
     }
     /* The lock prevents the stdin thread accepting a newer request during handoff. */
-    if(!present_surface())return;
+    if(!present_surface()){LeaveCriticalSection(&lock);return;}
     display_ms=now_ms();policy.presented=1;LeaveCriticalSection(&lock);
     observed_pts=-1;pts_done=hw_done=0;
     if(mpv_get_property_async(mpv,100000u+policy.active.id,"time-pos",MPV_FORMAT_DOUBLE)<0||

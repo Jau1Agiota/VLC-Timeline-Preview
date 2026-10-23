@@ -6,7 +6,8 @@ Experimental branch starts at the preserved Stage 2.4.5 feature head
 `342e4028a87deddb99f71bf03bc7a50524be0bed`. Nothing in VLC production code,
 the Stage 2.4.5 LibVLC engine, previous ZIPs or untracked build directories is
 modified. The standalone Win32 program compiles and links with the existing
-MinGW-w64 GCC 6.4.0 compiler. Native Windows/GPU results remain pending.
+MinGW-w64 GCC 6.4.0 compiler. Native Windows software-renderer measurements and packaging passed; target-PC
+OpenGL/GPU and human visual acceptance remain pending.
 
 Do not integrate yet. The user's MPC-QT observations are the motivation, not
 measurements of this independent experiment.
@@ -72,7 +73,7 @@ Benchmark sampling uses 30 requests cycling between 3% and 95% of the file,
 then six bursts of 12 requests at 5 ms intervals. Only the last target in each
 burst is required to produce a visible result. Raw JSONL and BMPs are retained.
 Median and nearest-rank p95, sample counts, CPU identity and actual renderer are
-reported; no timing results exist yet at this revision. Compare Stage 2.4.5 only
+reported; measured native Windows results follow below. Compare Stage 2.4.5 only
 on identical files/hashes/timestamps and disclose its accurate-seek difference.
 A real comparison on the user's movie is pending access to that local file.
 
@@ -144,3 +145,97 @@ On the user's PC:
 Recommendation at this revision: investigate further only; do not integrate
 libmpv until native OpenGL responsiveness, acceptable keyframe error, lifecycle
 behavior and a redistributable dependency/source package are demonstrated.
+
+## Actual Windows pilot results (2026-10-23)
+
+Run [39953050730](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39953050730),
+source `c5cbbb9d869102e46ab87fe53dd9d8a6838af390`: Windows build, native request-policy
+and Python tests, four libmpv benchmark cases, four unmodified Stage 2.4.5 helper
+comparisons, packaging and independent artifact checksum/ZIP readback passed.
+The subsequent Ubuntu OCR job produced all four mpv summaries but failed during
+comparison-image processing; this run as a whole is **failed**, not an all-green
+accuracy certification. A reporting correction preserves partial evidence and
+makes individual analysis errors explicit. Earlier pilot artifacts are retained.
+
+Environment: Windows Server 2025 (10.0.26100), four logical AMD64 CPUs (Family 25,
+Model 1, Stepping 1). Actual runtime: `mpv v0.41.0-1227-ge471496c5`, FFmpeg
+`N-127893-g9a861e968`; software rendering, actual `hwdec-current=no`. Inputs were
+synthetic 30-second, 640×360 timecoded fixtures, not the user's movie. No GPU,
+Windows foreground-VLC coexistence, audio listening or physical-display test is
+claimed. Measurements describe GDI presentation handoff, not monitor scanout.
+
+| Case | Warm handoff median / p95 | Rapid latest handoff median / p95 | First-hover handoff |
+|---|---:|---:|---:|
+| Ordinary MP4, keyframes | 3.880 / 5.377 ms | 4.124 / 5.373 ms | 6.521 ms |
+| Long-GOP MKV, keyframes | 5.032 / 5.950 ms | 6.578 / 9.865 ms | 10.635 ms |
+| VFR MP4, keyframes | 5.387 / 8.082 ms | 7.007 / 10.193 ms | 10.880 ms |
+| Long-GOP MKV, exact | 49.166 / 80.767 ms | 56.809 / 132.902 ms | 18.189 ms |
+
+Warm n=29/case, rapid n=6 latest results/case, first-hover **n=1**, hence not a
+stable first-hover percentile. Each case sent 30 sequential and 72 burst inputs;
+obsolete work is coalesced rather than requiring 102 presentations. Saved-image
+counts vary with scheduling. Accepted input to command reply is recorded
+separately and is not used as displayed-frame latency. Process-start-to-ready
+was 429.054 ms for the first case and 79.438–82.912 ms subsequently; initialization
+inside the executable to first render was 55.666–58.664 ms. Do not hide DLL/OS
+loader overhead by reporting only in-program initialization.
+
+Maximum **sampled** private memory was 34.3–36.7 MiB and working set 41.5–43.7 MiB.
+Aggregate process CPU / wall ratios were 1.28, 2.01, 2.24 and 2.58 equivalent cores
+respectively, including loader/startup time; these short synthetic sessions are
+not steady-state movie CPU estimates. Per-request CPU samples have Windows
+15.625 ms granularity and zeros do not mean no CPU use.
+
+Paired unmodified Stage 2.4.5 helper warm **parent response** median/p95 was
+64.539/88.933 ms for ordinary MP4 and 128.912/208.563 ms for one long-GOP MKV
+comparison. mpv parent response (including BMP/logging/property work) was
+5.783/7.496 ms ordinary/keyframes and 51.110/82.767 ms long-GOP/exact. These are
+same-machine/file/target measurements; keyframe vs accurate seeking is a material
+accuracy difference. LibVLC's first request initializes its player whereas mpv is
+preloaded, so first-request values are not a fair like-for-like initialization
+comparison. All four paired cases completed; complete rows are in the evidence
+artifact. Checks expose only a subset of comparison notices.
+
+Provisional OCR of actual mpv BMP content (source-frame plausibility checked):
+
+| Case | Plausible images | Absolute image error median / p95 |
+|---|---:|---:|
+| Ordinary/keyframes | 95 | 500 / 1,000 ms |
+| Long-GOP/keyframes | 75 | 5,517.85 / 9,513.65 ms |
+| VFR/keyframes | 48 | 2,800 / 6,200 ms |
+| Long-GOP/exact | 36 | 14.10 / 24.60 ms |
+
+This is automated burned-text OCR, **human spot review pending**, and includes
+intermediate images actually handed off during bursts. It is independent of
+`time-pos`, but is not a completed accuracy gate. Fast keyframe output can be
+nearly ten seconds early on this long-GOP fixture. Exact seeking is slower but
+promising; acceptable movie behavior must be decided on the user's PC. No frame
+PTS is fabricated from a command acknowledgement or player clock.
+
+Raw benchmark summaries: `prototypes/stage_2_4_6/evidence/windows-run-39953050730.json`.
+Complete raw JSONL/BMP evidence: Actions artifact `12501611143` on that run.
+Package artifact [12500414250](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39953050730/artifacts/12500414250)
+contains `libmpv-stage246A-win64-c5cbbb9d8691.zip` and `SHA256SUMS`.
+Inner ZIP SHA-256: `ac30aef36564b2003b53d419379d49883641820ec09940603469cd29e410071f`.
+Artifacts are temporary (14 days), not permanent Release links. The ZIP contains
+our executable/source only; run `Get-Runtime.ps1` to assemble the private runtime.
+
+Recommendation: **user-PC OpenGL evaluation, not VLC integration yet**. The
+persistent engine shows promising responsiveness; keyframe accuracy and combined
+runtime redistribution remain material gates. Preserve Stage 2.4.5 as-is. Stop
+before Stage 2.4.6B until Windows movie testing and user acceptance.
+
+Local regression verification: strict GCC 6.4.0 compilation and final linking,
+request-policy executable, five Python tests, Bash syntax, ShellCheck 0.10.0 and
+actionlint 1.7.7 passed. The existing CI safety suite ran 42 tests successfully
+(41 passed; one intentional stage-specific skip). A baseline diff confirmed no
+changes to `modules/` or `prototypes/stage_2_3/thumbnail_helper.c`.
+
+Latest executable/source delivery (reporting-only correction, preview engine
+unchanged): source `0fb671f3f161a1ce3db280097eb714ccefb434ea`,
+[package artifact 12501088618](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/39954190209/artifacts/12501088618).
+Inner ZIP: `libmpv-stage246A-win64-0fb671f3f161.zip`.
+SHA-256: `a24b501d85b362dd462c06f5a5d41ff45ed40a738e415a40ef8bfac66dd41754`.
+Its native Windows build, all four benchmarks/comparisons and independent readback
+also passed. Raw evidence artifact: `12500719775`. Benchmark table above deliberately
+identifies the earlier measured run; it does not combine samples across runs.

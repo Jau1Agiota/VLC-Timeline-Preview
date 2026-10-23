@@ -1,0 +1,11 @@
+{
+  "provider": "shinchiro/mpv-winbuild-cmake",
+  "release": "20261021",
+  "asset": "mpv-dev-x86_64-20261021-git-e471496c56.7z",
+  "url": "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20261021/mpv-dev-x86_64-20261021-git-e471496c56.7z",
+  "sha256": "efc719eff3dc5954b4a5efc800632808bcec01cc9034940dd14e5eb7fe9ea633",
+  "dll_sha256": "04e4d27dc385dc18ddd93fbe69c75e635b864f3c6ec53a9122df54c2f7842f4a",
+  "mpv_commit": "e471496c56f0f49c133bd88b50aed62b845f1909",
+  "reference_mpc_qt_commit": "d2d0d15de6e9113df19a4d6e539897de2227a16d",
+  "runtime_redistributed": false
+}

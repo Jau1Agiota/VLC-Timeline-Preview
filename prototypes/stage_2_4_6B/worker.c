@@ -65,7 +65,7 @@ int wmain(int argc,wchar_t **argv) {
     const char *load[]={"loadfile",path,NULL};
     if(mpv_command_async(p,1,load)<0)goto cleanup;
     int loaded=0,initial_restart=0,initial_frame=0,busy=0,ack=0,seek=0,restart=0,frame=0;
-    unsigned id=0,last_id=0,target=0;char input[128];size_t used=0;
+    unsigned id=0,last_id=0,target=0,previous_pipe_id=0;double previous_pipe_ms=-1;char input[128];size_t used=0;
     double ready_ms=0;int ready=0;
     for(;;) {
         for(unsigned n=0;n<64;++n) {
@@ -109,10 +109,11 @@ int wmain(int argc,wchar_t **argv) {
             }
             if(!GetProcessMemoryInfo(GetCurrentProcess(),(PROCESS_MEMORY_COUNTERS *)&memory,sizeof(memory)))memory.PrivateUsage=0;
             double encode=now();
-            if(printf("{\"protocol\":1,\"request_id\":%u,\"requested_ms\":%u,\"bytes\":230400,\"width\":320,\"height\":180,\"frame_timestamp_verified\":false,\"ready_ms\":%.3f,\"seek_render_ms\":%.3f,\"render_ms\":%.3f,\"cpu_total_ms\":%.3f,\"private_bytes\":%.0f}\n",id,target,ready_ms,now()-started,render_ms,cpu,(double)memory.PrivateUsage)<0 ||
+            if(printf("{\"protocol\":1,\"request_id\":%u,\"requested_ms\":%u,\"bytes\":230400,\"width\":320,\"height\":180,\"frame_timestamp_verified\":false,\"ready_ms\":%.3f,\"seek_render_ms\":%.3f,\"render_ms\":%.3f,\"cpu_total_ms\":%.3f,\"private_bytes\":%.0f,\"previous_pipe_request_id\":%u,\"previous_pipe_write_ms\":%.3f}\n",id,target,ready_ms,now()-started,render_ms,cpu,(double)memory.PrivateUsage,previous_pipe_id,previous_pipe_ms)<0 ||
                fwrite(pixels,1,sizeof(pixels),stdout)!=sizeof(pixels)||fflush(stdout))goto cleanup;
             /* Includes blocking pipe write: receiver backpressure is watchdog bounded. */
             if(getenv("VLC_TIMELINE_HOVER_DEBUG")&&!strcmp(getenv("VLC_TIMELINE_HOVER_DEBUG"),"1"))fprintf(stderr,"mpv-frame id=%u pipe_write_ms=%.3f\n",id,now()-encode);
+            previous_pipe_id=id;previous_pipe_ms=now()-encode;
             busy=0;arm(86400000);
         }
         DWORD available=0;

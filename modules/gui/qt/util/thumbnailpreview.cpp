@@ -438,7 +438,7 @@ void Controller::mpvResult(const QByteArray &header, const QByteArray &pixels)
             "event=mpv-present generation=%1 wanted=%2 image_request_ms=%3 request_to_present_ms=%4 seek_render_ms=%5 render_ms=%6 copy_ms=%7 ready_ms=%8 frame_pts_verified=0")
             .arg(running.generation).arg(generation).arg(running.time).arg(running.clock.elapsed())
             .arg(h.value(QStringLiteral("seek_render_ms")).toDouble(-1))
-            .arg(h.value(QStringLiteral("render_ms")).toDouble(-1)).arg(copy.elapsed())
+            .arg(h.value(QStringLiteral("render_ms")).toDouble(-1)).arg(copy.nsecsElapsed()/1000000.0)
             .arg(h.value(QStringLiteral("ready_ms")).toDouble(-1)), 0);
     }
     if(pending && !debounce.isActive()) QTimer::singleShot(0,this,[this] { launch(); });

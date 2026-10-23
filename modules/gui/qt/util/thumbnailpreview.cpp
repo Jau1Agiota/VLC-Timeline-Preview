@@ -25,7 +25,7 @@ static QPointer<Controller> activePreview;
 static QPointer<Controller> extracting;
 static QSharedPointer<Cache> sharedCache()
 {
-    // All controllers live on the GUI thread. One 8 MiB/32-entry budget across
+    // All controllers live on the GUI thread. One 256 MiB/512-entry ceiling across
     // main-window and fullscreen timelines; release it with the last widget.
     static QWeakPointer<Cache> weak;
     QSharedPointer<Cache> cache = weak.toStrongRef();
@@ -112,6 +112,8 @@ Controller::Controller(QWidget *widget, Current check, Present update, Log logge
     debounce.setSingleShot(true); debounce.setInterval(delay);
     deadline.setSingleShot(true); deadline.setInterval(timeout);
     health.setInterval(100);
+    idle.setSingleShot(true); idle.setInterval(30000);
+    connect(&idle, &QTimer::timeout, this, [this] { stopProcess(); });
     connect(&debounce, &QTimer::timeout, this, [this] { launch(); });
     connect(&deadline, &QTimer::timeout, this, [this] {
         if(running.generation != generation) { stopProcess(); return; }
@@ -126,7 +128,7 @@ Controller::Controller(QWidget *widget, Current check, Present update, Log logge
             this, [this](int code, QProcess::ExitStatus status) { finished(code,status); });
     connect(&process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
         if(error == QProcess::FailedToStart) {
-            deadline.stop();
+            deadline.stop(); workerBusy = false; stopping = false;
             if(extracting == this) extracting.clear();
             if(running.generation == generation) { pending = false; failed(QStringLiteral("helper start failed")); }
             if(!output.isEmpty()) QFile::remove(output);
@@ -154,6 +156,7 @@ Controller::Controller(QWidget *widget, Current check, Present update, Log logge
         if(!assigned) { failed(QStringLiteral("cannot contain helper in job")); cancel(); return; }
 #endif
         if(running.generation != generation) stopProcess();
+        else send();
     });
     qApp->installEventFilter(this);
 }
@@ -182,6 +185,7 @@ void Controller::diagnose(const QString &stage, const QString &detail, int inter
 void Controller::hide() { visible = false; present(QImage(), -1); }
 void Controller::stopProcess()
 {
+    stopping = true; idle.stop();
 #ifdef Q_OS_WIN
     if(job) TerminateJobObject(HANDLE(job), 1);
 #endif
@@ -191,8 +195,11 @@ void Controller::cancel(bool clearCache)
 {
     if(trace.isEnabled()) diagnose(QStringLiteral("cancel"), QStringLiteral("clear_cache=%1 pending=%2 visible=%3 process_state=%4")
         .arg(clearCache).arg(pending).arg(visible).arg(int(process.state())), 0);
+    if(trace.isEnabled() && wanted.clock.isValid()) diagnose(QStringLiteral("performance"),
+        QStringLiteral("event=cancel generation=%1 elapsed_ms=%2").arg(generation).arg(wanted.clock.elapsed()), 0);
     ++generation; pending = false; wanted = Request();
-    debounce.stop(); health.stop(); hide(); stopProcess();
+    debounce.stop(); health.stop(); hide();
+    if(workerBusy || clearCache || closing) stopProcess();
     // Keep the deadline during Starting: started() also rejects canceled work.
     if(process.state() == QProcess::NotRunning) {
         deadline.stop(); if(!output.isEmpty()) QFile::remove(output);
@@ -245,7 +252,7 @@ void Controller::hover(const QString &path, const QString &token, qint64 ms)
     const QString source = token + QChar(0) + file;
     if(activePreview && activePreview != this) activePreview->cancel();
     activePreview = this;
-    if(sourceKey != source) { cancel(); sourceKey = source; }
+    if(sourceKey != source) { cancel(); stopProcess(); sourceKey = source; }
     activePreview = this;
     if(ownerWindow != host->window()) {
         if(ownerWindow) ownerWindow->removeEventFilter(this);
@@ -263,15 +270,25 @@ void Controller::hover(const QString &path, const QString &token, qint64 ms)
         }
         return;
     }
+    if(trace.isEnabled() && wanted.clock.isValid()) diagnose(QStringLiteral("performance"),
+        QStringLiteral("event=superseded generation=%1 elapsed_ms=%2").arg(generation).arg(wanted.clock.elapsed()), 0);
+    wanted.clock.start();
     ++generation; wanted.path = path; wanted.token = token; wanted.identity = file;
     wanted.time = time; wanted.key = key; wanted.generation = generation;
-    pending = false; debounce.stop(); hide(); stopProcess();
+    pending = false; debounce.stop(); hide();
+    if(workerBusy) stopProcess();
     QImage image = cache->get(key);
     if(!image.isNull()) {
         diagnose(QStringLiteral("cache-hit"), QStringLiteral("bucket_ms=%1").arg(time));
-        visible = true; present(image,time); return;
+        visible = true; present(image,time);
+        if(trace.isEnabled()) diagnose(QStringLiteral("performance"), QStringLiteral(
+            "event=present cache=hit generation=%1 bucket_ms=%2 request_to_present_ms=%3 entries=%4 bytes=%5")
+            .arg(generation).arg(time).arg(wanted.clock.elapsed()).arg(cache->count()).arg(cache->bytes()), 0);
+        return;
     }
     if(key == failedKey && failedAt.isValid() && failedAt.elapsed() < 2000) return;
+    if(trace.isEnabled()) diagnose(QStringLiteral("performance"), QStringLiteral(
+        "event=cache-miss generation=%1 bucket_ms=%2 debounce_ms=%3").arg(generation).arg(time).arg(debounce.interval()), 0);
     pending = true; debounce.start();
 }
 void Controller::launch()
@@ -280,14 +297,16 @@ void Controller::launch()
         .arg(closing).arg(pending).arg(debounce.isActive()).arg(int(process.state()))
         .arg(diagnosticId(extracting.data())).arg(wanted.time));
     if(closing || !pending || debounce.isActive()) return;
-    if(process.state() != QProcess::NotRunning) return; // finish schedules latest work
+    if(stopping && process.state() == QProcess::NotRunning) stopping = false;
+    if(process.state() == QProcess::Starting || stopping || workerBusy) return; // finish schedules latest work
     if(extracting && extracting != this && extracting->process.state() != QProcess::NotRunning) {
-        extracting->cancel();
+        extracting->cancel(); extracting->stopProcess();
         QTimer::singleShot(20,this,[this] { launch(); }); // wait for prior child to be reaped
         return;
     }
     if(!current(wanted.token) || identity(wanted.path) != wanted.identity) { cancel(true); return; }
     pending = false; running = wanted; stdoutData.clear();
+    idle.stop();
     if(!localPath(helper) || !QFileInfo(helper).isExecutable()) { failed(QStringLiteral("helper unavailable")); return; }
     if(!localPath(QDir::tempPath())) { failed(QStringLiteral("temporary path is not a fixed local drive")); return; }
     if(!directory) directory.reset(new QTemporaryDir(QDir::tempPath() + QStringLiteral("/vlc-preview-XXXXXX")));
@@ -299,39 +318,79 @@ void Controller::launch()
     environment.remove(QStringLiteral("VLC_PLUGIN_PATH"));
     process.setProcessEnvironment(environment);
     process.setWorkingDirectory(QFileInfo(helper).absolutePath());
+    if(trace.isEnabled()) diagnose(QStringLiteral("performance"), QStringLiteral(
+        "event=launch generation=%1 request_to_launch_ms=%2").arg(generation).arg(running.clock.elapsed()), 0);
     deadline.start(); ++launches; extracting = this;
     diagnose(QStringLiteral("spawn"), QStringLiteral("bucket_ms=%1 generation=%2").arg(wanted.time).arg(generation), 0);
-    process.start(helper, QStringList() << wanted.path << QString::number(wanted.time) << output << QStringLiteral("5000"));
+    workerBusy = true;
+    if(process.state() == QProcess::Running) { send(); return; }
+    workerRequests = 0; stopping = false; workerPath = wanted.path;
+    process.start(helper, QStringList() << QStringLiteral("--worker") << wanted.path << output << QStringLiteral("baseline"));
+}
+void Controller::send()
+{
+    if(stopping || !workerBusy || running.generation != generation || workerPath != running.path) {
+        stopProcess(); return;
+    }
+    const QByteArray request = QByteArray::number(++workerRequests) + ' ' + QByteArray::number(running.time) + " 5000\n";
+    if(process.write(request) != request.size()) { failed(QStringLiteral("worker input failed")); cancel(); }
 }
 void Controller::drain()
 {
     process.setReadChannel(QProcess::StandardOutput);
     while(process.bytesAvailable()) {
         const QByteArray chunk = process.read(4096);
-        if(stdoutData.size() < 4096) stdoutData.append(chunk.left(4096 - stdoutData.size()));
+        if(stopping) { stdoutData.clear(); continue; }
+        if(stdoutData.size() + chunk.size() > 4096) {
+            failed(QStringLiteral("worker output limit")); cancel(); stopProcess(); continue;
+        }
+        stdoutData.append(chunk);
+        const int newline = stdoutData.indexOf('\n');
+        if(newline >= 0) {
+            const QByteArray line = stdoutData.left(newline);
+            stdoutData.remove(0,newline+1);
+            if(!workerBusy || !stdoutData.isEmpty()) { failed(QStringLiteral("unexpected worker output")); cancel(); stopProcess(); return; }
+            result(line);
+        }
     }
     process.setReadChannel(QProcess::StandardError);
-    while(process.bytesAvailable()) process.read(4096); // diagnostics never accumulate
+    while(process.bytesAvailable()) process.read(4096);
 }
 void Controller::finished(int code, QProcess::ExitStatus status)
 {
-    deadline.stop(); drain();
+    deadline.stop(); idle.stop(); drain();
     if(extracting == this) extracting.clear();
 #ifdef Q_OS_WIN
-    if(job) TerminateJobObject(HANDLE(job), 1); // no descendants survive a completed request
+    if(job) TerminateJobObject(HANDLE(job), 1);
 #endif
+    if(workerBusy && !stopping && running.generation == generation)
+        failed(QStringLiteral("worker exited without a candidate (%1/%2)").arg(code).arg(int(status)));
+    workerBusy = false; stopping = false; workerRequests = 0;
+    if(!output.isEmpty()) QFile::remove(output);
+    if(pending && !debounce.isActive()) QTimer::singleShot(0,this,[this] { launch(); });
+}
+void Controller::result(const QByteArray &line)
+{
+    deadline.stop();
+    const QJsonObject record = QJsonDocument::fromJson(line).object();
+    if(record.value(QStringLiteral("request_id")).toInt(-1) != workerRequests) {
+        failed(QStringLiteral("worker request ID mismatch")); cancel(); return;
+    }
+    workerBusy = false;
+    idle.start();
     const bool latest = running.generation == generation && running.key == wanted.key &&
                         current(running.token) && identity(running.path) == running.identity;
-    if(trace.isEnabled()) diagnose(QStringLiteral("finished"), QStringLiteral("exit=%1 exit_status=%2 latest=%3 bucket_ms=%4 running_generation=%5 generation=%6 output_bytes=%7")
-        .arg(code).arg(int(status)).arg(latest).arg(running.time).arg(running.generation).arg(generation).arg(stdoutData.size()), 0);
+    if(trace.isEnabled()) diagnose(QStringLiteral("finished"), QStringLiteral("latest=%1 bucket_ms=%2 running_generation=%3 generation=%4 output_bytes=%5")
+        .arg(latest).arg(running.time).arg(running.generation).arg(generation).arg(line.size()), 0);
     if(latest) {
-        const QJsonObject record = QJsonDocument::fromJson(stdoutData).object();
         const QString result = record.value(QStringLiteral("status")).toString();
         const QFileInfo info(output);
         const bool boundedFile = info.size() > 54 && info.size() <= 320 * 180 * 4 + 54;
         QImageReader reader(boundedFile ? output : QString(), "bmp");
         const QSize size = boundedFile ? reader.size() : QSize();
-        if(status == QProcess::NormalExit && code == 0 &&
+        if(record.value(QStringLiteral("exit_code")).toInt(-1) == 0 &&
+           record.value(QStringLiteral("frame_timestamp_verified")).isBool() &&
+           !record.value(QStringLiteral("frame_timestamp_verified")).toBool() &&
            (result == QLatin1String("candidate_captured") || result == QLatin1String("fallback_candidate_captured")) &&
            record.value(QStringLiteral("requested_ms")).toDouble(-1) == running.time &&
            boundedFile &&
@@ -341,10 +400,15 @@ void Controller::finished(int code, QProcess::ExitStatus status)
             QImage image = reader.read().convertToFormat(QImage::Format_ARGB32);
             if(!image.isNull()) {
                 cache->put(running.key,image); visible = true; present(image,running.time);
-            } else failed(QStringLiteral("invalid helper image"));
-        } else failed(QStringLiteral("helper did not return a bounded candidate"));
+                if(trace.isEnabled()) diagnose(QStringLiteral("performance"), QStringLiteral(
+                    "event=present cache=miss generation=%1 bucket_ms=%2 request_to_present_ms=%3 helper_total_ms=%4 entries=%5 bytes=%6")
+                    .arg(generation).arg(running.time).arg(running.clock.elapsed())
+                    .arg(record.value(QStringLiteral("total_latency_ms")).toDouble(-1)).arg(cache->count()).arg(cache->bytes()), 0);
+            } else { failed(QStringLiteral("invalid helper image")); stopProcess(); }
+        } else { failed(QStringLiteral("helper did not return a bounded candidate")); stopProcess(); }
     }
     if(!output.isEmpty()) QFile::remove(output);
+    if(workerRequests >= 64) stopProcess();
     if(pending && !debounce.isActive()) QTimer::singleShot(0,this,[this] { launch(); });
 }
 }

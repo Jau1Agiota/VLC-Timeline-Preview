@@ -115,7 +115,7 @@ class Packaging(unittest.TestCase):
         for name in p.BINARIES:
             file = self.staging / name
             file.parent.mkdir(parents=True, exist_ok=True)
-            file.write_bytes(binary + (p.MARKER if name.endswith('libqt_plugin.dll') else b''))
+            file.write_bytes(binary + (p.MARKER+p.PERF_MARKER if name.endswith('libqt_plugin.dll') else b'libvlc_init_ms'))
         for name in ('COPYING.txt', 'thumbnail-preview/COPYING.txt',
                      'thumbnail-preview/plugins/codec/official.dll',
                      'thumbnail-preview/plugins/plugins.dat', 'plugins/plugins.dat',
@@ -157,6 +157,13 @@ class Packaging(unittest.TestCase):
 
     def test_missing_instrumentation(self):
         (self.staging / 'plugins/gui/libqt_plugin.dll').write_bytes((self.staging / 'vlc.exe').read_bytes())
+        with self.assertRaises(ValueError): self.build()
+
+    def test_missing_performance_instrumentation(self):
+        if p.STAGE != '2.4.5':
+            self.skipTest('Stage 2.4.5 package guard')
+        path=self.staging / 'plugins/gui/libqt_plugin.dll'
+        path.write_bytes(path.read_bytes().replace(p.PERF_MARKER,b''))
         with self.assertRaises(ValueError): self.build()
 
     def test_wrong_architecture(self):
@@ -223,7 +230,7 @@ class Packaging(unittest.TestCase):
         self.assertTrue(triggers.startswith('  workflow_dispatch:'))
         self.assertEqual(re.findall(r'(?m)^  ([a-z_]+):', triggers), ['workflow_dispatch'])
         self.assertIn("default: '2.4.3'", triggers)
-        self.assertIn("options: ['2.4.3', '2.4.4']", triggers)
+        self.assertIn("options: ['2.4.3', '2.4.4', '2.4.5']", triggers)
         self.assertRegex(workflow, r'permissions:\n  contents: read\n')
         self.assertNotRegex(workflow, r'contents: write|secrets\.|gh release|workflow_run:|pull_request:')
         uses = re.findall(r'uses: ([^\s#]+)', workflow)
@@ -345,6 +352,34 @@ class Finalization(unittest.TestCase):
         summary = json.loads((self.metrics / 'summary.json').read_text())
         self.assertTrue(summary['teardown'][1]['errors'])
         self.assertEqual(summary['run-status.json']['exit_code'], 37)
+
+    def test_already_exited_wine_is_verified_not_reported_as_failure(self):
+        (self.work/'wine-prefix').mkdir()
+        calls=[]
+        def run(argv, **kwargs):
+            calls.append((argv,kwargs))
+            return subprocess.CompletedProcess(argv, 1 if argv[-1]=='-k' else 0, b'', b'')
+        with mock.patch.object(p,'reporting_owned'), mock.patch.object(p.subprocess,'run',side_effect=run):
+            self.assertEqual(p.finalize(self.work,'container',0,'compose'),0)
+        self.assertEqual([c[0] for c in calls],[['wineserver','-k'],['wineserver','-w']])
+        self.assertTrue(all(c[1]['timeout']==5 for c in calls))
+        self.assertTrue(all(c[1]['env']['WINEPREFIX']==str(self.work/'wine-prefix') for c in calls))
+
+    def test_wine_kill_error_is_not_ignored(self):
+        (self.work/'wine-prefix').mkdir()
+        with mock.patch.object(p,'reporting_owned'), mock.patch.object(p.subprocess,'run',return_value=
+                subprocess.CompletedProcess(['wineserver','-k'],1,b'',b'permission denied')) as run:
+            self.assertEqual(p.finalize(self.work,'container',37,'compose'),1)
+        self.assertEqual(run.call_count,1)
+        self.assertEqual(json.loads((self.metrics/'container-run-status.json').read_text())['exit_code'],37)
+
+    def test_wine_wait_timeout_is_reported(self):
+        (self.work/'wine-prefix').mkdir()
+        responses=[subprocess.CompletedProcess(['wineserver','-k'],0,b'',b''),
+                   subprocess.TimeoutExpired(['wineserver','-w'],5)]
+        with mock.patch.object(p,'reporting_owned'), mock.patch.object(p.subprocess,'run',side_effect=responses):
+            self.assertEqual(p.finalize(self.work,'container',37,'compose'),1)
+        self.assertEqual(json.loads((self.metrics/'container-run-status.json').read_text())['exit_code'],37)
 
     def test_container_status_cannot_mask_host_failure(self):
         # Exercise scope separation without a real /out mount or Wine/Docker.
@@ -484,5 +519,7 @@ class Finalization(unittest.TestCase):
         summary = json.loads((self.metrics / 'summary.json').read_text())
         self.assertTrue(any('without completion' in error for error in summary['teardown'][-1]['errors']))
 
-unittest.main(argv=[sys.argv[0]], verbosity=2)
+# Synthetic fault injection must not emit real GitHub workflow commands.
+with contextlib.redirect_stdout(io.StringIO()):
+    unittest.main(argv=[sys.argv[0]], verbosity=2)
 PY

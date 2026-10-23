@@ -312,3 +312,34 @@ gh workflow run windows-diagnostic-pilot.yml \
 See `STAGE_2_4_4_FULLSCREEN_PREVIEWS.md` for fullscreen device acceptance. A later
 reporting failure must be distinguished from compilation and package verification;
 the individual job steps and evidence identify which operation failed.
+
+## Stage 2.4.5 performance package
+
+The same manual workflow offers stage `2.4.5`, pinned separately from the CI
+driver. `benchmark_only=true` runs the standalone helper experiment without
+building or packaging VLC; `false` runs the helper benchmark first and then the
+full clean VLC build/package/readback path. The official SDK/runtime remains
+separate from the custom application's DLLs. No permissions, resource gate,
+cleanup allowlist or Release policy is relaxed.
+
+```sh
+gh workflow run windows-diagnostic-pilot.yml \
+  --ref feature/stage-2.4.5-thumbnail-performance \
+  -f stage=2.4.5 -f benchmark_only=false
+```
+
+Benchmark output is in the run-specific evidence artifact as
+`logs/performance-phase-a.json` (the historical filename now includes both
+one-shot baseline and persistent-worker samples). The private Wine prefix is
+initialized before timing. GitHub Checks notices expose aggregate timings,
+CPU/OS identity, candidate hash comparisons and bounded teardown errors, even
+when cloud-side redirected log downloads are unavailable. These notices contain
+no credentials. Detailed raw rows remain in the evidence artifact.
+
+The Stage 2.4.5 packager additionally requires the new Qt UTF-16 timing marker
+and helper JSON timing marker before producing a ZIP. Independent readback
+still checks the producer's manifest, external checksum, all member hashes and
+ZIP CRC. See [STAGE_2_4_5_PERFORMANCE.md](STAGE_2_4_5_PERFORMANCE.md) for measured
+results and the pending native Windows acceptance checklist. Older CI-1 status
+paragraphs above describe its original planning snapshot, not the later pilot
+runs referenced by the stage reports.

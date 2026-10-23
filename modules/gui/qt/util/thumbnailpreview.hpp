@@ -28,7 +28,7 @@ qint64 bucket(qint64 milliseconds);
 
 class Cache {
 public:
-    explicit Cache(int entries = 32, qint64 bytes = 8 * 1024 * 1024);
+    explicit Cache(int entries = 512, qint64 bytes = 256 * 1024 * 1024);
     QImage get(const QString &key);
     void put(const QString &key, const QImage &image);
     void clear();
@@ -49,7 +49,7 @@ public:
     typedef std::function<void(const QImage &, qint64)> Present;
     typedef std::function<void(const QString &)> Log;
     Controller(QWidget *host, Current current, Present present, Log log,
-               const QString &helper = QString(), int debounceMs = 150,
+               const QString &helper = QString(), int debounceMs = 35,
                int deadlineMs = 6500);
     ~Controller();
     void hover(const QString &path, const QString &mediaToken, qint64 milliseconds);
@@ -64,6 +64,7 @@ private:
         QString path, token, identity, key;
         qint64 time = -1;
         quint64 generation = 0;
+        QElapsedTimer clock;
     } wanted, running;
     QWidget *host;
     QPointer<QWidget> ownerWindow;
@@ -74,17 +75,21 @@ private:
     QElapsedTimer failedAt;
     QScopedPointer<QTemporaryDir> directory;
     QProcess process;
-    QTimer debounce, deadline, health;
+    QTimer debounce, deadline, health, idle;
     QSharedPointer<Cache> cache;
     QByteArray stdoutData;
     quint64 generation = 0;
     bool pending = false, visible = false, closing = false;
     void *job = nullptr;
-    int launches = 0;
+    int launches = 0, workerRequests = 0;
+    bool workerBusy = false, stopping = false;
+    QString workerPath;
     Diagnostics trace;
     void diagnose(const QString &, const QString &, int intervalMs = 250) const;
     void launch();
     void finished(int, QProcess::ExitStatus);
+    void send();
+    void result(const QByteArray &);
     void failed(const QString &);
     void hide();
     void drain();

@@ -7,9 +7,12 @@ readonly CI_STAGE=${VLC_CI_STAGE:-2.4.3}
 case "$CI_STAGE" in
     2.4.3) CI_SOURCE_SHA=2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc ;;
     2.4.4) CI_SOURCE_SHA=e879ce656c218eddec13926f03b5f0615d14dc61 ;;
+    2.4.5) CI_SOURCE_SHA=d10df7f0a54326f122f54b2a2961a3e1b0ee1f66 ;;
     *) echo 'Unsupported diagnostic stage' >&2; exit 2 ;;
 esac
 readonly CI_SOURCE_SHA
+readonly CI_BENCHMARK_ONLY=${VLC_CI_BENCHMARK_ONLY:-false}
+[[ $CI_BENCHMARK_ONLY == false || ( $CI_BENCHMARK_ONLY == true && $CI_STAGE == 2.4.5 ) ]] || exit 2
 readonly CI_IMAGE=registry.videolan.org/vlc-debian-win64-3.0@sha256:b8e61c83d248cfb8fc3432d347f07f24de5a2ea6b0060cfe3053243e3674e6e7
 readonly CI_CONTRIB=910cc9cada6080dd777fbafb2ebdd0c24f702c30
 readonly CI_CONTRIB_SHA=49f7690b3d09760f842f9f8e9612c28de8cbb1d027bcb3f6aaa25767611eea8c
@@ -222,6 +225,22 @@ GETCONF
     export HOME=/out/home
     mkdir -m 700 "$WINEPREFIX" "$HOME"
     cd /vlc
+    ci_phase helper-build
+    mkdir /out/sdk
+    7z x -y -o/out/sdk /out/downloads/sdk.7z > /out/logs/sdk-extraction.txt
+    local sdk=/out/sdk/vlc-3.0.24
+    [[ -f $sdk/sdk/lib/libvlc.lib && -f $sdk/libvlc.dll && -d $sdk/plugins ]]
+    x86_64-w64-mingw32-gcc -std=c11 -O2 -Wall -Wextra -Werror -municode -D__USE_MINGW_ANSI_STDIO=1 \
+        -I"$sdk/sdk/include" /vlc/prototypes/stage_2_3/thumbnail_helper.c "$sdk/sdk/lib/libvlc.lib" -o "$sdk/thumbnail-helper.exe"
+    if [[ $CI_STAGE == 2.4.5 ]]; then
+        ci_phase helper-benchmark
+        # Exclude one-time Wine prefix creation from Windows process timings.
+        timeout --kill-after=5s 60s wine cmd /c exit 0 > /out/logs/wine-prefix-init.txt 2>&1
+        python3 /vlc/prototypes/stage_2_3/benchmark.py --helper "$sdk/thumbnail-helper.exe" --fixtures /out/fixtures \
+            --output /out/logs/performance-phase-a.json --wine --github-notice --all-fixtures --profiles baseline --persistent
+    fi
+    [[ $CI_BENCHMARK_ONLY == false ]] || return 0
+    if [[ $CI_BENCHMARK_ONLY == false ]]; then
     # .luac is an expected native tool, even with prebuilt target libraries.
     mkdir -p contrib/tarballs
     curl --fail --location --proto '=https' --proto-redir '=https' --output contrib/tarballs/lua-5.1.5.tar.gz https://www.lua.org/ftp/lua-5.1.5.tar.gz
@@ -234,13 +253,7 @@ GETCONF
     python3 /ci/package-diagnostic.py timed /out/metrics/package-time.json -- /usr/bin/make -C win64 package-win32-debug-zip
     unzip -t win64/vlc-3.0.24-win64-debug.zip > /out/logs/upstream-zip-test.txt
     grep -a -q 'timeline-diagnostic slider=' win64/vlc-3.0.24/plugins/gui/libqt_plugin.dll
-    ci_phase helper-build
-    mkdir /out/sdk
-    7z x -y -o/out/sdk /out/downloads/sdk.7z > /out/logs/sdk-extraction.txt
-    local sdk=/out/sdk/vlc-3.0.24
-    [[ -f $sdk/sdk/lib/libvlc.lib && -f $sdk/libvlc.dll && -d $sdk/plugins ]]
-    x86_64-w64-mingw32-gcc -std=c11 -O2 -Wall -Wextra -Werror -municode -D__USE_MINGW_ANSI_STDIO=1 \
-        -I"$sdk/sdk/include" /vlc/prototypes/stage_2_3/thumbnail_helper.c "$sdk/sdk/lib/libvlc.lib" -o "$sdk/thumbnail-helper.exe"
+    fi
     for binary in win64/vlc-3.0.24/vlc.exe win64/vlc-3.0.24/plugins/gui/libqt_plugin.dll "$sdk/thumbnail-helper.exe"; do
         x86_64-w64-mingw32-objdump -f "$binary"
         x86_64-w64-mingw32-objdump -p "$binary"
@@ -307,8 +320,9 @@ ci_run() {
     timeout --signal=TERM --kill-after=30s 90m docker run --name "vlc-ci1-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
         --cidfile "$work/container.id" --cpus=4 --memory=12g --pids-limit=1024 --user "$(id -u):$(id -g)" \
         --mount "type=bind,src=$source,dst=/vlc" --mount "type=bind,src=$CI_DRIVER,dst=/ci,readonly" \
-        --mount "type=bind,src=$work,dst=/out" --env CI_INSIDE=1 --env "VLC_CI_STAGE=$CI_STAGE" --workdir /vlc "$CI_IMAGE" \
+        --mount "type=bind,src=$work,dst=/out" --env CI_INSIDE=1 --env "VLC_CI_STAGE=$CI_STAGE" --env "VLC_CI_BENCHMARK_ONLY=$CI_BENCHMARK_ONLY" --workdir /vlc "$CI_IMAGE" \
         bash /ci/build-diagnostic.sh inside
+    [[ $CI_BENCHMARK_ONLY == false ]] || return 0
     ci_phase final-verification
     python3 "$CI_DRIVER/package-diagnostic.py" verify "$work/delivery"
 }

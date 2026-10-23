@@ -6,8 +6,13 @@ on:
       stage:
         description: Pinned diagnostic source (Stage 2.4.3 remains the default)
         type: choice
-        options: ['2.4.3', '2.4.4']
+        options: ['2.4.3', '2.4.4', '2.4.5']
         default: '2.4.3'
+
+      benchmark_only:
+        description: Stage 2.4.5 helper-only timing experiment (no VLC rebuild/package)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -18,7 +23,8 @@ jobs:
     timeout-minutes: 120
     env:
       VLC_CI_STAGE: ${{ inputs.stage || '2.4.3' }}
-      SOURCE_SHA: ${{ inputs.stage == '2.4.4' && 'e879ce656c218eddec13926f03b5f0615d14dc61' || '2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc' }}
+      VLC_CI_BENCHMARK_ONLY: ${{ inputs.benchmark_only && 'true' || 'false' }}
+      SOURCE_SHA: ${{ inputs.stage == '2.4.5' && 'd10df7f0a54326f122f54b2a2961a3e1b0ee1f66' || inputs.stage == '2.4.4' && 'e879ce656c218eddec13926f03b5f0615d14dc61' || '2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc' }}
     steps:
       - name: Set run-specific output directory
         shell: bash
@@ -40,22 +46,25 @@ jobs:
         shell: bash
         run: bash ci-driver/ci/windows/build-diagnostic.sh run "$GITHUB_WORKSPACE/source" "$CI_WORK"
       - name: Upload pilot package
+        if: ${{ !inputs.benchmark_only }}
         id: package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: vlc-stage${{ inputs.stage == '2.4.4' && '244' || '243' }}-win64-${{ env.SOURCE_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: vlc-stage${{ inputs.stage == '2.4.5' && '245' || inputs.stage == '2.4.4' && '244' || '243' }}-win64-${{ env.SOURCE_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.CI_WORK }}/delivery/
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
           overwrite: false
       - name: Download pilot for independent readback
+        if: ${{ !inputs.benchmark_only }}
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           artifact-ids: ${{ steps.package.outputs.artifact-id }}
           path: ${{ env.CI_WORK }}/readback
           merge-multiple: true
       - name: Verify downloaded ZIP against producer manifest
+        if: ${{ !inputs.benchmark_only }}
         shell: bash
         run: >-
           python3 ci-driver/ci/windows/package-diagnostic.py verify

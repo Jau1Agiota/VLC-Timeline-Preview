@@ -27,6 +27,13 @@ class Accuracy(unittest.TestCase):
             header=bytearray(data[:54]);struct.pack_into('<i',header,18,313)
             struct.pack_into('<i',header,22,-180)
             image.write_bytes(header+small);self.assertEqual(score.scene_id(image),'white')
+            valid=image.read_bytes()
+            for offset,fmt,value in [(18,'<i',321),(22,'<i',-181),(28,'<H',24),(10,'<I',1)]:
+                invalid=bytearray(valid);struct.pack_into(fmt,invalid,offset,value)
+                image.write_bytes(invalid)
+                with self.assertRaises(ValueError):score.scene_id(image)
+            image.write_bytes(valid[:-4])
+            with self.assertRaises(ValueError):score.scene_id(image)
             image.write_bytes(b'not a BMP')
             with self.assertRaises(ValueError):score.scene_id(image)
 

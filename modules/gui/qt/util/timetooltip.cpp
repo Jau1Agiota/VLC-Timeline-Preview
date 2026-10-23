@@ -77,7 +77,7 @@ void TimeTooltip::adjustPosition()
     // The experimental backend may retain an intermediate image while the
     // cursor advances. Distinguish current hover from the image's own request.
     const QString imageLabel = mMpvPreview ?
-        QStringLiteral("hover ") + mHoverTime + QStringLiteral(" | image ") + mPreviewTime : mPreviewTime;
+        QStringLiteral("hover ") + mHoverTime + (qgetenv("VLC_MPV_SEEK") == "exact" ? QStringLiteral(" | req ") : QStringLiteral(" | image ")) + mPreviewTime : mPreviewTime;
     mPreviewLabel = metrics.elidedText(imageLabel +
         (mMpvPreview || mText.isEmpty() ? QString() : QStringLiteral(" - ") + mText),
         Qt::ElideRight, qMax(140, mPreview.width()));
@@ -192,6 +192,12 @@ void TimeTooltip::buildPath()
 void TimeTooltip::setTip( const QPoint& target, const QString& time, const QString& text )
 {
     mHoverTime = time;
+    if(mTrace.isEnabled() && mHoverTargetMs >= 0) {
+        const qint64 seconds = mHoverTargetMs / 1000;
+        mHoverTime = QStringLiteral("%1:%2:%3.%4").arg(seconds/3600,2,10,QLatin1Char('0'))
+            .arg(seconds/60%60,2,10,QLatin1Char('0')).arg(seconds%60,2,10,QLatin1Char('0'))
+            .arg(mHoverTargetMs%1000,3,10,QLatin1Char('0'));
+    }
     mMpvPreview = qgetenv("VLC_THUMBNAIL_BACKEND") == "libmpv";
     mDisplayedText = time;
     if ( !text.isEmpty() )

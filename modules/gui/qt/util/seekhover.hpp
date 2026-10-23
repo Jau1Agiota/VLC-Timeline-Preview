@@ -50,5 +50,17 @@ inline Position map( int x, int y, int width, int height, int start, int end,
                        + ((durationMs % result.span) * offset) / result.span;
     return result;
 }
+/* Match InputManager::sliderUpdate's float fraction, rather than ideal geometry.
+ * This reads the value only; it never changes the slider or active input. */
+inline int64_t clickTimestamp(int value, int maximum, int64_t durationMs)
+{
+    if(maximum <= 0 || durationMs <= 0) return -1;
+    if(value <= 0) return 0;
+    if(value >= maximum) return durationMs;
+    const float fraction = value / static_cast<float>(maximum);
+    const double time = static_cast<double>(durationMs) * fraction;
+    if(time >= static_cast<double>(durationMs)) return durationMs;
+    return static_cast<int64_t>(time + 0.5);
+}
 }
 #endif

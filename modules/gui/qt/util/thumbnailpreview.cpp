@@ -111,9 +111,12 @@ Controller::Controller(QWidget *widget, Current check, Present update, Log logge
 {
     const QByteArray backend = qgetenv("VLC_THUMBNAIL_BACKEND");
     mpvBackend = backend == "libmpv";
+    const QByteArray seekMode = qgetenv("VLC_MPV_SEEK");
+    mpvExact = mpvBackend && seekMode == "exact";
     if(mpvBackend && program.isEmpty())
         helper = QString::fromLocal8Bit(qgetenv("VLC_MPV_HELPER"));
-    if(!backend.isEmpty() && backend != "libvlc" && !mpvBackend)
+    if((mpvBackend && !seekMode.isEmpty() && seekMode != "fast" && seekMode != "exact") ||
+       (!backend.isEmpty() && backend != "libvlc" && !mpvBackend))
         helper.clear(); // Explicit unknown selection fails closed; never silently substitutes.
     if(helper.isEmpty() && log) log(QStringLiteral("preview backend unavailable: select libvlc or set VLC_MPV_HELPER for libmpv"));
     debounce.setSingleShot(true); debounce.setInterval(mpvBackend ? 16 : delay);
@@ -204,7 +207,7 @@ void Controller::cancel(bool clearCache)
         .arg(clearCache).arg(pending).arg(visible).arg(int(process.state())), 0);
     if(trace.isEnabled() && wanted.clock.isValid()) diagnose(QStringLiteral("performance"),
         QStringLiteral("event=cancel generation=%1 elapsed_ms=%2").arg(generation).arg(wanted.clock.elapsed()), 0);
-    ++generation; pending = false; wanted = Request();
+    ++generation; if(mpvExact) lastPresented = generation; pending = false; wanted = Request();
     debounce.stop(); health.stop(); hide();
     if((workerBusy && !mpvBackend) || clearCache || closing) stopProcess();
     // Keep the deadline during Starting: started() also rejects canceled work.
@@ -252,12 +255,12 @@ void Controller::hover(const QString &path, const QString &token, qint64 ms)
 {
     if(closing) return;
     if(helper.isEmpty()) { cancel(); return; }
-    const qint64 time = bucket(ms);
+    const qint64 time = mpvExact ? (ms >= 0 && ms <= 86400000 ? ms : -1) : bucket(ms);
     const QString file = identity(path);
     if(trace.isEnabled()) diagnose(QStringLiteral("hover"), QStringLiteral("requested_ms=%1 bucket_ms=%2 closing=%3 token_empty=%4 local_identity_ok=%5")
         .arg(ms).arg(time).arg(closing).arg(token.isEmpty()).arg(!file.isEmpty()));
     if(time < 0 || token.isEmpty() || file.isEmpty() || !current(token)) { cancel(); return; }
-    const QString source = (mpvBackend ? QStringLiteral("libmpv") : QStringLiteral("libvlc")) + QChar(0) + token + QChar(0) + file;
+    const QString source = (mpvBackend ? (mpvExact ? QStringLiteral("libmpv:exact") : QStringLiteral("libmpv")) : QStringLiteral("libvlc")) + QChar(0) + token + QChar(0) + file;
     if(activePreview && activePreview != this) activePreview->cancel();
     activePreview = this;
     if(sourceKey != source) { cancel(); stopProcess(); sourceKey = source; lastPresented = 0; }
@@ -412,7 +415,12 @@ void Controller::finished(int code, QProcess::ExitStatus status)
 void Controller::mpvResult(const QByteArray &header, const QByteArray &pixels)
 {
     const QJsonObject h = QJsonDocument::fromJson(header).object();
-    if(!workerBusy || h.value(QStringLiteral("protocol")).toInt() != 1 ||
+    if((!mpvExact && h.contains(QStringLiteral("seek_strategy")) &&
+        h.value(QStringLiteral("seek_strategy")).toString() != QLatin1String("fast")) ||
+       (mpvExact && (h.value(QStringLiteral("seek_strategy")).toString() != QLatin1String("exact") ||
+        !h.contains(QStringLiteral("actual_image_timestamp_ms")) || !h.value(QStringLiteral("actual_image_timestamp_ms")).isNull() ||
+        h.value(QStringLiteral("candidate_state")).toString() != QLatin1String("provisional"))) ||
+       !workerBusy || h.value(QStringLiteral("protocol")).toInt() != 1 ||
        h.value(QStringLiteral("request_id")).toInt(-1) != workerRequests ||
        h.value(QStringLiteral("requested_ms")).toDouble(-1) != running.time ||
        h.value(QStringLiteral("width")).toInt() != 320 || h.value(QStringLiteral("height")).toInt() != 180 ||
@@ -432,14 +440,16 @@ void Controller::mpvResult(const QByteArray &header, const QByteArray &pixels)
         const QImage image = QImage(reinterpret_cast<const uchar *>(pixels.constData()),
             320,180,320*4,QImage::Format_ARGB32).copy();
         if(image.isNull()) { failed(QStringLiteral("mpv image allocation failed")); cancel(); stopProcess(); return; }
+        const double copyMs = copy.nsecsElapsed()/1000000.0;
         cache->put(running.key,image); visible = true; lastPresented = running.generation;
         present(image,running.time);
         if(trace.isEnabled()) diagnose(QStringLiteral("performance"), QStringLiteral(
-            "event=mpv-present generation=%1 wanted=%2 image_request_ms=%3 request_to_present_ms=%4 seek_render_ms=%5 render_ms=%6 copy_ms=%7 ready_ms=%8 frame_pts_verified=0")
+            "event=mpv-present generation=%1 wanted=%2 image_request_ms=%3 request_to_present_ms=%4 seek_render_ms=%5 render_ms=%6 copy_ms=%7 ready_ms=%8 frame_pts_verified=0 strategy=%9 candidate_state=provisional actual_image_timestamp_ms=unknown error_ms=unknown worker_request_id=%10")
             .arg(running.generation).arg(generation).arg(running.time).arg(running.clock.elapsed())
             .arg(h.value(QStringLiteral("seek_render_ms")).toDouble(-1))
-            .arg(h.value(QStringLiteral("render_ms")).toDouble(-1)).arg(copy.nsecsElapsed()/1000000.0)
-            .arg(h.value(QStringLiteral("ready_ms")).toDouble(-1)), 0);
+            .arg(h.value(QStringLiteral("render_ms")).toDouble(-1)).arg(copyMs)
+            .arg(h.value(QStringLiteral("ready_ms")).toDouble(-1)).arg(mpvExact ? QStringLiteral("exact") : QStringLiteral("fast"))
+            .arg(workerRequests), 0);
     }
     if(pending && !debounce.isActive()) QTimer::singleShot(0,this,[this] { launch(); });
 }

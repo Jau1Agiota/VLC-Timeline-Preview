@@ -37,7 +37,7 @@ static int mpv_worker(const std::string &source) {
         if(!(in>>id>>target>>timeout))return 2;
         if(source.find("error")!=std::string::npos)return 3;
         std::this_thread::sleep_for(std::chrono::milliseconds(source.find("timeout")!=std::string::npos?3000:80));
-        std::cout<<"{\"protocol\":1,\"request_id\":"<<(source.find("badid")!=std::string::npos?id+1:id)
+        std::cout<<"{\"seek_strategy\":\""<<((std::getenv("VLC_MPV_SEEK") && std::string(std::getenv("VLC_MPV_SEEK"))=="exact")?"exact":"fast")<<"\",\"actual_image_timestamp_ms\":null,\"candidate_state\":\"provisional\",\"protocol\":1,\"request_id\":"<<(source.find("badid")!=std::string::npos?id+1:id)
                  <<",\"requested_ms\":"<<target<<",\"width\":320,\"height\":180,\"bytes\":230400,\"frame_timestamp_verified\":false}\n"<<std::flush;
         std::string pixels(320*180*4,static_cast<char>(255));
         // Fragment both header/payload independently of the GUI's read boundaries.

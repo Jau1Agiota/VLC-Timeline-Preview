@@ -508,6 +508,11 @@ void SeekSlider::updateHover( const QPoint &pos, const char *event, bool hoverin
                                                      first.isValid() && last.isValid() );
     const bool valid = hovering && hover.inside && durationMs > 0 && active &&
                        seekable && isEnabled() && !isSliding && !qApp->activePopupWidget();
+    // Exact preview uses the identical value/fraction a normal timeline click
+    // emits. Chapter-zone clicks still select chapters through the existing path.
+    const qint64 clickMs = SeekHover::clickTimestamp(getValueFromXPos(pos.x()), maximum(), durationMs);
+    const qint64 requestedMs = thumbnailPreview && thumbnailPreview->exactSeeking() ? clickMs : hover.timestampMs;
+    if( thumbnailPreview && thumbnailPreview->exactSeeking() ) mTimeTooltip->setHoverTarget(requestedMs);
     if( thumbnailPreview && hovering )
     {
         const QString token = thumbnailToken();
@@ -516,7 +521,7 @@ void SeekSlider::updateHover( const QPoint &pos, const char *event, bool hoverin
             char *uri = input_item_GetURI( input_GetItem(input) );
             const QUrl url = QUrl::fromEncoded( QByteArray(uri ? uri : "") );
             free(uri);
-            if( url.isLocalFile() ) thumbnailPreview->hover(url.toLocalFile(), token, hover.timestampMs);
+            if( url.isLocalFile() ) thumbnailPreview->hover(url.toLocalFile(), token, requestedMs);
             else thumbnailPreview->cancel();
         }
         else thumbnailPreview->cancel();
@@ -525,12 +530,12 @@ void SeekSlider::updateHover( const QPoint &pos, const char *event, bool hoverin
     const QString message = QStringLiteral(
         "event=%1 x=%2 y=%3 width=%4 height=%5 start_x=%6 end_x=%7 span=%8 "
         "timestamp_ms=%9 duration_ms=%10 inside=%11 valid=%12 "
-        "active=%13 seekable=%14 dragging=%15" )
+        "active=%13 seekable=%14 dragging=%15 click_ms=%16 requested_ms=%17" )
         .arg( QString::fromLatin1( event ) ).arg( pos.x() ).arg( pos.y() )
         .arg( width() ).arg( height() ).arg( hover.start ).arg( hover.end ).arg( hover.span )
         .arg( static_cast<qlonglong>( hover.timestampMs ) )
         .arg( static_cast<qlonglong>( durationMs ) ).arg( hover.inside ).arg( valid )
-        .arg( active ).arg( seekable ).arg( isSliding );
+        .arg( active ).arg( seekable ).arg( isSliding ).arg(clickMs).arg(requestedMs);
     hoverTrace.record( QStringLiteral("hover"), QStringLiteral(
         "component=slider stage=hover %1 inputLength_s=%2 under_mouse=%3 visible=%4 "
         "app_state=%5 buttons=%6 popup=%7 tooltip_visible=%8 slider_active=%9 tooltip_active=%10")

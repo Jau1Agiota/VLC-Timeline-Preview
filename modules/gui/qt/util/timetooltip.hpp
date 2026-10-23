@@ -38,6 +38,7 @@ class TimeTooltip : public QWidget
     Q_OBJECT
 public:
     explicit TimeTooltip( QWidget *parent = 0 );
+    void setHoverTarget(qint64 ms) { mHoverTargetMs = ms; }
     void setTip( const QPoint& pos, const QString& time, const QString& text );
     virtual void show();
     void setPlacementContext(QWidget *owner, TimelinePreview::PopupContext context);
@@ -69,6 +70,7 @@ private:
     QRect mPreviewTextBox;
     QString mPreviewTime;
     QString mHoverTime;
+    qint64 mHoverTargetMs = -1;
     bool mMpvPreview = false;
     QString mPreviewLabel;
 };

@@ -20,6 +20,7 @@ import zipfile
 STAGE = os.environ.get("VLC_CI_STAGE", "2.4.3")
 SOURCE = {"2.4.3": "2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc",
           "2.4.4": "e879ce656c218eddec13926f03b5f0615d14dc61",
+          "2.4.6E": "e577355ed22aea9d2703aad794f79a68f0a1ce42",
           "2.4.6D": "12b25af9272193ddfd0c298e1e9f48c5ff5b66e4",
           "2.4.6C": "febfd332f4ffbc94981f0b1cac298dc941de057b",
           "2.4.6B": "5cfebdb9718b3477e17c5ffcb6d14a2876974350",
@@ -31,18 +32,20 @@ SDK_SHA = "1ed59c09152e78aff84663fa76efab26057716576db74332858810e5ef54ae1f"
 BINARIES = ("vlc.exe", "libvlc.dll", "libvlccore.dll", "plugins/gui/libqt_plugin.dll",
             "thumbnail-preview/thumbnail-helper.exe", "thumbnail-preview/libvlc.dll",
             "thumbnail-preview/libvlccore.dll")
-if STAGE in {"2.4.6B", "2.4.6C", "2.4.6D"}:
+if STAGE in {"2.4.6B", "2.4.6C", "2.4.6D", "2.4.6E"}:
     BINARIES += ("thumbnail-mpv/mpv-thumbnail-worker.exe",)
-if STAGE in {"2.4.6C", "2.4.6D"}:
+if STAGE in {"2.4.6C", "2.4.6D", "2.4.6E"}:
     BINARIES += ("thumbnail-mpv/mpv-thumbnail-accurate-worker.exe",)
 EXACT_MARKER = "libmpv:exact".encode("utf-16le")
 MPV_MARKER = "event=mpv-present".encode("utf-16le")
 MARKER = b"timeline-diagnostic slider="
+VISUAL_MARKER = "glow-fade-bottom".encode("utf-16le")
 PLAYBACK_MARKER = b"playback-stability heartbeat"
 PERF_MARKER = "request_to_present_ms=".encode("utf-16le")
-README = (("Stage 2.4.6D stability/diagnostic experiment; freeze cause and device acceptance unresolved.\r\n"
+README = (("Stage 2.4.6E borderless glow/fade visual polish; Windows acceptance pending.\r\n"
+           if STAGE == "2.4.6E" else "Stage 2.4.6D stability/diagnostic experiment; freeze cause and device acceptance unresolved.\r\n"
            if STAGE == "2.4.6D" else "Stage 2.4.4 fullscreen preview correction; Windows visual verification pending.\r\n"
-           if STAGE == "2.4.4" else "Stage 2.4.6C fast/exact seek experiment; accuracy/device gates pending.\r\n" if STAGE in {"2.4.6C", "2.4.6D"} else "Stage 2.4.6B opt-in libmpv integration; use thumbnail-mpv/Start-Preview.ps1.\r\n" if STAGE == "2.4.6B" else "Stage 2.4.5 performance experiment; Windows acceptance pending.\r\n" if STAGE == "2.4.5" else "Stage 2.4.3 CI-1 diagnostic pilot; no fullscreen fix.\r\n") +
+           if STAGE == "2.4.4" else "Stage 2.4.6C fast/exact seek experiment; accuracy/device gates pending.\r\n" if STAGE in {"2.4.6C", "2.4.6D", "2.4.6E"} else "Stage 2.4.6B opt-in libmpv integration; use thumbnail-mpv/Start-Preview.ps1.\r\n" if STAGE == "2.4.6B" else "Stage 2.4.5 performance experiment; Windows acceptance pending.\r\n" if STAGE == "2.4.5" else "Stage 2.4.3 CI-1 diagnostic pilot; no fullscreen fix.\r\n") +
           "Set VLC_TIMELINE_HOVER_DEBUG=1 before launching vlc.exe with --verbose=2.\r\n"
           "Keep thumbnail-preview/ intact: it is a separate official VLC runtime.\r\n"
           "Native Windows GUI/audio/fullscreen and frame PTS accuracy are unverified.\r\n"
@@ -153,23 +156,26 @@ def package(staging, output, metadata_path):
     require(any(n.startswith("thumbnail-preview/plugins/") and n.endswith(".dll") for n in files),
             "missing private runtime plugins")
     require(has_marker(staging / "plugins/gui/libqt_plugin.dll"), "missing Stage 2.4.3 instrumentation")
-    if STAGE in {"2.4.5", "2.4.6B", "2.4.6C", "2.4.6D"}:
+    if STAGE in {"2.4.5", "2.4.6B", "2.4.6C", "2.4.6D", "2.4.6E"}:
         require(has_marker(staging / "plugins/gui/libqt_plugin.dll", PERF_MARKER),
                 "missing Stage 2.4.5 Qt timing instrumentation")
         require(has_marker(staging / "thumbnail-preview/thumbnail-helper.exe", b"libvlc_init_ms"),
                 "missing Stage 2.4.5 helper timing instrumentation")
-    if STAGE in {"2.4.6B", "2.4.6C", "2.4.6D"}:
+    if STAGE in {"2.4.6B", "2.4.6C", "2.4.6D", "2.4.6E"}:
         require(has_marker(staging / "plugins/gui/libqt_plugin.dll", MPV_MARKER), "missing libmpv integration marker")
         require(not any(PurePosixPath(n).name.lower() == "libmpv-2.dll" for n in files), "unreviewed mpv runtime must not be bundled")
         for name in ("Start-Preview.ps1", "Setup-Runtime.ps1", "Get-Runtime.ps1", "dependencies.json", "THIRD_PARTY.md"):
             require("thumbnail-mpv/"+name in files, "missing mpv setup/license material")
-    if STAGE in {"2.4.6C", "2.4.6D"}:
+    if STAGE in {"2.4.6C", "2.4.6D", "2.4.6E"}:
         require(has_marker(staging / "plugins/gui/libqt_plugin.dll", EXACT_MARKER), "missing exact mode integration")
         require(has_marker(staging / "thumbnail-mpv/mpv-thumbnail-accurate-worker.exe", b"absolute+exact"), "missing exact worker")
-    if STAGE == "2.4.6D":
+    if STAGE in {"2.4.6D", "2.4.6E"}:
         require(has_marker(staging / "plugins/gui/libqt_plugin.dll", PLAYBACK_MARKER), "missing foreground diagnostics")
         require("thumbnail-mpv/STAGE_2_4_6D_STABILITY.md" in files, "missing Stage D test instructions")
         require(b"VLC_PLAYBACK_STABILITY_DEBUG" in (staging / "thumbnail-mpv/Start-Preview.ps1").read_bytes(), "missing Stage D diagnostic launcher")
+    if STAGE == "2.4.6E":
+        require(has_marker(staging / "plugins/gui/libqt_plugin.dll", VISUAL_MARKER), "missing Stage E visual treatment")
+        require("thumbnail-mpv/STAGE_2_4_6E_VISUAL_POLISH.md" in files, "missing Stage E visual instructions")
     files["CI_1_README.txt"] = hashlib.sha256(README).hexdigest()
     manifest = dict(metadata, files_sha256=files, native_windows_gui_tested=False,
                     frame_pts_accuracy_verified=False, main_plugin_cache_omitted=True,
@@ -588,11 +594,11 @@ def inputs(args):
                "modules/gui/qt/util/thumbnailpreview.cpp", "modules/gui/qt/util/thumbnailpreview.hpp",
                "modules/gui/qt/util/timetooltip.cpp", "modules/gui/qt/util/timetooltip.hpp",
                "prototypes/stage_2_3/thumbnail_helper.c")
-    if STAGE in {"2.4.6B", "2.4.6C", "2.4.6D"}:
+    if STAGE in {"2.4.6B", "2.4.6C", "2.4.6D", "2.4.6E"}:
         tracked += ("prototypes/stage_2_4_6B/worker.c", "prototypes/stage_2_4_6B/dependencies.json")
-    if STAGE in {"2.4.6C", "2.4.6D"}:
+    if STAGE in {"2.4.6C", "2.4.6D", "2.4.6E"}:
         tracked += ("prototypes/stage_2_4_6C/worker.c", "prototypes/stage_2_4_6C/Start-Preview.ps1", "modules/gui/qt/util/seekhover.hpp")
-    if STAGE == "2.4.6D":
+    if STAGE in {"2.4.6D", "2.4.6E"}:
         tracked += ("modules/gui/qt/input_manager.cpp", "modules/gui/qt/input_manager.hpp",
                     "modules/gui/qt/util/playbackdiagnostics.hpp", "prototypes/stage_2_4_6D/Start-Preview.ps1")
     metadata = {"source_commit": SOURCE, "driver_commit": args.driver, "image": args.image,

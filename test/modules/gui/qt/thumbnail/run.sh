@@ -24,7 +24,7 @@ moc_tool=${MOC:-moc}
     "${qt_cflags[@]}" "$source_root/modules/gui/qt/util/thumbnailpreview.cpp" \
     "$source_root/modules/gui/qt/util/timetooltip.cpp" \
     "$source_root/test/modules/gui/qt/thumbnail/controller_test.cpp" "$output/timetooltip.moc.cpp" "${qt_libs[@]}" -o "$output/controller-test"
-QT_QPA_PLATFORM=offscreen "$output/controller-test" "$output/fake-helper"
+VLC_VISUAL_TEST_OUTPUT="$output" QT_QPA_PLATFORM=offscreen "$output/controller-test" "$output/fake-helper"
 
 if [[ -n ${REAL_PREVIEW_HELPER:-} && -n ${REAL_PREVIEW_MEDIA:-} ]]; then
     "$compiler" -std=c++11 -Wall -Wextra -Werror -fPIC -I"$source_root" \

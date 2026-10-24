@@ -33,6 +33,8 @@
 #include "previewdiagnostics.hpp"
 #include "thumbnailpreview.hpp"
 
+namespace TimelinePreview { class PreviewTests; }
+
 class TimeTooltip : public QWidget
 {
     Q_OBJECT
@@ -50,6 +52,8 @@ protected:
     bool event( QEvent * ) Q_DECL_OVERRIDE;
 
 private:
+    friend class TimelinePreview::PreviewTests;
+    static QString previewTimestamp(qint64 ms);
     TimelinePreview::Diagnostics mTrace;
     void diagnose( const QString &, const QString &, int intervalMs = 250 );
     void presentFullscreen();
@@ -69,6 +73,8 @@ private:
     QImage mPreview;
     QRect mWindowBounds;
     QRect mPreviewTextBox;
+    QRect mPreviewImageBox;
+    qint64 mPreviewRequestedMs = -1;
     QString mPreviewTime;
     QString mHoverTime;
     qint64 mHoverTargetMs = -1;

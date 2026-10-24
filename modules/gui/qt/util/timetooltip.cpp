@@ -95,9 +95,9 @@ void TimeTooltip::adjustPosition()
         textbox = QRect(QPoint(0,0),size);
         QFont font=mFont; font.setBold(true);
         const QFontMetrics labelMetrics(font);
-        const int w=qMin(mPreview.width()-8,labelMetrics.boundingRect(mPreviewLabel).width()+18);
-        const int h=qMin(mPreview.height()-8,labelMetrics.height()+8);
-        if(w>0 && h>0)
+        const int w=labelMetrics.boundingRect(mPreviewLabel).width()+18;
+        const int h=labelMetrics.height()+8;
+        if(w<=mPreview.width()-8 && h+13<mPreview.height())
             mPreviewTextBox = QRect(mPreviewImageBox.center().x()-w/2,
                                     mPreviewImageBox.bottom()-h-12,w,h);
     }

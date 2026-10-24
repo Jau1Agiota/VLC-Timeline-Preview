@@ -146,6 +146,9 @@ public:
         tooltip.setPreview(narrow,4252123,window);
         assert(tooltip.mPreviewImageBox.size()==narrow.size() && tooltip.size()==QSize(168,98));
         assert(tooltip.mPreviewLabel==QStringLiteral("1:10:52"));
+        QImage tiny(32,16,QImage::Format_ARGB32);tiny.fill(qRgb(20,80,200));
+        tooltip.setPreview(tiny,4252123,window);
+        assert(tooltip.mPreviewImageBox.size()==tiny.size() && !tooltip.mPreviewTextBox.isValid());
         tooltip.setPreview(QImage(),-1,QRect());assert(tooltip.height()<100);
 
         // Stage D: geometry observers must never see a new position with the

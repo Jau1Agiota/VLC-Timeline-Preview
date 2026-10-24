@@ -7,6 +7,7 @@ readonly CI_STAGE=${VLC_CI_STAGE:-2.4.3}
 case "$CI_STAGE" in
     2.4.3) CI_SOURCE_SHA=2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc ;;
     2.4.4) CI_SOURCE_SHA=e879ce656c218eddec13926f03b5f0615d14dc61 ;;
+    2.4.6E) CI_SOURCE_SHA=0934ef24f052e1bfd1f1da8cb2b51bc1ed148e21 ;;
     2.4.6D) CI_SOURCE_SHA=12b25af9272193ddfd0c298e1e9f48c5ff5b66e4 ;;
     2.4.6C) CI_SOURCE_SHA=febfd332f4ffbc94981f0b1cac298dc941de057b ;;
     2.4.6B) CI_SOURCE_SHA=5cfebdb9718b3477e17c5ffcb6d14a2876974350 ;;
@@ -266,34 +267,37 @@ GETCONF
     (cd win64/vlc-3.0.24 && timeout --kill-after=5s 60s wine ./vlc-cache-gen.exe "Z:\\vlc\\win64\\vlc-3.0.24\\plugins")
     grep -a -q 'Qt interface' win64/vlc-3.0.24/plugins/plugins.dat
     python3 /ci/package-diagnostic.py smoke --runtime "$sdk" --fixtures /out/fixtures --output /out/logs/helper-smoke
-    if [[ $CI_STAGE == 2.4.6B || $CI_STAGE == 2.4.6C || $CI_STAGE == 2.4.6D ]]; then
+    if [[ $CI_STAGE == 2.4.6B || $CI_STAGE == 2.4.6C || $CI_STAGE == 2.4.6D || $CI_STAGE == 2.4.6E ]]; then
         ci_phase mpv-worker-build
         ci_sha /out/downloads/mpv.7z efc719eff3dc5954b4a5efc800632808bcec01cc9034940dd14e5eb7fe9ea633
         mkdir /out/mpv-sdk
         7z x -y -o/out/mpv-sdk /out/downloads/mpv.7z > /out/logs/mpv-sdk-extraction.txt
         bash /vlc/prototypes/stage_2_4_6B/build.sh /out/mpv-sdk /out/mpv-worker
-        if [[ $CI_STAGE == 2.4.6C || $CI_STAGE == 2.4.6D ]]; then
+        if [[ $CI_STAGE == 2.4.6C || $CI_STAGE == 2.4.6D || $CI_STAGE == 2.4.6E ]]; then
             bash /vlc/prototypes/stage_2_4_6C/build.sh /out/mpv-sdk /out/mpv-accurate
         fi
         x86_64-w64-mingw32-objdump -p /out/mpv-worker/mpv-thumbnail-worker.exe > /out/logs/mpv-pe.txt
     fi
     ci_phase compose
     bash extras/package/thumbnail-preview.sh /vlc/win64/vlc-3.0.24 "$sdk" /out/staging
-    if [[ $CI_STAGE == 2.4.6B || $CI_STAGE == 2.4.6C || $CI_STAGE == 2.4.6D ]]; then
+    if [[ $CI_STAGE == 2.4.6B || $CI_STAGE == 2.4.6C || $CI_STAGE == 2.4.6D || $CI_STAGE == 2.4.6E ]]; then
         mkdir /out/staging/thumbnail-mpv
         cp /out/mpv-worker/mpv-thumbnail-worker.exe /out/staging/thumbnail-mpv/
         cp /vlc/prototypes/stage_2_4_6B/{Get-Runtime,Setup-Runtime,Start-Preview}.ps1 /out/staging/thumbnail-mpv/
         cp /vlc/prototypes/stage_2_4_6B/{dependencies.json,THIRD_PARTY.md} /out/staging/thumbnail-mpv/
         cp /vlc/docs/STAGE_2_4_6B_{INTEGRATION,RESULTS}.md /out/staging/thumbnail-mpv/
     fi
-    if [[ $CI_STAGE == 2.4.6C || $CI_STAGE == 2.4.6D ]]; then
+    if [[ $CI_STAGE == 2.4.6C || $CI_STAGE == 2.4.6D || $CI_STAGE == 2.4.6E ]]; then
         cp /out/mpv-accurate/mpv-thumbnail-accurate-worker.exe /out/staging/thumbnail-mpv/
         cp /vlc/prototypes/stage_2_4_6C/{Start-Preview,Setup-Runtime}.ps1 /out/staging/thumbnail-mpv/
         cp /vlc/docs/STAGE_2_4_6C_ACCURACY.md /out/staging/thumbnail-mpv/
     fi
-    if [[ $CI_STAGE == 2.4.6D ]]; then
+    if [[ $CI_STAGE == 2.4.6D || $CI_STAGE == 2.4.6E ]]; then
         cp /vlc/prototypes/stage_2_4_6D/Start-Preview.ps1 /out/staging/thumbnail-mpv/
         cp /vlc/docs/STAGE_2_4_6D_STABILITY.md /out/staging/thumbnail-mpv/
+    fi
+    if [[ $CI_STAGE == 2.4.6E ]]; then
+        cp /vlc/docs/STAGE_2_4_6E_VISUAL_POLISH.md /out/staging/thumbnail-mpv/
     fi
     # Internal metadata avoids circular ZIP checksums; SDK runtime stays separate.
     python3 /ci/package-diagnostic.py package /out/staging /out/delivery --metadata /out/build-inputs.json
@@ -333,7 +337,7 @@ ci_run() {
     ci_phase host-qt-tests
     bash "$source/test/modules/gui/qt/run.sh" "$work/hover-tests"
     bash "$source/test/modules/gui/qt/thumbnail/run.sh" "$work/qt-tests"
-    if [[ $CI_STAGE == 2.4.6B || $CI_STAGE == 2.4.6C || $CI_STAGE == 2.4.6D ]]; then
+    if [[ $CI_STAGE == 2.4.6B || $CI_STAGE == 2.4.6C || $CI_STAGE == 2.4.6D || $CI_STAGE == 2.4.6E ]]; then
         PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$source/prototypes/stage_2_4_6B" -p test_protocol.py -v
     fi
     ci_phase dependencies
@@ -342,7 +346,7 @@ ci_run() {
     ci_sha "$work/downloads/contrib.tar.zst" "$CI_CONTRIB_SHA"
     curl --fail --location --proto '=https' --proto-redir '=https' --output "$work/downloads/sdk.7z" "$CI_SDK_URL"
     ci_sha "$work/downloads/sdk.7z" "$CI_SDK_SHA"
-    if [[ $CI_STAGE == 2.4.6B || $CI_STAGE == 2.4.6C || $CI_STAGE == 2.4.6D ]]; then
+    if [[ $CI_STAGE == 2.4.6B || $CI_STAGE == 2.4.6C || $CI_STAGE == 2.4.6D || $CI_STAGE == 2.4.6E ]]; then
         curl --fail --location --proto '=https' --proto-redir '=https' --output "$work/downloads/mpv.7z" \
             https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20261021/mpv-dev-x86_64-20261021-git-e471496c56.7z
         ci_sha "$work/downloads/mpv.7z" efc719eff3dc5954b4a5efc800632808bcec01cc9034940dd14e5eb7fe9ea633
@@ -354,7 +358,7 @@ ci_run() {
     docker image inspect --format '{{.Id}} {{json .RepoDigests}}' "$CI_IMAGE" > "$work/logs/image.txt"
     ci_phase fixtures
     python3 "$source/prototypes/stage_2_3/generate_fixtures.py" "$work/fixtures" --font /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
-    if [[ $CI_STAGE == 2.4.6C || $CI_STAGE == 2.4.6D ]]; then
+    if [[ $CI_STAGE == 2.4.6C || $CI_STAGE == 2.4.6D || $CI_STAGE == 2.4.6E ]]; then
         PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s "$source/prototypes/stage_2_4_6C" -p test_accuracy.py -v
         python3 "$source/prototypes/stage_2_4_6C/generate_extra.py" "$work/fixtures" --font /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
     fi

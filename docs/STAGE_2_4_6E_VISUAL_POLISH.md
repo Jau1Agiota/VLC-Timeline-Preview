@@ -64,7 +64,7 @@ video pixels, lower fade, orange glow, transparent margins, no white footer,
 readable centered text and160x90/320x180 aspect preservation. Stage D positioning,
 request lifecycle and diagnostic regressions pass. Qt5.6.3 moc accepts the header.
 The synthetic render is a visual-property test, not physical Windows acceptance.
-Actual Windows CI/package/native results and SHA will be recorded after the run.
+Completed Windows CI/package/native results and SHA are recorded below.
 
 ## Install, select and test on Windows
 
@@ -87,6 +87,8 @@ Use -SeekMode fast for the unchanged fast backend or -Backend libvlc for the
 existing fallback. The unchanged Stage D launcher supports -Diagnostics and
 -PlaybackDiagnostics; its optional logs still use `%TEMP%\vlc246D-*.log`.
 Both flags remain opt-in, and the backend/default selector behavior is unchanged.
+The preserved launcher may still identify its diagnostic status as Stage D; the
+Stage E archive/root and BUILD_MANIFEST identify this visual build.
 The checksum-pinned libmpv runtime remains a private download; no unapproved DLL
 is bundled. Runtime setup copies the workers belonging to this package.
 
@@ -105,3 +107,50 @@ Freeze investigation remains paused and no elimination is claimed. Omitting both
 flags restores quiet operation. Rollback: close only Stage E and launch the preserved
 Stage D/C folder using its own launcher/runtime. No merge is performed before user
 acceptance; stop after this visual stage.
+
+## Completed Windows delivery
+
+[CI40093906672](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/40093906672)
+passed all applicable jobs: clean Windows cross-build/package, independent ZIP
+upload/download checksum readback, native worker/Qt regressions and image analysis.
+Application source: `e577355ed22aea9d2703aad794f79a68f0a1ce42`.
+CI driver: `3317089613c48f87b9a8f5154b8b18e90486d829`.
+Subsequent documentation/evidence commits do not change the shipped application.
+
+[Download the new portable Windows artifact](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/40093906672/artifacts/12560288217).
+Inner ZIP: `VLC-3.0.24-stage246E-ci1-win64-e577355ed22a-40093906672-1.zip`
+(512485450bytes). SHA-256:
+
+```text
+7b3cc632fec2c6c11714cfd81f1e502f48c309153affc4abc4c177b26128c332
+```
+
+This checksum is for the INNER application ZIP, not GitHub's artifact wrapper.
+Both are new/versioned; older packages remain intact. Artifacts require GitHub
+access and expire after14days; no Release was created or changed.
+
+[Download the small synthetic Qt render](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/40093906672/artifacts/12560283261)
+for a lightweight preview of the borderless/fade/glow/pill treatment. It uses an
+owned flat-color test image and host offscreen Qt, not the user's movie or a
+physical Windows screenshot. The same source's pixel/geometry assertions passed
+in CI. Font substitution/native DPI/composition still require device review.
+
+- Stage E safety/packaging guards:46tests,45pass/1skip. Preserved Stage D control:
+  46tests,44pass/2skip (the additional Stage E-specific check skips).
+- Host Qt tests include all Stage D cases plus the Stage E pixel, aspect, alpha,
+  gradient/glow, time formatting/alignment, retained-image and100rapid-hover checks.
+- Strict final tooltip syntax check against actual GCC6.4.0/Qt5.6.3 and Qt5.6.3 moc
+  passed. Bash syntax, ShellCheck0.10.0, actionlint1.7.7 and whitespace checks pass.
+- Native Windows Qt/dummy A/V smoke exited0 with diagnostics OFF and ON:0heartbeats
+  OFF,30heartbeats/30available statistics samples and positive video counters ON.
+  This checks diagnostic preservation; it is not new freeze investigation or a fix.
+- Existing fast/exact/LibVLC worker protocol, repeated/rapid requests, shutdown and
+  image-analysis collection passed. Extraction code and Stage C's known accuracy
+  limitations are unchanged; no universal accuracy/performance claim is added.
+
+[Validation excerpts and artifact digests](evidence/stage_2_4_6E_ci.json) retain the
+API/Checks evidence. Complete native headers, BMPs, logs and image analysis are
+in the CI artifacts. Existing B/C/D notice titles come from reused harnesses; the
+package manifest identifies Stage E. No private recording/media or runtime DLL
+was committed to Git. Physical Windows hover/fullscreen/mixed-DPI appearance,
+smoothness and playback acceptance remain pending. PR19 is draft and unmerged.

@@ -16,6 +16,7 @@
 #include <QStyleOptionSlider>
 #include <QElapsedTimer>
 #include <QEvent>
+#include <QPainter>
 #include <cstdio>
 #include <cstdlib>
 #include <algorithm>
@@ -107,6 +108,46 @@ public:
         tooltip.setPreview(QImage(),-1,QRect());assert(tooltip.height()<100);
         tooltip.setTip(QPoint(300,20),QStringLiteral("00:01"),QString());
         tooltip.setPreview(preview,1000,window);assert(tooltip.height()<100);
+        // Stage E paint/provenance contract: same video pixels and no footer,
+        // only an internal fade/pill and a bounded bottom glow.
+        assert(TimeTooltip::previewTimestamp(29898)==QStringLiteral("00:29"));
+        assert(TimeTooltip::previewTimestamp(59999)==QStringLiteral("00:59"));
+        assert(TimeTooltip::previewTimestamp(60000)==QStringLiteral("01:00"));
+        assert(TimeTooltip::previewTimestamp(4252123)==QStringLiteral("1:10:52"));
+        tooltip.setTip(QPoint(400,550),QStringLiteral("00:29"),QStringLiteral("chapter"));
+        tooltip.setPreview(preview,29898,window);
+        assert(tooltip.mPreviewLabel==QStringLiteral("00:29"));
+        const QRect visualFrame=tooltip.mPreviewImageBox, pill=tooltip.mPreviewTextBox;
+        assert(visualFrame.size()==preview.size() && tooltip.size()==QSize(328,188));
+        assert(qAbs(pill.center().x()-visualFrame.center().x())<=1 && visualFrame.contains(pill));
+        const QImage polished=tooltip.grab().toImage();
+        assert(qAlpha(polished.pixel(0,0))==0);
+        assert(polished.pixel(visualFrame.left(),0)==preview.pixel(0,0));
+        assert(polished.pixel(visualFrame.left()+10,50)==preview.pixel(10,50));
+        assert(qBlue(polished.pixel(visualFrame.left()+10,visualFrame.bottom()-4))<200);
+        const QRgb glow=polished.pixel(visualFrame.center().x(),visualFrame.bottom()+3);
+        assert(qAlpha(glow)>0 && qRed(glow)>qGreen(glow) && qGreen(glow)>qBlue(glow));
+        assert(qAlpha(polished.pixel(visualFrame.center().x(),tooltip.height()-1))==0);
+        int white=0;
+        for(int y=pill.top()+2;y<pill.bottom()-2;++y) for(int x=pill.left()+2;x<pill.right()-2;++x) {
+            const QRgb pixel=polished.pixel(x,y);
+            if(qRed(pixel)>225 && qGreen(pixel)>225 && qBlue(pixel)>225) ++white;
+        }
+        assert(white>4);
+        const QByteArray visualOutput=qgetenv("VLC_VISUAL_TEST_OUTPUT");
+        if(!visualOutput.isEmpty()) assert(polished.save(QString::fromLocal8Bit(visualOutput)+QStringLiteral("/preview-320x180.png")));
+        for(int i=0;i<100;++i) {
+            tooltip.setTip(QPoint(i%2 ? 795 : 5,550),QStringLiteral("12:45"),QString());
+            assert(tooltip.mPreviewLabel==QStringLiteral("00:29")); // no stale relabel
+        }
+        tooltip.setPreview(preview,765123,window);
+        assert(tooltip.mPreviewLabel==QStringLiteral("12:45"));
+        QImage narrow(160,90,QImage::Format_ARGB32);narrow.fill(qRgb(20,80,200));
+        tooltip.setPreview(narrow,4252123,window);
+        assert(tooltip.mPreviewImageBox.size()==narrow.size() && tooltip.size()==QSize(168,98));
+        assert(tooltip.mPreviewLabel==QStringLiteral("1:10:52"));
+        tooltip.setPreview(QImage(),-1,QRect());assert(tooltip.height()<100);
+
         // Stage D: geometry observers must never see a new position with the
         // previous timestamp-only dimensions during an image handoff.
         class GeometryTooltip : public TimeTooltip {

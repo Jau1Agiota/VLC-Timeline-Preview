@@ -49,9 +49,8 @@ TimeTooltip::TimeTooltip( QWidget *parent ) :
                     Qt::WindowStaysOnTopHint    |
                     Qt::FramelessWindowHint     );
 
-    // Tell Qt that it doesn't need to erase the background before
-    // a paintEvent occurs. This should save some CPU cycles.
-    setAttribute( Qt::WA_OpaquePaintEvent );
+    // Transparent preview/glow edges need alpha cleared explicitly in paintEvent.
+    setAttribute( Qt::WA_OpaquePaintEvent, false );
     setAttribute( Qt::WA_TranslucentBackground );
     setAttribute( Qt::WA_TransparentForMouseEvents );
 
@@ -81,29 +80,27 @@ void TimeTooltip::adjustPosition()
 
     // Get the bounding box required to print the text and add some padding
     QFontMetrics metrics( mFont );
-    // The experimental backend may retain an intermediate image while the
-    // cursor advances. Distinguish current hover from the image's own request.
-    const QString imageLabel = mMpvPreview ?
-        QStringLiteral("hover ") + mHoverTime + (qgetenv("VLC_MPV_SEEK") == "exact" ? QStringLiteral(" | req ") : QStringLiteral(" | image ")) + mPreviewTime : mPreviewTime;
-    mPreviewLabel = metrics.elidedText(imageLabel +
-        (mMpvPreview || mText.isEmpty() ? QString() : QStringLiteral(" - ") + mText),
-        Qt::ElideRight, qMax(140, mPreview.width()));
-    const QString label = mPreview.isNull() ? mDisplayedText : mPreviewLabel;
-    QRect textbox = metrics.boundingRect( label );
-    textbox.adjust( -2, -2, 2, 2 );
-    textbox.moveTo( 0, 0 );
-
-    mPreviewTextBox = QRect();
-    if( !mPreview.isNull() )
-    {
-        const int textHeight = textbox.height();
-        textbox.setWidth( qMax( textbox.width(), mPreview.width() + 8 ) );
-        textbox.setHeight( textHeight + mPreview.height() + 8 );
-        mPreviewTextBox = QRect( 0, mPreview.height() + 8, textbox.width(), textHeight );
+    // Only the image's own request labels a retained image. Hover metadata is
+    // still available to diagnostics; player clocks are never image PTS.
+    mPreviewLabel = previewTimestamp(mPreviewRequestedMs);
+    QRect textbox = metrics.boundingRect(mDisplayedText);
+    textbox.adjust(-2,-2,2,2); textbox.moveTo(0,0);
+    mPreviewTextBox = QRect(); mPreviewImageBox = QRect();
+    QSize size(textbox.width()+1,textbox.height()+TIP_HEIGHT+1);
+    if(!mPreview.isNull()) {
+        // The video pixels keep their exact size/aspect. Transparent side/bottom
+        // insets contain the glow, independent of caption length or arrivals.
+        mPreviewImageBox = QRect(4,0,mPreview.width(),mPreview.height());
+        size = QSize(mPreview.width()+8,mPreview.height()+8);
+        textbox = QRect(QPoint(0,0),size);
+        QFont font=mFont; font.setBold(true);
+        const QFontMetrics labelMetrics(font);
+        const int w=qMin(mPreview.width()-8,labelMetrics.boundingRect(mPreviewLabel).width()+18);
+        const int h=qMin(mPreview.height()-8,labelMetrics.height()+8);
+        if(w>0 && h>0)
+            mPreviewTextBox = QRect(mPreviewImageBox.center().x()-w/2,
+                                    mPreviewImageBox.bottom()-h-12,w,h);
     }
-
-    // Resize the widget to fit our needs
-    QSize size( textbox.width() + 1, textbox.height() + TIP_HEIGHT + 1 );
 
     // The desired label position is just above the target
     QPoint position( mTarget.x() - size.width() / 2,
@@ -232,6 +229,7 @@ void TimeTooltip::setTip( const QPoint& target, const QString& time, const QStri
 void TimeTooltip::setPreview( const QImage &image, qint64 requestedMs, const QRect &bounds )
 {
     mPreview = image;
+    mPreviewRequestedMs = image.isNull() ? -1 : requestedMs;
     mWindowBounds = bounds;
     const qint64 seconds = qMax<qint64>(0, requestedMs) / 1000;
     // Approximate requested bucket, never a claim of delivered frame PTS.
@@ -243,6 +241,9 @@ void TimeTooltip::setPreview( const QImage &image, qint64 requestedMs, const QRe
     adjustPosition();
     update();
     presentFullscreen();
+    if(mTrace.isEnabled()) diagnose(QStringLiteral("visual"),QStringLiteral(
+        "style=glow-fade-bottom hover_ms=%1 image_request_ms=%2 request_label=%3 actual_image_pts=unknown")
+        .arg(mHoverTargetMs).arg(mPreviewRequestedMs).arg(mPreviewTime),0);
     if( mTrace.isEnabled() ) diagnose( QStringLiteral("set-preview"), QStringLiteral(
         "image=%1 requested_ms=%2 visible=%3 hidden=%4 rect=%5")
         .arg(!image.isNull()).arg(requestedMs).arg(isVisible()).arg(isHidden())
@@ -337,21 +338,50 @@ bool TimeTooltip::event( QEvent *event )
     return result;
 }
 
+QString TimeTooltip::previewTimestamp(qint64 ms)
+{
+    const qint64 seconds=qMax<qint64>(0,ms)/1000;
+    const QString tail=QStringLiteral("%1:%2").arg(seconds/60%60,2,10,QLatin1Char('0'))
+        .arg(seconds%60,2,10,QLatin1Char('0'));
+    return seconds>=3600 ? QString::number(seconds/3600)+QLatin1Char(':')+tail : tail;
+}
+
 void TimeTooltip::paintEvent( QPaintEvent * )
 {
-    QPainter p( this );
-    p.setRenderHints( QPainter::TextAntialiasing );
-
-    p.setPen( Qt::black );
-    p.setBrush( qApp->palette().base() );
-    p.drawPath( mPainterPath );
-
-    p.setFont( mFont );
-    p.setPen( QPen( qApp->palette().text(), 1 ) );
-    if( mPreview.isNull() ) p.drawText( mBox, Qt::AlignCenter, mDisplayedText );
-    else
-    {
-        p.drawImage( QPoint((mBox.width() - mPreview.width()) / 2, 4), mPreview );
-        p.drawText( mPreviewTextBox, Qt::AlignCenter, mPreviewLabel );
+    QPainter p(this);
+    p.setCompositionMode(QPainter::CompositionMode_Source);
+    p.fillRect(rect(),Qt::transparent);
+    p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    p.setRenderHints(QPainter::TextAntialiasing | QPainter::Antialiasing);
+    if(mPreview.isNull()) {
+        // Audio-only/ineligible media keep VLC's existing timestamp/chapter tip.
+        p.setPen(Qt::black); p.setBrush(qApp->palette().base());
+        p.drawPath(mPainterPath); p.setFont(mFont);
+        p.setPen(QPen(qApp->palette().text(),1));
+        p.drawText(mBox,Qt::AlignCenter,mDisplayedText);
+        return;
+    }
+    // No image conversion, scaling, blur effect or extra image copy.
+    p.drawImage(mPreviewImageBox.topLeft(),mPreview);
+    const int bottom=mPreviewImageBox.bottom();
+    QLinearGradient fade(0,qMax(0,bottom-mPreview.height()/3),0,bottom);
+    fade.setColorAt(0,QColor(0,0,0,0)); fade.setColorAt(1,QColor(0,0,0,190));
+    p.fillRect(QRect(mPreviewImageBox.left(),qMax(0,bottom-mPreview.height()/3),
+                     mPreview.width(),mPreview.height()/3+1),fade);
+    // A bottom-edge glow only, not an illuminated rectangular frame. Its full
+    // eight-pixel falloff is part of the stable popup bounds.
+    QLinearGradient glow(0,bottom-1,0,bottom+8);
+    glow.setColorAt(0,QColor(255,136,0,0));
+    glow.setColorAt(.2,QColor(255,163,43,180));
+    glow.setColorAt(.45,QColor(255,136,0,80));
+    glow.setColorAt(1,QColor(255,136,0,0));
+    p.fillRect(QRect(mPreviewImageBox.left()-3,bottom-1,mPreview.width()+6,10),glow);
+    p.setPen(QColor(255,163,43,210));
+    p.drawLine(mPreviewImageBox.left(),bottom,mPreviewImageBox.right(),bottom);
+    if(mPreviewTextBox.isValid()) {
+        p.setBrush(QColor(12,12,12,185)); p.setPen(QPen(QColor(255,136,0,190),.8));
+        p.drawRoundedRect(QRectF(mPreviewTextBox),mPreviewTextBox.height()/2.,mPreviewTextBox.height()/2.);
+        QFont font=mFont; font.setBold(true); p.setFont(font); p.setPen(Qt::white);
+        p.drawText(mPreviewTextBox,Qt::AlignCenter,mPreviewLabel);
     }
 }

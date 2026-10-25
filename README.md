@@ -101,3 +101,7 @@ that does not license the runtime DLL. The selected binary includes GPL/version-
 FFmpeg configuration, and its full corresponding-source and notice obligations
 remain unresolved. This repository's license files alone do not clear redistribution
 of an assembled Windows package. See the [licensing report](docs/STAGE_2_4_8_SELF_CONTAINED.md).
+
+Runtime follow-up: [Stage 2.4.8A findings](docs/runtime-audit/RUNTIME_RESOLUTION.md)
+record verified SDK imports and the remaining source/dependency gates. A
+software-only replacement runtime is a proposal, not an available offline build.

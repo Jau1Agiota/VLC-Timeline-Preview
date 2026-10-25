@@ -3,6 +3,10 @@ name: Windows diagnostic pilot (CI-1)
 on:
   workflow_dispatch:
     inputs:
+      inventory_only:
+        description: Recreate Stage F locally on runner and upload metadata only
+        type: boolean
+        default: false
       stage:
         description: Pinned diagnostic source (Stage 2.4.3 remains the default)
         type: choice
@@ -28,7 +32,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ inputs.stage != '2.4.6A' && !inputs.native_only }}
+    if: ${{ !inputs.inventory_only && inputs.stage != '2.4.6A' && !inputs.native_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
@@ -169,11 +173,11 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   libmpv-experiment:
-    if: ${{ inputs.stage == '2.4.6A' }}
+    if: ${{ !inputs.inventory_only && inputs.stage == '2.4.6A' }}
     uses: ./.github/workflows/libmpv-preview-experiment.yml
 
   native-mpv:
-    if: ${{ !cancelled() && (inputs.stage == '2.4.6B' || inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && (needs.build.result == 'success' || (inputs.native_only && inputs.package_run_id != '')) }}
+    if: ${{ !inputs.inventory_only && !cancelled() && (inputs.stage == '2.4.6B' || inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && (needs.build.result == 'success' || (inputs.native_only && inputs.package_run_id != '')) }}
     permissions:
       contents: read
       actions: read
@@ -258,7 +262,7 @@ jobs:
 
   image-evidence:
     needs: native-mpv
-    if: ${{ !cancelled() && ((inputs.stage == '2.4.6B' && needs.native-mpv.result == 'success') || ((inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && needs.native-mpv.result != 'skipped')) }}
+    if: ${{ !inputs.inventory_only && !cancelled() && ((inputs.stage == '2.4.6B' && needs.native-mpv.result == 'success') || ((inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && needs.native-mpv.result != 'skipped')) }}
     permissions:
       contents: read
       actions: read
@@ -303,3 +307,46 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
           overwrite: false
+
+  inventory:
+    if: ${{ inputs.inventory_only && inputs.stage == '2.4.6F' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      VLC_CI_STAGE: 2.4.6F
+      VLC_CI_BENCHMARK_ONLY: 'false'
+    steps:
+      - name: Set isolated output
+        shell: bash
+        run: echo "CI_WORK=$RUNNER_TEMP/vlc-ci1-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_ENV"
+      - name: Check out experimental CI driver
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: ci-driver
+          persist-credentials: false
+      - name: Check out validated Stage F application
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: e29d1dc98c01e64de60de0fe2f299acd2af57aca
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Recreate baseline in runner storage without publishing binaries
+        shell: bash
+        run: bash ci-driver/ci/windows/build-diagnostic.sh run "$GITHUB_WORKSPACE/source" "$CI_WORK"
+      - name: Inventory every staged file
+        shell: bash
+        run: python3 ci-driver/tools/release-audit/inventory.py "$CI_WORK/staging" "$CI_WORK/stage-f-inventory.json"
+      - name: Upload inventory metadata only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: stage-f-inventory-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.CI_WORK }}/stage-f-inventory.json
+          retention-days: 7
+          if-no-files-found: error
+          overwrite: false
+      - name: Finalize owned runner resources
+        if: ${{ always() && hashFiles('ci-driver/ci/windows/build-diagnostic.sh') != '' }}
+        shell: bash
+        run: bash ci-driver/ci/windows/build-diagnostic.sh finish "$CI_WORK"

@@ -1,0 +1,17 @@
+{
+  "id": 40221095044,
+  "html_url": "https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/40221095044",
+  "head_sha": "73f5d3c2dbd73e1d0a26c197adbf2cf98349f08f",
+  "status": "completed",
+  "conclusion": "success",
+  "artifacts": [
+    {
+      "id": 12608774775,
+      "name": "stage-f-inventory-40221095044-1",
+      "size_in_bytes": 74126,
+      "digest": "sha256:af40feca9161705febfb3cb7453c9b9157818af8e0f924cc008eb78c1003d048"
+    }
+  ],
+  "binary_uploads": false,
+  "download_error": "Forbidden at productionresultssa13.blob.core.windows.net; signed URL omitted"
+}

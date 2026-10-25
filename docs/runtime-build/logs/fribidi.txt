@@ -1,0 +1,156 @@
+The Meson build system
+Version: 1.8.3
+Source dir: /workspace/stage248B-final/src/fribidi
+Build dir: /workspace/stage248B-final/build/fribidi
+Build type: cross build
+Project name: fribidi
+Project version: 1.0.16
+C compiler for the host machine: /workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang (clang 21.1.4 "clang version 21.1.4 (https://github.com/llvm/llvm-project.git 222fc11f2b8f25f6a0f4976272ef1bb7bf49521d)")
+C linker for the host machine: /workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang ld.lld 21.1.4
+C compiler for the build machine: cc (gcc 14.2.0 "cc (Debian 14.2.0-19) 14.2.0")
+C linker for the build machine: cc ld.bfd 2.44
+Build machine cpu family: x86_64
+Build machine cpu: x86_64
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Target machine cpu family: x86_64
+Target machine cpu: x86_64
+Checking for function "memmove" : YES
+Checking for function "memset" : YES
+Checking for function "strdup" : YES
+Has header "stdlib.h" : YES
+Has header "string.h" : YES
+Has header "memory.h" : YES
+Has header "strings.h" : YES
+Has header "sys/times.h" : NO
+Has header "strings.h" : YES (cached)
+Configuring config.h using configuration
+Has header "stdlib.h" : YES (cached)
+Has header "string.h" : YES (cached)
+Has header "strings.h" : YES (cached)
+Checking for size of "int" : 4
+Configuring fribidi-config.h using configuration
+Found pkg-config: YES (/workspace/stage248B-final/tools/native/bin/pkgconf) 2.3.0
+Build targets in project: 15
+
+fribidi 1.0.16
+
+  User defined options
+    Cross files    : /workspace/stage248B-final/cross.ini
+    bin            : false
+    buildtype      : release
+    default_library: static
+    docs           : false
+    libdir         : lib
+    prefix         : /workspace/stage248B-final/prefix
+    tests          : false
+    wrap_mode      : nofallback
+
+Found ninja-1.11.1.git.kitware.jobserver-1 at /workspace/stage248B-final/tools/python/bin/ninja
+ninja: Entering directory `/workspace/stage248B-final/build/fribidi'
+[1/46] Compiling C object gen.tab/gen-unicode-version.p/gen-unicode-version.c.o
+[2/46] Linking target gen.tab/gen-unicode-version
+[3/46] Generating gen.tab/fribidi-unicode-version.h with a custom command (wrapped by meson to capture output)
+[4/46] Compiling C object gen.tab/gen-bidi-type-tab.p/gen-bidi-type-tab.c.o
+[5/46] Compiling C object gen.tab/gen-joining-type-tab.p/gen-joining-type-tab.c.o
+[6/46] Compiling C object gen.tab/gen-arabic-shaping-tab.p/gen-arabic-shaping-tab.c.o
+../../src/fribidi/gen.tab/gen-arabic-shaping-tab.c: In function ‘main’:
+../../src/fribidi/gen.tab/gen-arabic-shaping-tab.c:278:1: warning: ‘%s’ directive argument is null [-Wformat-overflow=]
+  278 | main (
+      | ^~~~
+[7/46] Compiling C object gen.tab/gen-joining-type-tab.p/packtab.c.o
+[8/46] Compiling C object gen.tab/gen-mirroring-tab.p/gen-mirroring-tab.c.o
+[9/46] Compiling C object gen.tab/gen-bidi-type-tab.p/packtab.c.o
+[10/46] Linking target gen.tab/gen-joining-type-tab
+[11/46] Linking target gen.tab/gen-bidi-type-tab
+[12/46] Compiling C object gen.tab/gen-arabic-shaping-tab.p/packtab.c.o
+[13/46] Linking target gen.tab/gen-arabic-shaping-tab
+[14/46] Generating gen.tab/gen-arabic-shaping-tab with a custom command (wrapped by meson to capture output)
+[15/46] Compiling C object gen.tab/gen-mirroring-tab.p/packtab.c.o
+[16/46] Linking target gen.tab/gen-mirroring-tab
+[17/46] Compiling C object gen.tab/gen-brackets-tab.p/gen-brackets-tab.c.o
+[18/46] Generating gen.tab/gen-mirroring-tab with a custom command (wrapped by meson to capture output)
+[19/46] Generating gen.tab/gen-joining-type-tab with a custom command (wrapped by meson to capture output)
+[20/46] Compiling C object gen.tab/gen-brackets-type-tab.p/gen-brackets-type-tab.c.o
+[21/46] Generating gen.tab/gen-bidi-type-tab with a custom command (wrapped by meson to capture output)
+[22/46] Compiling C object gen.tab/gen-brackets-tab.p/packtab.c.o
+[23/46] Linking target gen.tab/gen-brackets-tab
+[24/46] Compiling C object gen.tab/gen-brackets-type-tab.p/packtab.c.o
+[25/46] Generating gen.tab/gen-brackets-tab with a custom command (wrapped by meson to capture output)
+[26/46] Linking target gen.tab/gen-brackets-type-tab
+[27/46] Generating gen.tab/gen-brackets-type-tab with a custom command (wrapped by meson to capture output)
+[28/46] Compiling C object lib/libfribidi.a.p/fribidi-arabic.c.obj
+[29/46] Compiling C object lib/libfribidi.a.p/fribidi-bidi-types.c.obj
+[30/46] Compiling C object lib/libfribidi.a.p/fribidi.c.obj
+[31/46] Compiling C object lib/libfribidi.a.p/fribidi-char-sets.c.obj
+[32/46] Compiling C object lib/libfribidi.a.p/fribidi-char-sets-cp1255.c.obj
+[33/46] Compiling C object lib/libfribidi.a.p/fribidi-char-sets-cp1256.c.obj
+[34/46] Compiling C object lib/libfribidi.a.p/fribidi-char-sets-iso8859-6.c.obj
+[35/46] Compiling C object lib/libfribidi.a.p/fribidi-char-sets-cap-rtl.c.obj
+[36/46] Compiling C object lib/libfribidi.a.p/fribidi-deprecated.c.obj
+[37/46] Compiling C object lib/libfribidi.a.p/fribidi-char-sets-iso8859-8.c.obj
+[38/46] Compiling C object lib/libfribidi.a.p/fribidi-char-sets-utf8.c.obj
+[39/46] Compiling C object lib/libfribidi.a.p/fribidi-bidi.c.obj
+../../src/fribidi/lib/fribidi-bidi.c:577:28: warning: implicit conversion from enumeration type 'FriBidiCharType' to different enumeration type 'FriBidiParType' [-Wimplicit-enum-enum-cast]
+  577 |               *pbase_dir = FRIBIDI_LEVEL_TO_DIR (base_level);
+      |                          ~ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+../../src/fribidi/lib/fribidi-bidi-types.h:257:32: note: expanded from macro 'FRIBIDI_LEVEL_TO_DIR'
+  257 |         (FRIBIDI_LEVEL_IS_RTL (lev) ? FRIBIDI_TYPE_RTL : FRIBIDI_TYPE_LTR)
+      |                                       ^~~~~~~~~~~~~~~~
+../../src/fribidi/lib/fribidi-bidi.c:577:28: warning: implicit conversion from enumeration type 'FriBidiCharType' to different enumeration type 'FriBidiParType' [-Wimplicit-enum-enum-cast]
+  577 |               *pbase_dir = FRIBIDI_LEVEL_TO_DIR (base_level);
+      |                          ~ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+../../src/fribidi/lib/fribidi-bidi-types.h:257:51: note: expanded from macro 'FRIBIDI_LEVEL_TO_DIR'
+  257 |         (FRIBIDI_LEVEL_IS_RTL (lev) ? FRIBIDI_TYPE_RTL : FRIBIDI_TYPE_LTR)
+      |                                                          ^~~~~~~~~~~~~~~~
+../../src/fribidi/lib/fribidi-bidi.c:582:14: warning: implicit conversion from enumeration type 'FriBidiCharType' to different enumeration type 'FriBidiParType' [-Wimplicit-enum-enum-cast]
+  582 |   base_dir = FRIBIDI_LEVEL_TO_DIR (base_level);
+      |            ~ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+../../src/fribidi/lib/fribidi-bidi-types.h:257:32: note: expanded from macro 'FRIBIDI_LEVEL_TO_DIR'
+  257 |         (FRIBIDI_LEVEL_IS_RTL (lev) ? FRIBIDI_TYPE_RTL : FRIBIDI_TYPE_LTR)
+      |                                       ^~~~~~~~~~~~~~~~
+../../src/fribidi/lib/fribidi-bidi.c:582:14: warning: implicit conversion from enumeration type 'FriBidiCharType' to different enumeration type 'FriBidiParType' [-Wimplicit-enum-enum-cast]
+  582 |   base_dir = FRIBIDI_LEVEL_TO_DIR (base_level);
+      |            ~ ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+../../src/fribidi/lib/fribidi-bidi-types.h:257:51: note: expanded from macro 'FRIBIDI_LEVEL_TO_DIR'
+  257 |         (FRIBIDI_LEVEL_IS_RTL (lev) ? FRIBIDI_TYPE_RTL : FRIBIDI_TYPE_LTR)
+      |                                                          ^~~~~~~~~~~~~~~~
+../../src/fribidi/lib/fribidi-bidi.c:1392:16: warning: implicit conversion from enumeration type 'FriBidiParType' to different enumeration type 'FriBidiCharType' [-Wimplicit-enum-enum-cast]
+ 1392 |             p->type = base_dir;
+      |                     ~ ^~~~~~~~
+5 warnings generated.
+[40/46] Compiling C object lib/libfribidi.a.p/fribidi-joining.c.obj
+[41/46] Compiling C object lib/libfribidi.a.p/fribidi-mirroring.c.obj
+[42/46] Compiling C object lib/libfribidi.a.p/fribidi-brackets.c.obj
+[43/46] Compiling C object lib/libfribidi.a.p/fribidi-joining-types.c.obj
+[44/46] Compiling C object lib/libfribidi.a.p/fribidi-shape.c.obj
+[45/46] Compiling C object lib/libfribidi.a.p/fribidi-run.c.obj
+[46/46] Linking static target lib/libfribidi.a
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /workspace/stage248B-final/tools/python/bin/ninja -C /workspace/stage248B-final/build/fribidi -j 4
+ninja: Entering directory `/workspace/stage248B-final/build/fribidi'
+ninja: no work to do.
+Installing gen.tab/fribidi-unicode-version.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing lib/libfribidi.a to /workspace/stage248B-final/prefix/lib
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-arabic.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-begindecls.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-bidi.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-bidi-types.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-bidi-types-list.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-char-sets.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-char-sets-list.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-common.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-deprecated.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-enddecls.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-flags.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-joining.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-joining-types.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-joining-types-list.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-mirroring.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-brackets.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-shape.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-types.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi-unicode.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/src/fribidi/lib/fribidi.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/build/fribidi/lib/fribidi-config.h to /workspace/stage248B-final/prefix/include/fribidi
+Installing /workspace/stage248B-final/build/fribidi/meson-private/fribidi.pc to /workspace/stage248B-final/prefix/lib/pkgconfig

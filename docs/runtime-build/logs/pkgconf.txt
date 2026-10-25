@@ -1,0 +1,85 @@
+The Meson build system
+Version: 1.8.3
+Source dir: /workspace/stage248B-final/src/pkgconf
+Build dir: /workspace/stage248B-final/build/pkgconf
+Build type: native build
+Project name: pkgconf
+Project version: 2.3.0
+C compiler for the host machine: cc (gcc 14.2.0 "cc (Debian 14.2.0-19) 14.2.0")
+C linker for the host machine: cc ld.bfd 2.44
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Compiler for C supports arguments -Wimplicit-function-declaration: YES
+Compiler for C supports arguments -Wmisleading-indentation: YES
+Checking for function "strlcat" : YES
+Header "string.h" has symbol "strlcat" : YES
+Checking for function "strlcpy" : YES
+Header "string.h" has symbol "strlcpy" : YES
+Checking for function "strndup" : YES
+Header "string.h" has symbol "strndup" : YES
+Checking for function "strdup" : YES
+Header "string.h" has symbol "strdup" : YES
+Checking for function "strncasecmp" : YES
+Header "strings.h" has symbol "strncasecmp" : YES
+Checking for function "strcasecmp" : YES
+Header "strings.h" has symbol "strcasecmp" : YES
+Checking for function "reallocarray" : YES
+Header "stdlib.h" has symbol "reallocarray" : YES
+Configuring config.h using configuration
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Program kyua found: NO
+Program atf-sh found: NO
+Configuring Kyuafile using configuration
+Configuring Kyuafile using configuration
+Configuring test_env.sh using configuration
+src/pkgconf/tests/meson.build:2: WARNING: The variable(s) 'datarootdir', 'exec_prefix', 'prefix' in the input file 'tests/test_env.sh.in' are not present in the given configuration data.
+Build targets in project: 2
+
+pkgconf 2.3.0
+
+  User defined options
+    buildtype      : release
+    default_library: static
+    prefix         : /workspace/stage248B-final/tools/native
+    wrap_mode      : nofallback
+
+Found ninja-1.11.1.git.kitware.jobserver-1 at /workspace/stage248B-final/tools/python/bin/ninja
+ninja: Entering directory `/workspace/stage248B-final/build/pkgconf'
+[1/19] Compiling C object libpkgconf.a.p/libpkgconf_bsdstubs.c.o
+[2/19] Compiling C object libpkgconf.a.p/libpkgconf_audit.c.o
+[3/19] Compiling C object libpkgconf.a.p/libpkgconf_argvsplit.c.o
+[4/19] Compiling C object libpkgconf.a.p/libpkgconf_cache.c.o
+[5/19] Compiling C object libpkgconf.a.p/libpkgconf_fileio.c.o
+[6/19] Compiling C object libpkgconf.a.p/libpkgconf_client.c.o
+[7/19] Compiling C object libpkgconf.a.p/libpkgconf_dependency.c.o
+[8/19] Compiling C object libpkgconf.a.p/libpkgconf_parser.c.o
+[9/19] Compiling C object libpkgconf.a.p/libpkgconf_path.c.o
+[10/19] Compiling C object libpkgconf.a.p/libpkgconf_fragment.c.o
+[11/19] Compiling C object libpkgconf.a.p/libpkgconf_personality.c.o
+[12/19] Compiling C object libpkgconf.a.p/libpkgconf_tuple.c.o
+[13/19] Compiling C object libpkgconf.a.p/libpkgconf_queue.c.o
+[14/19] Compiling C object pkgconf.p/cli_getopt_long.c.o
+[15/19] Compiling C object pkgconf.p/cli_main.c.o
+[16/19] Compiling C object pkgconf.p/cli_renderer-msvc.c.o
+[17/19] Compiling C object libpkgconf.a.p/libpkgconf_pkg.c.o
+[18/19] Linking static target libpkgconf.a
+[19/19] Linking target pkgconf
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /workspace/stage248B-final/tools/python/bin/ninja -C /workspace/stage248B-final/build/pkgconf -j 4
+ninja: Entering directory `/workspace/stage248B-final/build/pkgconf'
+ninja: no work to do.
+Installing libpkgconf.a to /workspace/stage248B-final/tools/native/lib/x86_64-linux-gnu
+Installing pkgconf to /workspace/stage248B-final/tools/native/bin
+Installing /workspace/stage248B-final/src/pkgconf/libpkgconf/libpkgconf.h to /workspace/stage248B-final/tools/native/include/pkgconf/libpkgconf
+Installing /workspace/stage248B-final/src/pkgconf/libpkgconf/stdinc.h to /workspace/stage248B-final/tools/native/include/pkgconf/libpkgconf
+Installing /workspace/stage248B-final/src/pkgconf/libpkgconf/iter.h to /workspace/stage248B-final/tools/native/include/pkgconf/libpkgconf
+Installing /workspace/stage248B-final/src/pkgconf/libpkgconf/bsdstubs.h to /workspace/stage248B-final/tools/native/include/pkgconf/libpkgconf
+Installing /workspace/stage248B-final/src/pkgconf/libpkgconf/libpkgconf-api.h to /workspace/stage248B-final/tools/native/include/pkgconf/libpkgconf
+Installing /workspace/stage248B-final/src/pkgconf/man/pkgconf.1 to /workspace/stage248B-final/tools/native/share/man/man1
+Installing /workspace/stage248B-final/src/pkgconf/man/pkg.m4.7 to /workspace/stage248B-final/tools/native/share/man/man7
+Installing /workspace/stage248B-final/src/pkgconf/man/pc.5 to /workspace/stage248B-final/tools/native/share/man/man5
+Installing /workspace/stage248B-final/src/pkgconf/man/pkgconf-personality.5 to /workspace/stage248B-final/tools/native/share/man/man5
+Installing /workspace/stage248B-final/build/pkgconf/meson-private/libpkgconf.pc to /workspace/stage248B-final/tools/native/lib/x86_64-linux-gnu/pkgconfig
+Installing /workspace/stage248B-final/src/pkgconf/pkg.m4 to /workspace/stage248B-final/tools/native/share/aclocal
+Installing /workspace/stage248B-final/src/pkgconf/AUTHORS to /workspace/stage248B-final/tools/native/share/doc/pkgconf
+Installing /workspace/stage248B-final/src/pkgconf/README.md to /workspace/stage248B-final/tools/native/share/doc/pkgconf

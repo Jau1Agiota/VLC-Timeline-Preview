@@ -1,0 +1,248 @@
+The Meson build system
+Version: 1.8.3
+Source dir: /workspace/stage248B-final/src/harfbuzz
+Build dir: /workspace/stage248B-final/build/harfbuzz
+Build type: cross build
+Project name: harfbuzz
+Project version: 11.0.0
+C compiler for the host machine: /workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang (clang 21.1.4 "clang version 21.1.4 (https://github.com/llvm/llvm-project.git 222fc11f2b8f25f6a0f4976272ef1bb7bf49521d)")
+C linker for the host machine: /workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang ld.lld 21.1.4
+C++ compiler for the host machine: /workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang++ (clang 21.1.4 "clang version 21.1.4 (https://github.com/llvm/llvm-project.git 222fc11f2b8f25f6a0f4976272ef1bb7bf49521d)")
+C++ linker for the host machine: /workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang++ ld.lld 21.1.4
+C compiler for the build machine: cc (gcc 14.2.0 "cc (Debian 14.2.0-19) 14.2.0")
+C linker for the build machine: cc ld.bfd 2.44
+C++ compiler for the build machine: c++ (gcc 14.2.0 "c++ (Debian 14.2.0-19) 14.2.0")
+C++ linker for the build machine: c++ ld.bfd 2.44
+Build machine cpu family: x86_64
+Build machine cpu: x86_64
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Target machine cpu family: x86_64
+Target machine cpu: x86_64
+Fetching value of define "_MSC_FULL_VER" : (undefined)
+Compiler for C++ supports link arguments -Bsymbolic-functions: YES
+Compiler for C++ supports arguments -fno-exceptions: YES
+Compiler for C++ supports arguments -fno-rtti: YES
+Compiler for C++ supports arguments -fno-threadsafe-statics: YES
+Compiler for C++ supports arguments -fvisibility-inlines-hidden: YES
+Compiler for C++ supports arguments -Wa,-mbig-obj: YES
+Library m found: YES
+src/harfbuzz/meson.build:113: WARNING: Project targets '>= 0.55.0' but uses feature introduced in '0.56.0': allow_fallback arg in dependency.
+Found pkg-config: YES (/workspace/stage248B-final/tools/native/bin/pkgconf) 2.3.0
+Run-time dependency freetype2 found: YES 26.2.20
+Dependency glib-2.0 skipped: feature glib disabled
+Dependency gobject-2.0 skipped: feature gobject disabled
+Dependency graphite2 skipped: feature graphite2 disabled
+Dependency graphite2 skipped: feature graphite disabled
+Library iwasm skipped: feature wasm disabled
+Dependency icu-uc skipped: feature icu disabled
+Dependency chafa skipped: feature chafa disabled
+Has header "unistd.h" : YES
+Has header "sys/mman.h" : NO
+Has header "stdbool.h" : YES
+Has header "xlocale.h" : NO
+Checking for function "atexit" : YES
+Checking for function "mprotect" : NO
+Checking for function "sysconf" : NO
+Checking for function "getpagesize" : NO
+Checking for function "mmap" : NO
+Checking for function "isatty" : YES
+Checking for function "uselocale" : NO
+Checking for function "newlocale" : NO
+Checking for function "sincosf" : YES
+Checking for function "FT_Get_Var_Blend_Coordinates" with dependency freetype2: YES
+Checking for function "FT_Set_Var_Blend_Coordinates" with dependency freetype2: YES
+Checking for function "FT_Done_MM_Var" with dependency freetype2: YES
+Checking for function "FT_Get_Transform" with dependency freetype2: YES
+Program gen-hb-version.py found: YES (/workspace/stage248B-final/src/harfbuzz/src/gen-hb-version.py)
+Configuring hb-version.h with command
+Program ragel found: NO
+src/harfbuzz/src/meson.build:432: WARNING: You have to install ragel if you are going to develop HarfBuzz itself
+Program gen-harfbuzzcc.py found: YES (/workspace/stage248B-final/src/harfbuzz/src/gen-harfbuzzcc.py)
+Configuring hb-features.h using configuration
+Configuring hb-supported-features.h using configuration
+Program gen-def.py found: YES (/workspace/stage248B-final/src/harfbuzz/src/gen-def.py)
+Fetching value of define "_MSC_FULL_VER" : (undefined) (cached)
+Program gen-harfbuzzcc.py found: YES (/workspace/stage248B-final/src/harfbuzz/src/gen-harfbuzzcc.py)
+src/harfbuzz/src/meson.build:846: WARNING: Project targets '>= 0.55.0' but uses feature introduced in '1.3.0': fs.relative_to.
+Configuring harfbuzz-config.cmake using configuration
+Configuring config.h using configuration
+Build targets in project: 8
+WARNING: Project specifies a minimum meson_version '>= 0.55.0' but uses features which were added in newer versions:
+ * 0.56.0: {'allow_fallback arg in dependency'}
+ * 1.3.0: {'fs.relative_to'}
+
+harfbuzz 11.0.0
+
+  Directories
+    prefix                    : /workspace/stage248B-final/prefix
+    bindir                    : bin
+    libdir                    : lib
+    includedir                : include
+    datadir                   : share
+    cmakepackagedir           : lib/cmake
+
+  Unicode callbacks (you want at least one)
+    Builtin                   : YES
+    Glib                      : NO
+    ICU                       : NO
+
+  Font callbacks (the more the merrier)
+    Builtin                   : YES
+    FreeType                  : YES
+
+  Dependencies used for command-line utilities
+    Cairo                     : NO
+    Chafa                     : NO
+
+  Additional shapers
+    Graphite2                 : NO
+    WebAssembly (experimental): NO
+
+  Platform shapers (not normally needed)
+    CoreText                  : NO
+    DirectWrite (experimental): NO
+    GDI/Uniscribe             : NO
+
+  Other features
+    Documentation             : NO
+    GObject bindings          : NO
+    Cairo integration         : NO
+    Introspection             : NO
+    Experimental APIs         : NO
+
+  Testing
+    Tests                     : NO
+    Benchmark                 : NO
+
+  User defined options
+    Cross files               : /workspace/stage248B-final/cross.ini
+    auto_features             : disabled
+    buildtype                 : release
+    default_library           : static
+    freetype                  : enabled
+    libdir                    : lib
+    prefix                    : /workspace/stage248B-final/prefix
+    tests                     : disabled
+    utilities                 : disabled
+    wrap_mode                 : nofallback
+
+Found ninja-1.11.1.git.kitware.jobserver-1 at /workspace/stage248B-final/tools/python/bin/ninja
+ninja: Entering directory `/workspace/stage248B-final/build/harfbuzz'
+[1/73] Generating src/harfbuzz.cc with a custom command
+[2/73] Compiling C++ object src/libharfbuzz.a.p/hb-buffer-serialize.cc.obj
+[3/73] Compiling C++ object src/libharfbuzz.a.p/hb-blob.cc.obj
+[4/73] Compiling C++ object src/libharfbuzz.a.p/hb-aat-map.cc.obj
+[5/73] Compiling C++ object src/libharfbuzz.a.p/hb-buffer-verify.cc.obj
+[6/73] Compiling C++ object src/libharfbuzz.a.p/hb-common.cc.obj
+[7/73] Compiling C++ object src/libharfbuzz.a.p/hb-draw.cc.obj
+[8/73] Compiling C++ object src/libharfbuzz.a.p/hb-paint.cc.obj
+[9/73] Compiling C++ object src/libharfbuzz.a.p/hb-buffer.cc.obj
+[10/73] Compiling C++ object src/libharfbuzz.a.p/hb-paint-extents.cc.obj
+[11/73] Compiling C++ object src/libharfbuzz.a.p/hb-fallback-shape.cc.obj
+[12/73] Compiling C++ object src/libharfbuzz.a.p/hb-face.cc.obj
+[13/73] Compiling C++ object src/libharfbuzz.a.p/hb-face-builder.cc.obj
+[14/73] Compiling C++ object src/libharfbuzz.a.p/hb-map.cc.obj
+[15/73] Compiling C++ object src/libharfbuzz.a.p/hb-font.cc.obj
+[16/73] Compiling C++ object src/libharfbuzz.a.p/hb-number.cc.obj
+[17/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-cff1-table.cc.obj
+[18/73] Compiling C++ object src/libharfbuzz.a.p/hb-aat-layout.cc.obj
+[19/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-cff2-table.cc.obj
+[20/73] Compiling C++ object src/libharfbuzz.a.p/hb-outline.cc.obj
+[21/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-color.cc.obj
+[22/73] Compiling C++ object src/libharfbuzz.a.p/OT_Var_VARC_VARC.cc.obj
+[23/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-face.cc.obj
+[24/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-map.cc.obj
+[25/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-math.cc.obj
+[26/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-meta.cc.obj
+[27/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-font.cc.obj
+[28/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-metrics.cc.obj
+[29/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-name.cc.obj
+[30/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shaper-default.cc.obj
+[31/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shaper-hangul.cc.obj
+[32/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shaper-hebrew.cc.obj
+[33/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shaper-indic-table.cc.obj
+[34/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shaper-indic.cc.obj
+[35/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shaper-khmer.cc.obj
+[36/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shaper-arabic.cc.obj
+[37/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shaper-myanmar.cc.obj
+[38/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shaper-syllabic.cc.obj
+[39/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-layout.cc.obj
+[40/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shaper-thai.cc.obj
+[41/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shaper-vowel-constraints.cc.obj
+[42/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shaper-use.cc.obj
+[43/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shape-normalize.cc.obj
+[44/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-tag.cc.obj
+[45/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shape.cc.obj
+[46/73] Compiling C++ object src/libharfbuzz.a.p/hb-shape-plan.cc.obj
+[47/73] Compiling C++ object src/libharfbuzz.a.p/hb-set.cc.obj
+[48/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-shape-fallback.cc.obj
+[49/73] Compiling C++ object src/libharfbuzz.a.p/hb-ot-var.cc.obj
+[50/73] Compiling C++ object src/libharfbuzz.a.p/hb-shape.cc.obj
+[51/73] Compiling C++ object src/libharfbuzz.a.p/hb-shaper.cc.obj
+[52/73] Compiling C++ object src/libharfbuzz.a.p/hb-style.cc.obj
+[53/73] Compiling C++ object src/libharfbuzz.a.p/hb-ucd.cc.obj
+[54/73] Compiling C++ object src/libharfbuzz.a.p/hb-unicode.cc.obj
+[55/73] Compiling C++ object src/libharfbuzz.a.p/hb-static.cc.obj
+[56/73] Compiling C++ object src/libharfbuzz-subset.a.p/hb-number.cc.obj
+[57/73] Compiling C++ object src/libharfbuzz.a.p/hb-ft.cc.obj
+[58/73] Linking static target src/libharfbuzz.a
+[59/73] Compiling C++ object src/libharfbuzz-subset.a.p/hb-ot-cff2-table.cc.obj
+[60/73] Compiling C++ object src/libharfbuzz-subset.a.p/hb-ot-cff1-table.cc.obj
+[61/73] Compiling C++ object src/libharfbuzz-subset.a.p/hb-subset-cff-common.cc.obj
+[62/73] Compiling C++ object src/libharfbuzz-subset.a.p/hb-static.cc.obj
+[63/73] Compiling C++ object src/libharfbuzz-subset.a.p/hb-subset-input.cc.obj
+[64/73] Compiling C++ object src/libharfbuzz-subset.a.p/hb-subset-cff2.cc.obj
+[65/73] Compiling C++ object src/libharfbuzz-subset.a.p/hb-subset-instancer-solver.cc.obj
+[66/73] Compiling C++ object src/libharfbuzz-subset.a.p/hb-subset-instancer-iup.cc.obj
+[67/73] Compiling C++ object src/libharfbuzz-subset.a.p/hb-subset-cff1.cc.obj
+[68/73] Compiling C++ object src/libharfbuzz-subset.a.p/graph_gsubgpos-context.cc.obj
+[69/73] Generating src/harfbuzz-subset.cc with a custom command
+[70/73] Compiling C++ object src/libharfbuzz-subset.a.p/hb-subset-serialize.cc.obj
+[71/73] Compiling C++ object src/libharfbuzz-subset.a.p/hb-subset-plan.cc.obj
+[72/73] Compiling C++ object src/libharfbuzz-subset.a.p/hb-subset.cc.obj
+[73/73] Linking static target src/libharfbuzz-subset.a
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /workspace/stage248B-final/tools/python/bin/ninja -C /workspace/stage248B-final/build/harfbuzz -j 4
+ninja: Entering directory `/workspace/stage248B-final/build/harfbuzz'
+ninja: no work to do.
+Installing src/libharfbuzz.a to /workspace/stage248B-final/prefix/lib
+Installing src/libharfbuzz-subset.a to /workspace/stage248B-final/prefix/lib
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-aat-layout.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-aat.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-blob.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-buffer.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-common.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-cplusplus.hh to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-deprecated.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-draw.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-paint.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-face.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-font.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-map.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-ot-color.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-ot-deprecated.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-ot-font.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-ot-layout.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-ot-math.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-ot-meta.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-ot-metrics.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-ot-name.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-ot-shape.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-ot-var.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-ot.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-set.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-shape-plan.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-shape.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-style.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-unicode.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/build/harfbuzz/src/hb-version.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-ft.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-subset.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/src/harfbuzz/src/hb-subset-serialize.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/build/harfbuzz/src/hb-version.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/build/harfbuzz/src/hb-features.h to /workspace/stage248B-final/prefix/include/harfbuzz
+Installing /workspace/stage248B-final/build/harfbuzz/meson-private/harfbuzz.pc to /workspace/stage248B-final/prefix/lib/pkgconfig
+Installing /workspace/stage248B-final/build/harfbuzz/meson-private/harfbuzz-subset.pc to /workspace/stage248B-final/prefix/lib/pkgconfig
+Installing /workspace/stage248B-final/build/harfbuzz/src/harfbuzz-config.cmake to /workspace/stage248B-final/prefix/lib/cmake/harfbuzz

@@ -1,0 +1,57 @@
+{
+  "native_windows_tested": false,
+  "cases": 48,
+  "succeeded": 48,
+  "frame_accuracy_verified": false,
+  "measurements": "bounded native-pipe image handoff; not perceived hover/UI latency",
+  "groups": {
+    "baseline-mpv-thumbnail-accurate-worker.exe": {
+      "first_request": {
+        "n": 12,
+        "median_ms": 559.0,
+        "p95_ms": 1449
+      },
+      "warm_requests": {
+        "n": 84,
+        "median_ms": 85.0,
+        "p95_ms": 470
+      }
+    },
+    "baseline-mpv-thumbnail-worker.exe": {
+      "first_request": {
+        "n": 12,
+        "median_ms": 480.0,
+        "p95_ms": 1089
+      },
+      "warm_requests": {
+        "n": 84,
+        "median_ms": 43.0,
+        "p95_ms": 95
+      }
+    },
+    "candidate-mpv-thumbnail-accurate-worker.exe": {
+      "first_request": {
+        "n": 12,
+        "median_ms": 339.0,
+        "p95_ms": 1063
+      },
+      "warm_requests": {
+        "n": 84,
+        "median_ms": 98.5,
+        "p95_ms": 647
+      }
+    },
+    "candidate-mpv-thumbnail-worker.exe": {
+      "first_request": {
+        "n": 12,
+        "median_ms": 427.5,
+        "p95_ms": 1002
+      },
+      "warm_requests": {
+        "n": 84,
+        "median_ms": 54.5,
+        "p95_ms": 190
+      }
+    }
+  }
+}

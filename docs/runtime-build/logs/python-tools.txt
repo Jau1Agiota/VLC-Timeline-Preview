@@ -1,0 +1,8 @@
+Processing ./downloads/meson-1.8.3-py3-none-any.whl
+Processing ./downloads/ninja-1.11.1.4-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.whl
+Processing ./downloads/cmake-3.31.6-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+Processing ./downloads/jinja2-3.1.6-py3-none-any.whl
+Processing ./downloads/markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+Installing collected packages: ninja, meson, markupsafe, jinja2, cmake
+
+Successfully installed cmake-3.31.6 jinja2-3.1.6 markupsafe-3.0.3 meson-1.8.3 ninja-1.11.1.4

@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "target": "Windows x64 software-only preview libmpv",
+  "python_version": "3.12.14",
+  "host_platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "patches": [],
+  "inputs": {
+    "mpv": {
+      "repository": "https://github.com/mpv-player/mpv",
+      "revision": "e471496c56f0f49c133bd88b50aed62b845f1909",
+      "url": "https://codeload.github.com/mpv-player/mpv/tar.gz/e471496c56f0f49c133bd88b50aed62b845f1909",
+      "sha256": "562674ce7a0f6ac0681291037abc4c8595e0d1202d86d27eb341113eb7d984ba",
+      "filename": "mpv.tar.gz",
+      "kind": "source",
+      "license_review": "GPL-2.0-or-later; configured GPL mode"
+    },
+    "ffmpeg": {
+      "repository": "https://github.com/FFmpeg/FFmpeg",
+      "revision": "9a861e9687d30e657d59521817cad18405995983",
+      "url": "https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/9a861e9687d30e657d59521817cad18405995983",
+      "sha256": "c1b0fd16eae5b06838e456ab58924553a94aba087e3ad2e7d983c288003d6f6a",
+      "filename": "ffmpeg.tar.gz",
+      "kind": "source",
+      "license_review": "GPL-3.0-or-later configured; preserve per-file grants"
+    },
+    "libplacebo": {
+      "repository": "https://github.com/haasn/libplacebo",
+      "revision": "cee9b076f2c63104ccfd497fa79c39a867293ec4",
+      "url": "https://codeload.github.com/haasn/libplacebo/tar.gz/cee9b076f2c63104ccfd497fa79c39a867293ec4",
+      "sha256": "6f8fa218cbafd8e5f50b8a82d918e1d8bbb92f9f980820bc0b34d92e9b79e484",
+      "filename": "libplacebo.tar.gz",
+      "kind": "source",
+      "license_review": "LGPL-2.1-or-later; file-specific grants"
+    },
+    "libass": {
+      "repository": "https://github.com/libass/libass",
+      "revision": "bbb3c7f1570a4a021e52683f3fbdf74fe492ae84",
+      "url": "https://codeload.github.com/libass/libass/tar.gz/bbb3c7f1570a4a021e52683f3fbdf74fe492ae84",
+      "sha256": "93796cd47cc878220f3466352315888daba8a48d673cdd8c44350b26f516e064",
+      "filename": "libass.tar.gz",
+      "kind": "source",
+      "license_review": "ISC; additional file-specific notices"
+    },
+    "freetype": {
+      "repository": "https://github.com/freetype/freetype",
+      "revision": "42608f77f20749dd6ddc9e0536788eaad70ea4b5",
+      "url": "https://codeload.github.com/freetype/freetype/tar.gz/42608f77f20749dd6ddc9e0536788eaad70ea4b5",
+      "sha256": "68ce87bb59ea209eb7350f41a94a27519ce16b37011b475a1e62d4abee154b66",
+      "filename": "freetype.tar.gz",
+      "kind": "source",
+      "license_review": "FTL OR GPL-2.0-only; retain both texts and select FTL route for review"
+    },
+    "fribidi": {
+      "repository": "https://github.com/fribidi/fribidi",
+      "revision": "68162babff4f39c4e2dc164a5e825af93bda9983",
+      "url": "https://codeload.github.com/fribidi/fribidi/tar.gz/68162babff4f39c4e2dc164a5e825af93bda9983",
+      "sha256": "fa34a057a414c85f7e1f3c0fd717bc93d74d370ed474ef2feca90868b4938f72",
+      "filename": "fribidi.tar.gz",
+      "kind": "source",
+      "license_review": "LGPL-2.1-or-later"
+    },
+    "harfbuzz": {
+      "repository": "https://github.com/harfbuzz/harfbuzz",
+      "revision": "ea6a172f84f2cbcfed803b5ae71064c7afb6b5c2",
+      "url": "https://codeload.github.com/harfbuzz/harfbuzz/tar.gz/ea6a172f84f2cbcfed803b5ae71064c7afb6b5c2",
+      "sha256": "d79b66580ec62ec2a2a9d9958c637525bdec03ce5c380fbcd7505a25f15e95bb",
+      "filename": "harfbuzz.tar.gz",
+      "kind": "source",
+      "license_review": "MIT and file-specific licenses"
+    },
+    "fast_float": {
+      "repository": "https://github.com/fastfloat/fast_float",
+      "revision": "97b54ca9e75f5303507699d27c6b4f4efe4641a1",
+      "url": "https://codeload.github.com/fastfloat/fast_float/tar.gz/97b54ca9e75f5303507699d27c6b4f4efe4641a1",
+      "sha256": "2b132274539286e41f37857cac22aa8441d21bd86d55de825a3342b149f66801",
+      "filename": "fast_float.tar.gz",
+      "kind": "source",
+      "license_review": "MIT OR Apache-2.0 OR BSL-1.0; retain source notices"
+    },
+    "glad": {
+      "repository": "https://github.com/Dav1dde/glad",
+      "revision": "73db193f853e2ee079bf3ca8a64aa2eaf6459043",
+      "url": "https://codeload.github.com/Dav1dde/glad/tar.gz/73db193f853e2ee079bf3ca8a64aa2eaf6459043",
+      "sha256": "33dbeae44d8315ece57e14eba4b1b4a02ac5406d1c4f49cd20048c91522a6b9a",
+      "filename": "glad.tar.gz",
+      "kind": "source",
+      "license_review": "MIT/Apache and generated API registry notices; build generator only with GPU paths disabled"
+    },
+    "vulkan-headers": {
+      "repository": "https://github.com/KhronosGroup/Vulkan-Headers",
+      "revision": "450bd2232225d6c7728a4108055ac2e37cef6475",
+      "url": "https://codeload.github.com/KhronosGroup/Vulkan-Headers/tar.gz/450bd2232225d6c7728a4108055ac2e37cef6475",
+      "sha256": "26df9841c30806a994e2fdf42f7c87bcb1ced9db9a06033469123939fb3fa075",
+      "role": "build/public header only; no loader library",
+      "filename": "vulkan-headers.tar.gz",
+      "kind": "source",
+      "license_review": "Apache-2.0/MIT and file-specific grants; headers only"
+    },
+    "pkgconf": {
+      "repository": "https://github.com/pkgconf/pkgconf",
+      "revision": "a88c0d962a987c62d98ede5a738e37ec71005cbd",
+      "url": "https://codeload.github.com/pkgconf/pkgconf/tar.gz/a88c0d962a987c62d98ede5a738e37ec71005cbd",
+      "sha256": "9f1a8ca9610a171ca64c2e06cd1972d11379828b3368acba4e3a0f9acbbf938b",
+      "role": "native build tool",
+      "filename": "pkgconf.tar.gz",
+      "kind": "source",
+      "license_review": "ISC and file-specific notices; native tool"
+    },
+    "llvm-mingw-source": {
+      "repository": "https://github.com/mstorsjo/llvm-mingw",
+      "revision": "035a464964ff4b618a0505cbc14bc3e3804e3b2c",
+      "url": "https://codeload.github.com/mstorsjo/llvm-mingw/tar.gz/035a464964ff4b618a0505cbc14bc3e3804e3b2c",
+      "sha256": "e9acc01fbef3cf747d8461270f14e15a83735a1e271a382bd9362d021692d0aa",
+      "role": "toolchain build recipe and runtime provenance",
+      "filename": "llvm-mingw-source.tar.gz",
+      "kind": "source",
+      "license_review": "ISC build scripts plus component licenses"
+    },
+    "toolchain": {
+      "kind": "toolchain",
+      "filename": "toolchain.tar.xz",
+      "url": "https://github.com/mstorsjo/llvm-mingw/releases/download/20251021/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64.tar.xz",
+      "sha256": "7b7f3acb6e735a9fabfaa3c8ff551e9937a5f2f298c2cd12796b357f7d1fb6a8",
+      "version": "llvm-mingw 20251021 UCRT; clang 21.1.4",
+      "license_review": "LLVM Apache-2.0 WITH LLVM-exception; MinGW runtime/header notices; source closure separate"
+    },
+    "meson-tool": {
+      "kind": "wheel",
+      "filename": "meson-1.8.3-py3-none-any.whl",
+      "version": "1.8.3",
+      "url": "https://files.pythonhosted.org/packages/4b/bf/1a2f345a6e8908cd0b17c2f0a3c4f41667f724def84276ff1ce87d003594/meson-1.8.3-py3-none-any.whl",
+      "sha256": "ef02b806ce0c5b6becd5bb5dc9fa67662320b29b337e7ace73e4354500590233",
+      "license_review": "Apache License, Version 2.0"
+    },
+    "ninja-tool": {
+      "kind": "wheel",
+      "filename": "ninja-1.11.1.4-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.whl",
+      "version": "1.11.1.4",
+      "url": "https://files.pythonhosted.org/packages/eb/7a/455d2877fe6cf99886849c7f9755d897df32eaf3a0fba47b56e615f880f7/ninja-1.11.1.4-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.whl",
+      "sha256": "096487995473320de7f65d622c3f1d16c3ad174797602218ca8c967f51ec38a0",
+      "license_review": "inspect source notices"
+    },
+    "cmake-tool": {
+      "kind": "wheel",
+      "filename": "cmake-3.31.6-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "version": "3.31.6",
+      "url": "https://files.pythonhosted.org/packages/59/e8/096984b89133681533650b9078c5ed1c5c9b534e869b5487f22d4de1935c/cmake-3.31.6-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "sha256": "1c8b05df0602365da91ee6a3336fe57525b137706c4ab5675498f662ae1dbcec",
+      "license_review": "Apache 2.0"
+    },
+    "jinja2-tool": {
+      "kind": "wheel",
+      "filename": "jinja2-3.1.6-py3-none-any.whl",
+      "version": "3.1.6",
+      "url": "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl",
+      "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67",
+      "license_review": "inspect source notices"
+    },
+    "markupsafe-tool": {
+      "kind": "wheel",
+      "filename": "markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "version": "3.0.3",
+      "url": "https://files.pythonhosted.org/packages/3c/2e/8d0c2ab90a8c1d9a24f0399058ab8519a3279d1bd4289511d74e909f060e/markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "d6dd0be5b5b189d31db7cda48b91d7e0a9795f31430b7f271219ab30f1d3ac9d",
+      "license_review": "BSD-3-Clause"
+    },
+    "lua": {
+      "kind": "source",
+      "filename": "lua.tar.gz",
+      "url": "https://www.lua.org/ftp/lua-5.1.5.tar.gz",
+      "sha256": "2640fc56a795f29d28ef15e13c34a47e223960b0240e8cb0a82d9b0738695333",
+      "sha512": "0142fefcbd13afcd9b201403592aa60620011cc8e8559d4d2db2f92739d18186860989f48caa45830ff4f99bfc7483287fd3ff3a16d4dec928e2767ce4d542a9",
+      "version": "5.1.5",
+      "revision": "official release archive; SHA512 verified against VLC 3.0.24 contrib/src/lua/SHA512SUMS",
+      "license_review": "MIT; retain COPYRIGHT and source notices"
+    }
+  },
+  "observed_host_tools": {
+    "python3": {
+      "path": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3.12",
+      "sha256": "fa67443527ed9647f760d807e2a38f26340757123e643c4639cf273ed15d5ea7"
+    },
+    "gcc": {
+      "path": "/usr/bin/x86_64-linux-gnu-gcc-14",
+      "sha256": "a23ecab8ff08f09ad8c80602c2c5df7f49e09c25905cb8975902e101bf72635f"
+    },
+    "g++": {
+      "path": "/usr/bin/x86_64-linux-gnu-g++-14",
+      "sha256": "6b3696e4dcb85e1c949c732a02befa50e3983ecf94ce7e8e58d9d503b954b79d"
+    },
+    "make": {
+      "path": "/usr/bin/make",
+      "sha256": "8a229baf64671988cfb5af43ba3070c6ce7214cf32bcf96155115559d1466fa7"
+    },
+    "sh": {
+      "path": "/usr/bin/dash",
+      "sha256": "a6f559e00b69a4aa4d8cb607be18d9386c5aee55c509e2c075549dcf00e00fc7"
+    },
+    "bash": {
+      "path": "/usr/bin/bash",
+      "sha256": "223fe8564b60636bc738b6178d3ba9a50ef7d791266b0efae6363bb716e4c47f"
+    },
+    "sed": {
+      "path": "/usr/bin/sed",
+      "sha256": "69ff7292c0d081bdf5866bc84dde96d5a14f4a7deafeb9483739be68c48ac2b3"
+    },
+    "awk": {
+      "path": "/usr/bin/mawk",
+      "sha256": "eff9f2b711eb5bee1b58d4d33b891e8da8f6534655d3854a45bd10217dbb28e6"
+    },
+    "grep": {
+      "path": "/usr/bin/grep",
+      "sha256": "bd6686bf7a650a9717fd7e73fdb07dc63b70547a1da41bce093c56df937a66eb"
+    },
+    "pkg-config": {
+      "path": "/usr/bin/pkgconf",
+      "sha256": "37fdaa317c00805da16bc9c4c8de2300ad1e34511c33bf5e5170bf52c0e3a48e"
+    },
+    "objdump": {
+      "path": "/usr/bin/x86_64-linux-gnu-objdump",
+      "sha256": "96afb8521834982d0e711b5d6e9785252bf82129fb0106b93a6bd54d83fae11f"
+    },
+    "ldd": {
+      "path": "/usr/bin/ldd",
+      "sha256": "7bcd61a279946cb376d36fd91f4938ab4f4aba48e793c652a9797319d23f8dd3"
+    }
+  },
+  "hermetic_host_image": null,
+  "limitations": [
+    "host OS utilities recorded, not a pinned OCI image",
+    "licenses require final distribution review",
+    "toolchain-linked runtime sources require source-closure review"
+  ]
+}

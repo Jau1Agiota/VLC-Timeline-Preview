@@ -3,6 +3,10 @@
 param([ValidateSet('exact','fast')][string]$SeekMode='exact',
       [switch]$Diagnostics, [switch]$PlaybackDiagnostics, [switch]$ValidateOnly, [switch]$SetupOnly, [switch]$StageWorkerLocally)
 $ErrorActionPreference='Stop'
+# Explorer, cmd, and PowerShell 7 supply different PSModulePath values.
+# Get-FileHash is a script function in Windows PowerShell's built-in utility
+# module; import the OS copy explicitly rather than discover a caller's module.
+Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1') -ErrorAction Stop
 Add-Type -AssemblyName System.Windows.Forms
 $app=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $gate=$null

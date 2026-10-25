@@ -33,6 +33,7 @@ if($LASTEXITCODE -ne 0){throw 'Fixed-drive staging validation failed'}
 Write-Output '::notice title=Portable setup phase::Native launcher cached startup'
 $expected=Join-Path $app 'vlc.exe'
 $existing=@(Get-Process vlc -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
+$priorErrors=@(Get-ChildItem -LiteralPath (Join-Path $app 'portable-data') -Filter 'startup-error-*.log' | Select-Object -ExpandProperty FullName)
 $bootstrap=Start-Process -FilePath (Join-Path $app 'Start VLC Timeline Preview.exe') -PassThru
 $child=$null
 try {
@@ -49,7 +50,7 @@ try {
         Get-CimInstance Win32_Process -Filter "ParentProcessId=$($bootstrap.Id)" | Where-Object {
             $_.Name -eq 'powershell.exe' -and $_.CommandLine.Contains($script)
         } | ForEach-Object {Stop-Process -Id $_.ProcessId -Force}
-        foreach($log in @(Get-ChildItem -LiteralPath (Join-Path $app 'portable-data') -Filter 'startup-error-*.log')){
+        foreach($log in @(Get-ChildItem -LiteralPath (Join-Path $app 'portable-data') -Filter 'startup-error-*.log' | Where-Object {$_.FullName -notin $priorErrors})){
             $safe=([IO.File]::ReadAllText($log.FullName)).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
             Write-Output "::error title=Portable startup error::$safe"
         }

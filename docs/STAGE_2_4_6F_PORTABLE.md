@@ -64,7 +64,22 @@ ordinary A/V, separate installed VLC unaffected, diagnostic switches, writable
 USB folder, blocked network, missing/corrupt runtime, close/relaunch. No accuracy
 or playback-freeze resolution claims. Keep draft until user acceptance.
 
-Build/CI/artifact evidence will be recorded after execution.
+Final build/CI/artifact evidence is recorded below after execution.
+
+Windows preflight exposed `Get-FileHash` missing in the native-bootstrap context,
+although direct PowerShell test invocations resolved it. The bootstrap now imports
+Windows PowerShell's built-in utility module explicitly from `$PSHOME`, independent
+of caller module discovery. Failed startup also records the underlying exception
+in a unique portable-data/startup-error-*.log before showing a dialog. An initial
+network download failed; subsequent unchanged download attempts succeeded. No
+network-cause or retry workaround is claimed. Normal startup performs no network
+request once the cached runtime exists and verifies correctly.
+
+A separate source-bootstrap preflight passed native job 121164149173 in
+[run 40191794369](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/40191794369).
+That run tested the corrected script over the earlier extracted package; it was
+explicitly not final ZIP validation. Final CI removes that replacement and tests
+only the script actually shipped in the new checksummed ZIP.
 
 Removable-storage detail: the unchanged preview controller requires helper and
 media paths on fixed local drives (thumbnailpreview.cpp localPath). When the
@@ -76,3 +91,20 @@ storage remain ineligible for previews, as in Stage E; ordinary playback works.
 VLC's native portable-directory support (src/win32/dirs.c) stores its own profile
 and Qt INI files under portable/; child APPDATA isolation supplements this.
 Do not share a writable extracted folder between mutually untrusted users.
+
+## Additional pinned runtime provenance verified during Stage F
+
+GitHub's release API confirms the 20261021 SDK asset is 31,622,190 bytes and
+reports SHA-256 `efc719eff3dc5954b4a5efc800632808bcec01cc9034940dd14e5eb7fe9ea633`,
+matching the unchanged lock. Its release body links successful provider workflow
+[39518569492](https://github.com/shinchiro/mpv-winbuild-cmake/actions/runs/39518569492),
+whose API reports build-recipe commit `1f8d2e76255abc48f0456d9be99b4cab9c6566e6`.
+At that recipe commit, [mpv.cmake](https://github.com/shinchiro/mpv-winbuild-cmake/blob/1f8d2e76255abc48f0456d9be99b4cab9c6566e6/packages/mpv.cmake)
+uses `--prefer-static`, enables libmpv and Vulkan, and does not select `gpl=false`;
+[ffmpeg.cmake](https://github.com/shinchiro/mpv-winbuild-cmake/blob/1f8d2e76255abc48f0456d9be99b4cab9c6566e6/packages/ffmpeg.cmake)
+explicitly enables `--enable-gpl --enable-version3` and numerous external libraries.
+The [pinned mpv Copyright](https://github.com/mpv-player/mpv/blob/e471496c56f0f49c133bd88b50aed62b845f1909/Copyright)
+confirms default GPLv2-or-later and that linked FFmpeg can affect final licensing.
+Thus this is not an LGPL-only runtime. Source recipe availability alone does not
+prove a complete, matching corresponding-source bundle for all linked revisions.
+The Stage F choice remains private publisher download, not DLL redistribution.

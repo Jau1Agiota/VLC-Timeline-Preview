@@ -220,8 +220,6 @@ jobs:
           & "$app/thumbnail-mpv/Setup-Runtime.ps1" -Destination "$env:RUNNER_TEMP/mpv-runtime"
           if(Test-Path C:/VulkanSDK){Get-ChildItem C:/VulkanSDK -Directory | ForEach-Object {$env:PATH="$($_.FullName)/Bin;$env:PATH"}}
           if($env:VLC_CI_STAGE -eq '2.4.6F'){
-            Write-Output '::notice title=Stage F bootstrap preflight::Testing source bootstrap; final ZIP validation still required.'
-            Copy-Item -LiteralPath ./extras/package/portable/Start-Portable.ps1 -Destination (Join-Path $app 'portable/Start-Portable.ps1') -Force
             try { & ./test/ci/portable-launcher.ps1 -Application $app }
             catch {
               $detail=($_ | Out-String).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')

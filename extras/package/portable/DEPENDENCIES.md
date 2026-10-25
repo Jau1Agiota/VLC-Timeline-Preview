@@ -1,43 +1,35 @@
-# Stage F dependency and licensing status
+# Stage 2.4.8D private local prototype dependencies
 
-The VLC/worker source and launcher retain GPL-2.0-or-later and repository COPYING.
-VLC dependencies retain the existing package notices and separate official
-LibVLC helper runtime. Corresponding project source: repository commit recorded
-in BUILD_MANIFEST.json at https://github.com/Jau1Agiota/VLC-Timeline-Preview .
+The local assembler copies the user's supplied original libmpv DLL, never a
+replacement build. Required SHA-256:
+`04e4d27dc385dc18ddd93fbe69c75e635b864f3c6ec53a9122df54c2f7842f4a`.
+The DLL is placed beside the unchanged workers under thumbnail-mpv/. Startup
+verifies it against this fixed pin, not merely a user-editable dependency version.
 
-The libmpv distribution is **not bundled**. Its pin is unchanged:
-shinchiro/mpv-winbuild-cmake release 20261021,
-mpv-dev-x86_64-20261021-git-e471496c56.7z; mpv e471496c56f0f49c133bd88b50aed62b845f1909,
-FFmpeg N-127893-g9a861e968. URL and archive/DLL SHA-256 are preserved in
-thumbnail-mpv/dependencies.json. Provider source/build configuration:
-https://github.com/shinchiro/mpv-winbuild-cmake (exact transitive revision
-mapping remains unaudited; see pinned release provenance).
-Upstream licenses: https://github.com/mpv-player/mpv/blob/master/Copyright
-and https://ffmpeg.org/legal.html . These links are information, not a completed
-corresponding-source distribution or proof of LGPL-only status.
+Original provenance remains shinchiro/mpv-winbuild-cmake release 20261021,
+`mpv-dev-x86_64-20261021-git-e471496c56.7z`; archive SHA-256
+`efc719eff3dc5954b4a5efc800632808bcec01cc9034940dd14e5eb7fe9ea633`.
+mpv revision e471496c56f0f49c133bd88b50aed62b845f1909 and FFmpeg
+N-127893-g9a861e968. These are provenance records, not download instructions.
+No runtime retrieval/extraction/installer is part of offline startup or assembly.
 
-The previous audit did not establish all static dependency revisions, configure
-flags, notices, patches and corresponding-source obligations for that exact DLL.
-Therefore Stage F does not claim cleared redistribution, LGPL-only licensing,
-or a complete source offer for it. First-launch retrieval is directly from the
-identified publisher for the user's private testing; do not redistribute the
-resulting populated cache. Archive and extracted DLL are checked before use,
-and DLL is checked again on every launch. HTTPS certificate validation stays on.
-Only the named DLL is extracted. Setup does not download an extractor, driver,
-codec pack or unpinned substitute. Windows inbox tar/PowerShell and system/GPU
-runtime dependencies remain prerequisites. Vulkan loader can be an import even
-with software decoding; use official GPU drivers, never unidentified DLL sites.
+A loadable Windows x64 vulkan-1.dll is a system prerequisite. Compatible official
+PC/graphics drivers commonly provide it, but not every Windows installation does.
+The loader check does not enumerate GPUs or require a Vulkan-capable GPU. This
+prototype does not bundle a loader, modify Windows or install/download drivers.
+Missing dependencies produce a diagnostic; never obtain unidentified loose DLLs.
+Windows x64/PowerShell 5.1/WinForms and a writable application folder are required.
 
-A future offline edition requires a complete license/source audit or an audited,
-reproducibly built runtime with fulfillable corresponding-source delivery.
+VLC and its separate official helper runtime, plugins, notices, and existing
+worker executables are copied intact from the input Stage F package after file
+hash verification. Preserve COPYING.txt, AUTHORS.txt, THANKS.txt, helper notices
+and per-file attribution. The old Stage F build manifest is retained as
+BASE_STAGE_F_BUILD_MANIFEST.json; the new OFFLINE_PROTOTYPE_MANIFEST.json describes
+this private layout, its complete payload hashes and its local-only status.
 
-Stage 2.4.8C clarification: retain the original DLL SHA-256
-04e4d27dc385dc18ddd93fbe69c75e635b864f3c6ec53a9122df54c2f7842f4a.
-Vulkan loader availability is a system prerequisite, not a request to bundle or
-replace libmpv. The startup check loads/releases vulkan-1.dll using the existing
-safe dependency search policy and reports Windows errors; it does not query GPU
-capability, install drivers or fetch DLLs. Compatible current official drivers
-commonly provide the loader but this is not guaranteed. A loadable loader without
-a Vulkan-capable GPU is not rejected on that basis. Original-runtime redistribution
-still requires complete matching source/notices and human review. No offline
-package is cleared; the existing first-launch-online setup remains unchanged.
+Existing original-runtime corresponding-source/static-dependency/notice gaps
+remain recorded in docs/original-runtime/REVIEW.md in the repository. GPL itself
+is not a redistribution prohibition, but this private prototype does not declare
+those distribution obligations fulfilled. Do not upload/publish the assembled ZIP
+or populated folder. Public packaging guards remain unchanged. No replacement
+runtime or new source/licensing investigation is part of Stage D.

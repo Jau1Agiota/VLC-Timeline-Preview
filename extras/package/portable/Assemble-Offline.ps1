@@ -5,6 +5,7 @@ param([Parameter(Mandatory=$true)][string]$BaseApplication,
       [Parameter(Mandatory=$true)][string]$Destination)
 $ErrorActionPreference='Stop'
 Import-Module Microsoft.PowerShell.Utility -ErrorAction Stop
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 function Get-LocalHash([string]$Path) {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()

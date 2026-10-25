@@ -13,6 +13,7 @@ $startAst=[Management.Automation.Language.Parser]::ParseFile($startup,[ref]$toke
 if($errors.Count){throw ($errors | Out-String)}
 $code=[IO.File]::ReadAllText($startup)
 foreach($forbidden in @('Net.WebClient','DownloadFile','ServicePointManager','Setup-Runtime.ps1','Get-Runtime.ps1','tar.exe')){if($code.Contains($forbidden)){throw "Offline startup retained a network/setup operation: $forbidden"}}
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $root=Join-Path ([IO.Path]::GetTempPath()) ('offline-prototype-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($root) | Out-Null

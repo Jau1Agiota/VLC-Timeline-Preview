@@ -43,7 +43,7 @@ if($LASTEXITCODE -ne 0){throw 'Fixed-drive staging validation failed'}
 Write-Output '::notice title=Portable setup phase::Native launcher cached startup'
 $expected=Join-Path $app 'vlc.exe'
 $existing=@(Get-Process vlc -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
-Start-Process -FilePath (Join-Path $app 'Start VLC Timeline Preview.exe') | Out-Null
+$bootstrap=Start-Process -FilePath (Join-Path $app 'Start VLC Timeline Preview.exe') -PassThru
 $child=$null
 try {
     for($i=0;$i -lt 60;$i++) {
@@ -51,7 +51,26 @@ try {
         if($child){break}
         Start-Sleep -Milliseconds 500
     }
-    if(-not $child){throw 'Native portable launcher did not start packaged VLC'}
+    if(-not $child){
+        $state=if($bootstrap.HasExited){"exit=$($bootstrap.ExitCode)"}else{"still-running"}
+        Write-Output "::error title=Native bootstrap state::pid=$($bootstrap.Id) $state"
+        $probe=Join-Path $app 'portable\Probe-Launch.ps1'
+        try {
+            $body=[IO.File]::ReadAllText($script).Replace('if($ValidateOnly -or $SetupOnly){throw}', 'throw $_.Exception.GetBaseException()')
+            [IO.File]::WriteAllText($probe,$body)
+            $details=(& $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $probe -Diagnostics 2>&1 | Out-String)
+            $safe=$details.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Direct launch probe::$safe"
+            foreach($log in @(Get-ChildItem -LiteralPath (Join-Path $app 'portable-data') -Filter 'diagnostic-*.log')){
+                $safe=([IO.File]::ReadAllText($log.FullName)).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+                Write-Output "::error title=VLC startup log::$safe"
+            }
+        } finally {
+            if(Test-Path -LiteralPath $probe){Remove-Item -LiteralPath $probe}
+            Get-Process vlc -ErrorAction SilentlyContinue | Where-Object {$_.Id -notin $existing -and $_.Path -eq $expected} | Stop-Process
+        }
+        throw 'Native portable launcher did not start packaged VLC'
+    }
     Start-Sleep -Seconds 3
     if($child.HasExited){throw 'Packaged VLC exited unexpectedly'}
     $command=(Get-CimInstance Win32_Process -Filter "ProcessId=$($child.Id)").CommandLine

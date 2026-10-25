@@ -335,22 +335,55 @@ jobs:
           run-id: 40221095044
           name: stage-f-inventory-40221095044-1
           path: original-stage-f-inventory
-      - name: Expose dependency inventory as bounded metadata annotations
+      - name: Encode dependency inventory metadata within annotation limits
+        if: ${{ steps.existing-inventory.outcome == 'success' }}
+        shell: python
+        run: |
+          import base64, gzip, json, pathlib
+          source = pathlib.Path('original-stage-f-inventory/stage-f-inventory.json')
+          data = json.loads(source.read_text())
+          files = [{k: row[k] for k in ('filename','size_bytes','sha256','pe_imports')} for row in data['files']]
+          payload = base64.b64encode(gzip.compress(json.dumps(files,separators=(',',':')).encode(),mtime=0)).decode()
+          pages = [payload[i:i+3400] for i in range(0,len(payload),3400)]
+          if len(pages) > 40:
+              raise SystemExit('Inventory exceeds metadata transport limit; original artifact remains available')
+          pathlib.Path('inventory-pages.json').write_text(json.dumps(pages))
+      - name: Inventory metadata group 1
         if: ${{ steps.existing-inventory.outcome == 'success' }}
         shell: python
         run: |
           import json, pathlib
-          source = pathlib.Path('original-stage-f-inventory/stage-f-inventory.json')
-          data = json.loads(source.read_text())
-          files = [{k: row[k] for k in ('filename','size_bytes','sha256','pe_imports')} for row in data['files']]
-          pages = [files[i:i+150] for i in range(0,len(files),150)]
-          if len(pages) > 9:
-              raise SystemExit('Inventory exceeds annotation page limit; artifact remains available')
-          for number, rows in enumerate(pages,1):
-              message = json.dumps({'page':number,'pages':len(pages),'files':rows}, separators=(',',':'))
-              if len(message.encode()) > 60000:
-                  raise SystemExit('Inventory page exceeds metadata bound')
-              print(f'::notice title=Stage F inventory {number}/{len(pages)}::'+message.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
+          pages = json.loads(pathlib.Path('inventory-pages.json').read_text())
+          for index in range(0,min(10,len(pages))):
+              message = json.dumps({'part':index+1,'parts':len(pages),'data':pages[index]},separators=(',',':'))
+              print(f'::notice title=Stage F encoded inventory {index+1}/{len(pages)}::'+message)
+      - name: Inventory metadata group 2
+        if: ${{ steps.existing-inventory.outcome == 'success' }}
+        shell: python
+        run: |
+          import json, pathlib
+          pages = json.loads(pathlib.Path('inventory-pages.json').read_text())
+          for index in range(10,min(20,len(pages))):
+              message = json.dumps({'part':index+1,'parts':len(pages),'data':pages[index]},separators=(',',':'))
+              print(f'::notice title=Stage F encoded inventory {index+1}/{len(pages)}::'+message)
+      - name: Inventory metadata group 3
+        if: ${{ steps.existing-inventory.outcome == 'success' }}
+        shell: python
+        run: |
+          import json, pathlib
+          pages = json.loads(pathlib.Path('inventory-pages.json').read_text())
+          for index in range(20,min(30,len(pages))):
+              message = json.dumps({'part':index+1,'parts':len(pages),'data':pages[index]},separators=(',',':'))
+              print(f'::notice title=Stage F encoded inventory {index+1}/{len(pages)}::'+message)
+      - name: Inventory metadata group 4
+        if: ${{ steps.existing-inventory.outcome == 'success' }}
+        shell: python
+        run: |
+          import json, pathlib
+          pages = json.loads(pathlib.Path('inventory-pages.json').read_text())
+          for index in range(30,min(40,len(pages))):
+              message = json.dumps({'part':index+1,'parts':len(pages),'data':pages[index]},separators=(',',':'))
+              print(f'::notice title=Stage F encoded inventory {index+1}/{len(pages)}::'+message)
       - name: Recover published original-provider provenance (read only)
         shell: pwsh
         env:

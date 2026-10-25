@@ -3,6 +3,10 @@ name: Windows diagnostic pilot (CI-1)
 on:
   workflow_dispatch:
     inputs:
+      portable_dependency_only:
+        description: Test startup Vulkan diagnostics only; no VLC build/runtime download
+        type: boolean
+        default: false
       stage:
         description: Pinned diagnostic source (Stage 2.4.3 remains the default)
         type: choice
@@ -28,7 +32,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ inputs.stage != '2.4.6A' && !inputs.native_only }}
+    if: ${{ !inputs.portable_dependency_only && inputs.stage != '2.4.6A' && !inputs.native_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
@@ -169,11 +173,11 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   libmpv-experiment:
-    if: ${{ inputs.stage == '2.4.6A' }}
+    if: ${{ !inputs.portable_dependency_only && inputs.stage == '2.4.6A' }}
     uses: ./.github/workflows/libmpv-preview-experiment.yml
 
   native-mpv:
-    if: ${{ !cancelled() && (inputs.stage == '2.4.6B' || inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && (needs.build.result == 'success' || (inputs.native_only && inputs.package_run_id != '')) }}
+    if: ${{ !inputs.portable_dependency_only && !cancelled() && (inputs.stage == '2.4.6B' || inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && (needs.build.result == 'success' || (inputs.native_only && inputs.package_run_id != '')) }}
     permissions:
       contents: read
       actions: read
@@ -258,7 +262,7 @@ jobs:
 
   image-evidence:
     needs: native-mpv
-    if: ${{ !cancelled() && ((inputs.stage == '2.4.6B' && needs.native-mpv.result == 'success') || ((inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && needs.native-mpv.result != 'skipped')) }}
+    if: ${{ !inputs.portable_dependency_only && !cancelled() && ((inputs.stage == '2.4.6B' && needs.native-mpv.result == 'success') || ((inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && needs.native-mpv.result != 'skipped')) }}
     permissions:
       contents: read
       actions: read
@@ -303,3 +307,22 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
           overwrite: false
+
+  portable-dependencies:
+    if: ${{ inputs.portable_dependency_only }}
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - name: Check out preparatory startup tests
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Test diagnostics with Windows inbox PowerShell 5.1
+        shell: pwsh
+        run: |
+          $ps=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
+          & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/portable-vulkan.ps1
+          if($LASTEXITCODE -ne 0){throw 'Startup dependency regression tests failed'}
+          & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/portable-vulkan.ps1 -NativeProbe
+          if($LASTEXITCODE -ne 0){throw 'Native loader diagnostic test failed'}

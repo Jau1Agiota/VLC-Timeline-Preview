@@ -54,6 +54,7 @@ function Invoke-OfflineAssembly([string]$BaseApplication,[string]$RuntimeDll,[st
     $parent=[IO.Path]::GetDirectoryName($dest)
     if(-not [IO.Directory]::Exists($parent)){throw 'Destination parent must already exist'}
     Assert-NoReparse $parent
+    Get-PackagePath $parent ([IO.Path]::GetFileName($dest)) | Out-Null
     if($dest.Equals($base,[StringComparison]::OrdinalIgnoreCase) -or $dest.StartsWith($base+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Destination must be outside the Stage F installation'}
     $repository=[IO.Path]::GetFullPath((Join-Path $OverlayDirectory '../../..')).TrimEnd([IO.Path]::DirectorySeparatorChar)
     if((Test-Path -LiteralPath (Join-Path $repository '.git')) -and ($dest.Equals($repository,[StringComparison]::OrdinalIgnoreCase) -or $dest.StartsWith($repository+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase))){throw 'Private package destination must be outside the public repository checkout'}
@@ -103,7 +104,20 @@ function Invoke-OfflineAssembly([string]$BaseApplication,[string]$RuntimeDll,[st
     $manifestPath=Join-Path $dest 'OFFLINE_PROTOTYPE_MANIFEST.json'
     [IO.File]::WriteAllText($manifestPath,($manifest | ConvertTo-Json -Depth 8),(New-Object Text.UTF8Encoding($false)))
     $files['OFFLINE_PROTOTYPE_MANIFEST.json']=Get-LocalHash $manifestPath
-    [IO.Compression.ZipFile]::CreateFromDirectory($dest,$zip,[IO.Compression.CompressionLevel]::Optimal,$true)
+    # .NET Framework used by inbox PS5 can emit backslashes via CreateFromDirectory.
+    # Write canonical forward-slash entries explicitly for consistent extraction.
+    $archive=[IO.Compression.ZipFile]::Open($zip,[IO.Compression.ZipArchiveMode]::Create)
+    try {
+        $prefix=[IO.Path]::GetFileName($dest)+'/'
+        foreach($relative in $files.Keys){
+            $entry=$archive.CreateEntry($prefix+$relative,[IO.Compression.CompressionLevel]::Optimal)
+            $inputStream=[IO.File]::OpenRead((Get-PackagePath $dest $relative))
+            try {
+                $outputStream=$entry.Open()
+                try{$inputStream.CopyTo($outputStream)}finally{$outputStream.Dispose()}
+            }finally{$inputStream.Dispose()}
+        }
+    }finally{$archive.Dispose()}
     # Read/hash every archived file, rather than relying solely on ZIP creation.
     $archive=[IO.Compression.ZipFile]::OpenRead($zip)
     try {

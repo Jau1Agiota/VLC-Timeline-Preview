@@ -54,11 +54,38 @@ try {
     $deadline=[DateTime]::UtcNow.AddSeconds(15)
     while(-not [IO.File]::Exists($output) -and [DateTime]::UtcNow -lt $deadline){Start-Sleep -Milliseconds 100}
     Assert ([IO.File]::Exists($output) -and [IO.File]::ReadAllText($output) -eq '') 'No-argument bootstrap'
+    $fakeVlc=Join-Path $app 'vlc.exe'
+    [IO.File]::Delete($fakeVlc)
+    Add-Type -ReferencedAssemblies System.Windows.Forms,System.Drawing -OutputAssembly $fakeVlc -OutputType WindowsApplication -TypeDefinition @'
+using System;
+using System.Windows.Forms;
+public static class PortableInstanceFixture {
+ [STAThread] public static void Main() {
+   Form f=new Form(); f.Text="Portable instance fixture (not VLC)";
+   Timer t=new Timer(); t.Interval=20000; t.Tick+=(s,e)=>f.Close();
+   t.Start(); Application.Run(f);
+ }
+}
+'@
+    $fixtureProcess=[Diagnostics.Process]::Start($fakeVlc)
+    try {
+        $deadline=[DateTime]::UtcNow.AddSeconds(10)
+        while($fixtureProcess.MainWindowHandle -eq [IntPtr]::Zero -and [DateTime]::UtcNow -lt $deadline){Start-Sleep -Milliseconds 100;$fixtureProcess.Refresh()}
+        Assert ($fixtureProcess.MainWindowHandle -ne [IntPtr]::Zero) 'Fixture window did not start'
+        $data=Join-Path $app 'portable-data';[IO.Directory]::CreateDirectory($data) | Out-Null
+        Save-PortableInstance $fixtureProcess $data
+        Assert (Show-PortableInstance $app $data) 'No-file reuse failed'
+        Assert (-not (Show-PortableInstance ($app+' wrong folder') $data)) 'Cross-folder process focused'
+        $state=Join-Path $data 'last-instance.json'
+        $record=[IO.File]::ReadAllText($state) | ConvertFrom-Json
+        $record.started='0';[IO.File]::WriteAllText($state,($record | ConvertTo-Json))
+        Assert (-not (Show-PortableInstance $app $data)) 'Stale PID identity accepted'
+    }finally{if(-not $fixtureProcess.HasExited){$fixtureProcess.Kill();$fixtureProcess.WaitForExit()};$fixtureProcess.Dispose()}
     # HKCU only. No UserChoice, extension default or official VLC key is written.
     $defaults=@{}
     foreach($ext in $r.Extensions){
         foreach($path in @(('Software\Classes\'+$ext),('Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\'+$ext+'\UserChoice'))){
-            $key=$user.OpenSubKey($path);try{$defaults[$path]=if($key){@($key.GetValueNames() | Sort-Object | ForEach-Object {$_+'='+$key.GetValue($_)}) -join "`n"}else{$null}}finally{if($key){$key.Dispose()}}
+            $key=$user.OpenSubKey($path);try{$defaults[$path]=if($key){@($key.GetValueNames() | Sort-Object | ForEach-Object {$_+'='+$key.GetValue($_)}) -join "`n"}else{''}}finally{if($key){$key.Dispose()}}
         }
     }
     $id=Invoke-PortableRegistration $app Register
@@ -70,7 +97,7 @@ try {
     $selected=$command.Replace('%1',$video)
     $parsed=[PortableExplorer]::Parse($selected)
     Assert ($parsed[0] -ceq $exe -and $parsed[1] -ceq $video) 'Registered command quoting'
-    foreach($path in $defaults.Keys){$key=$user.OpenSubKey($path);try{$actual=if($key){@($key.GetValueNames() | Sort-Object | ForEach-Object {$_+'='+$key.GetValue($_)}) -join "`n"}else{$null};Assert ($actual -eq $defaults[$path]) 'Existing default changed'}finally{if($key){$key.Dispose()}}}
+    foreach($path in $defaults.Keys){$key=$user.OpenSubKey($path);try{$actual=if($key){@($key.GetValueNames() | Sort-Object | ForEach-Object {$_+'='+$key.GetValue($_)}) -join "`n"}else{''};Assert ($actual -eq $defaults[$path]) ("Existing default changed: "+$path)}finally{if($key){$key.Dispose()}}}
     $key=$user.OpenSubKey($sentinel);try{Assert ($key.GetValue('') -eq 'untouched') 'Official sentinel changed'}finally{$key.Dispose()}
     # Reject a conflicting owner before any update or removal.
     $key=$user.OpenSubKey($r.Capabilities,$true);$key.SetValue('PortableOwner','another installation');$key.Dispose()

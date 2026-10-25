@@ -72,10 +72,36 @@ try {
     $oldHash=Get-LocalHash ($output+'.zip')
     Reject {Invoke-OfflineAssembly $base $dll $output (Split-Path $assembly)} 'already exists'
     if((Get-LocalHash ($output+'.zip')) -ne $oldHash){throw 'Repeated assembly changed ZIP'}
+    $check=[IO.Compression.ZipFile]::OpenRead($output+'.zip')
+    try {foreach($entry in $check.Entries){if($entry.FullName.Contains('\')){throw 'Noncanonical ZIP separator'}}}finally{$check.Dispose()}
     $extracted=Join-Path $root 'Fresh extraction with spaces';[IO.Compression.ZipFile]::ExtractToDirectory(($output+'.zip'),$extracted)
     $app=Join-Path $extracted ([IO.Path]::GetFileName($output))
     if(-not (Test-Path (Join-Path $app 'Start VLC Timeline Preview.exe'))){throw 'Launcher missing after ZIP round trip'}
     if((Get-LocalHash (Join-Path $app 'thumbnail-mpv/libmpv-2.dll')) -ne (Get-LocalHash $dll)){throw 'ZIP runtime mismatch'}
     if([IO.File]::ReadAllText((Join-Path $base 'portable-data/runtime/do-not-copy.txt')) -ne 'private cache'){throw 'Original cache modified'}
+    if($env:OS -eq 'Windows_NT'){
+        # Run the REAL startup script in fresh PS5 children. Invalid/missing DLLs
+        # must fail before Vulkan loading or any attempt to start the fake VLC.
+        $pin='04e4d27dc385dc18ddd93fbe69c75e635b864f3c6ec53a9122df54c2f7842f4a'
+        $dependencyPath=Join-Path $app 'thumbnail-mpv/dependencies.json'
+        $dependency=[IO.File]::ReadAllText($dependencyPath) | ConvertFrom-Json
+        $dependency.dll_sha256=$pin;[IO.File]::WriteAllText($dependencyPath,($dependency | ConvertTo-Json))
+        $manifestPath=Join-Path $app 'OFFLINE_PROTOTYPE_MANIFEST.json'
+        $manifest=[IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json
+        $manifest.dll_sha256=$pin;[IO.File]::WriteAllText($manifestPath,($manifest | ConvertTo-Json -Depth 8))
+        $bundled=Join-Path $app 'thumbnail-mpv/libmpv-2.dll';[IO.File]::Delete($bundled)
+        $ps=Join-Path $PSHOME 'powershell.exe'
+        foreach($expected in @('Bundled libmpv-2.dll is missing','Bundled libmpv checksum mismatch')){
+            $prior=$ErrorActionPreference
+            try {
+                $ErrorActionPreference='Continue'
+                $details=(& $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $app 'portable/Start-Portable.ps1') -ValidateOnly 2>&1 | Out-String)
+                $status=$LASTEXITCODE
+            }finally{$ErrorActionPreference=$prior}
+            if($status -eq 0 -or -not $details.Contains($expected)){throw "Offline startup failure diagnostic mismatch: $details"}
+            [IO.File]::WriteAllText($bundled,'wrong hash fixture')
+        }
+        Write-Output 'PASS: real offline startup rejects missing/wrong-hash DLLs without setup or playback.'
+    }
     Write-Output 'PASS: original-pin rejection, missing files, wrong hashes, path safety, spaced paths, repeat refusal, cache exclusion, ZIP readback, extraction and original preservation. Positive fixture is not real VLC/runtime acceptance.'
 }finally{Remove-Item -LiteralPath $root -Recurse -Force}

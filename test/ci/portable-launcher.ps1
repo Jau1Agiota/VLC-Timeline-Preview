@@ -54,7 +54,12 @@ try {
     if(-not $child){
         $state=if($bootstrap.HasExited){"exit=$($bootstrap.ExitCode)"}else{"still-running"}
         Write-Output "::error title=Native bootstrap state::pid=$($bootstrap.Id) $state"
-        $probe=Join-Path $app 'portable\Probe-Launch.ps1'
+        # Close only this bootstrap's PowerShell child, which may be awaiting an
+        # error dialog and holding setup.lock. Never target other VLC/PS instances.
+        Get-CimInstance Win32_Process -Filter "ParentProcessId=$($bootstrap.Id)" | Where-Object {
+            $_.Name -eq 'powershell.exe' -and $_.CommandLine.Contains($script)
+        } | ForEach-Object {Stop-Process -Id $_.ProcessId -Force}
+        $probe=Join-Path $app 'portable\Probe-Launch.ps1' 
         try {
             $body=[IO.File]::ReadAllText($script).Replace('if($ValidateOnly -or $SetupOnly){throw}', 'throw $_.Exception.GetBaseException()')
             [IO.File]::WriteAllText($probe,$body)

@@ -1,0 +1,235 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "6ac6ea2f4164d242b5d8a2534393effe92988da7",
+  "scope": "original runtime and proposed application/source delivery; not redistribution clearance",
+  "redistribution_cleared": false,
+  "offline_package_created": false,
+  "replacement_runtime_included": false,
+  "original_runtime": {
+    "filename": "libmpv-2.dll",
+    "size_bytes": 121108480,
+    "sha256": "04e4d27dc385dc18ddd93fbe69c75e635b864f3c6ec53a9122df54c2f7842f4a",
+    "version": "mpv v0.41.0-1227-ge471496c5; FFmpeg N-127893-g9a861e968",
+    "publisher": "shinchiro/mpv-winbuild-cmake",
+    "release": "20261021",
+    "archive": "mpv-dev-x86_64-20261021-git-e471496c56.7z",
+    "archive_url": "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20261021/mpv-dev-x86_64-20261021-git-e471496c56.7z",
+    "archive_sha256": "efc719eff3dc5954b4a5efc800632808bcec01cc9034940dd14e5eb7fe9ea633",
+    "archive_size_bytes": 31622190,
+    "mpv_source_revision": "e471496c56f0f49c133bd88b50aed62b845f1909",
+    "ffmpeg_source_revision": "9a861e9687d30e657d59521817cad18405995983",
+    "recipe_revision": "1f8d2e76255abc48f0456d9be99b4cab9c6566e6",
+    "provider_run": 39518569492,
+    "normal_imports": [
+      "GDI32.dll",
+      "ole32.dll",
+      "USER32.dll",
+      "VERSION.dll",
+      "vulkan-1.dll",
+      "ADVAPI32.dll",
+      "SHELL32.dll",
+      "KERNEL32.dll",
+      "OLEAUT32.dll",
+      "api-ms-win-core-winrt-l1-1-0.dll",
+      "ntdll.dll",
+      "AVRT.dll",
+      "dwmapi.dll",
+      "IMM32.dll",
+      "api-ms-win-core-path-l1-1-0.dll",
+      "SHCORE.dll",
+      "UxTheme.dll",
+      "api-ms-win-core-winrt-error-l1-1-1.dll",
+      "OPENGL32.dll",
+      "api-ms-win-crt-stdio-l1-1-0.dll",
+      "api-ms-win-crt-environment-l1-1-0.dll",
+      "api-ms-win-crt-runtime-l1-1-0.dll",
+      "api-ms-win-crt-filesystem-l1-1-0.dll",
+      "api-ms-win-crt-string-l1-1-0.dll",
+      "api-ms-win-crt-private-l1-1-0.dll",
+      "api-ms-win-crt-locale-l1-1-0.dll",
+      "api-ms-win-crt-time-l1-1-0.dll",
+      "api-ms-win-crt-convert-l1-1-0.dll",
+      "api-ms-win-crt-utility-l1-1-0.dll",
+      "api-ms-win-crt-heap-l1-1-0.dll",
+      "api-ms-win-crt-math-l1-1-0.dll",
+      "api-ms-win-crt-multibyte-l1-1-0.dll",
+      "bcrypt.dll",
+      "SHLWAPI.dll",
+      "WS2_32.dll",
+      "DWrite.dll",
+      "WLDAP32.dll",
+      "CRYPT32.dll",
+      "api-ms-win-core-synch-l1-2-0.dll",
+      "bcryptprimitives.dll",
+      "AVICAP32.dll",
+      "WINMM.dll",
+      "SETUPAPI.dll",
+      "IPHLPAPI.DLL",
+      "Secur32.dll",
+      "Normaliz.dll",
+      "d2d1.dll"
+    ],
+    "license_status": "Default mpv GPL2-or-later; FFmpeg recipe enables GPL and version3. Final linked grants/notices and corresponding-source closure still require review. Not established as LGPL-only.",
+    "dynamic_vs_static": "Imports are normal PE dynamic dependencies only; statically linked source membership/revisions cannot be inferred completely from them."
+  },
+  "prerequisites": [
+    {
+      "filename": "vulkan-1.dll",
+      "provided_by": "system/compatible official driver installation or existing loader available through the verified runtime loading search policy",
+      "bundled": false,
+      "installed_or_downloaded_by_check": false,
+      "gpu_capability_query": false,
+      "requirements": "loadable in a Windows x64 process; up-to-date drivers commonly provide it but no universal availability guarantee",
+      "license_status": "not redistributed by this package; individual installed loader/provider terms apply"
+    },
+    {
+      "filename": "Windows platform DLLs/API sets, UCRT and Windows PowerShell 5.1/WinForms",
+      "provided_by": "supported Windows installation",
+      "bundled": false,
+      "requirements": "validate supported Windows version and loader/transitive imports on actual target devices"
+    }
+  ],
+  "application_components": [
+    {
+      "family": "modified VLC executable/core/plugins/assets",
+      "version": "VLC3.0.24 + Stage F modifications",
+      "application_build_source": "e29d1dc98c01e64de60de0fe2f299acd2af57aca",
+      "source_url": "https://github.com/Jau1Agiota/VLC-Timeline-Preview",
+      "licenses": "per-file/module GPL/LGPL and third-party notices; preserve COPYING, COPYING.LIB, AUTHORS, THANKS",
+      "source_obligations": "Exact future artifact source and changes, build scripts/configuration and matching linked dependencies; review static LGPL/GPL version choices",
+      "status": "not cleared as a whole package"
+    },
+    {
+      "family": "Start VLC Timeline Preview.exe and scripts, unchanged preview workers",
+      "licenses": "project GPL-2.0-or-later declarations and preserved third-party header notices",
+      "status": "launcher filename/workers/algorithms preserved; new script guard must be recorded in future manifest",
+      "source_obligations": "Provide exact launcher/worker/script sources with the future artifact commit, build commands and applicable linked-runtime materials"
+    },
+    {
+      "family": "separate official LibVLC helper runtime",
+      "version": "3.0.24",
+      "url": "https://download.videolan.org/pub/videolan/vlc/3.0.24/win64/vlc-3.0.24-win64.7z",
+      "archive_sha256": "1ed59c09152e78aff84663fa76efab26057716576db74332858810e5ef54ae1f",
+      "licenses": "VLC component licenses and linked dependency notices",
+      "source_obligations": "Inventory separately; match exact official build configuration/dependencies and provide applicable source/relinking material, preserving original notices",
+      "status": "full per-component closure unresolved"
+    }
+  ],
+  "vlc_build_inputs": {
+    "contrib_revision": "910cc9cada6080dd777fbafb2ebdd0c24f702c30",
+    "contrib_archive_sha256": "49f7690b3d09760f842f9f8e9612c28de8cbb1d027bcb3f6aaa25767611eea8c",
+    "image": "registry.videolan.org/vlc-debian-win64-3.0@sha256:b8e61c83d248cfb8fc3432d347f07f24de5a2ea6b0060cfe3053243e3674e6e7",
+    "source_obligations": "Retain selected recipes/patches, exact sources and actual per-binary static-link mapping; an image hash alone is not corresponding source"
+  },
+  "published_provider_patches": [
+    {
+      "filename": "packages/cmake-0001-ExternalProject-changes.patch",
+      "sha256": "3545f425268822198b2b438751018d32683d3cf30e4322d1fbc5fbd4ce19054b"
+    },
+    {
+      "filename": "packages/curl-0001-libssh-include-scp-declarations.patch",
+      "sha256": "0a764d47e6bc5bc2baf88a1d1949405710eabee2f71dbfc1ebbbde25257ff881"
+    },
+    {
+      "filename": "packages/fontconfig-0001-Custom-changes-for-mpv-builds.patch",
+      "sha256": "98e4360a49f56e21520b3d5d73f8645526ade38d0ffb5f52654948eac59303c5"
+    },
+    {
+      "filename": "packages/fontconfig-0002-Do-not-use-dirent.h.patch",
+      "sha256": "23c647fb41d361bbae1e2eccc03ad6947b5c30b08bcceb2c2a34b6610cb53b26"
+    },
+    {
+      "filename": "packages/libbs2b-0001-build-library-only.patch",
+      "sha256": "1320ab6ba0daf3c3714c7a8c6a033eef6ed53f370c00479d1d6723e8480eb00e"
+    },
+    {
+      "filename": "packages/libressl-0001-remove-postfix-in-libs-name.patch",
+      "sha256": "1c61b877840a2681295251ae4ffe6f1b28e2818d5b1fcc92b4eef9f84b4bd812"
+    },
+    {
+      "filename": "packages/libvpl-0001-fix-mingw-secure-string-macros.patch",
+      "sha256": "b6fcecf3ad3e7aaf1d12b9486fff45e3a2c54288ef0877ae4467819db40bb304"
+    },
+    {
+      "filename": "packages/luajit-0001-add-win32-utf-8-filesystem-functions.patch",
+      "sha256": "d25b1d72af66804a73de13d4f4b8dc29ba7bc3c6185311d3ffd6c2205970b089"
+    },
+    {
+      "filename": "packages/mbedtls-0001-include-cpuid.patch",
+      "sha256": "0df681474f37714fc2874ce206720997ab91248e457a410905a52e80c8b1099e"
+    },
+    {
+      "filename": "packages/megasdk-0001-megacli-remove-warn-never-print-file-attributes.patch",
+      "sha256": "c33aff8f144ad76c99a5aadb994da966813da7934ff60b00def12570403a025d"
+    },
+    {
+      "filename": "packages/megasdk-0002-fix-compile.patch",
+      "sha256": "a51634763ae44a4f9b5df2c5b3091689fa4c5ea1cc8fa7960393b2c900c0f8d8"
+    },
+    {
+      "filename": "packages/mujs-0001-add-exe-to-binary-name.patch",
+      "sha256": "7bbd08072c3e3d3d1177d1e3ac4ba25eca250036062c8c8db582899c97b27714"
+    },
+    {
+      "filename": "packages/nettle-0001-skip-compiling-testsuite-and-examples.patch",
+      "sha256": "ec425715b474d2eadeadf46211cf589bf33567fe2b2450d841a18e83f2b9c584"
+    },
+    {
+      "filename": "packages/openssl-0001-workaround-missing-flag-in-mingw.patch",
+      "sha256": "ed45399710118a832e8f7b202a18bdb71cf3da536f41daab736525dac6ac6e33"
+    },
+    {
+      "filename": "packages/spirv-cross-0001-static-linking-hacks.patch",
+      "sha256": "bc59cdf1f54b27dc82e181baf9cdd179007b1fbfc92dc95695159201f9f26c79"
+    },
+    {
+      "filename": "packages/vulkan-0001-cross-compile-static-linking-hacks.patch",
+      "sha256": "b3151abd6c4c5e6730e2767d500b9f9f02952f0d94f72f382e10212ef2f8181a"
+    },
+    {
+      "filename": "packages/xvidcore-2-win64.patch",
+      "sha256": "b737e125383b19f41bfb1b79c727069455911cd1bba543e26d929a04e61d9a39"
+    }
+  ],
+  "unresolved": [
+    "actual static link membership and exact revisions for every original DLL dependency",
+    "historical configure outputs, all applied modifications and cached sysroot correspondence",
+    "complete copyright/license/NOTICE material and compatible license-version selection",
+    "source/relinking material and durable equivalent source access for intended redistribution",
+    "full VLC/helper binary-to-source/license review and responsible distributor approval",
+    "source/license mapping of official helper extras including axvlc.dll and all plugin-contained static dependencies"
+  ],
+  "stage_f_inventory": {
+    "build_run": 40221095044,
+    "recovery_run": 40228088175,
+    "regular_files": 1341,
+    "dll_files": 725,
+    "exe_files": 8,
+    "file_inventory": "stage-f-files.json",
+    "binary_to_source_license_mapping_complete": false,
+    "includes_libmpv_dll": false,
+    "includes_vulkan_loader": false
+  },
+  "unchanged_packaged_workers": [
+    {
+      "filename": "thumbnail-mpv/mpv-thumbnail-accurate-worker.exe",
+      "size_bytes": 653187,
+      "sha256": "ab3a118572fc34ea0c8e1ecc260822e59ebd64195b73f2ff2a1b0671bd8b9e03",
+      "pe_imports": [
+        "KERNEL32.dll",
+        "libmpv-2.dll",
+        "msvcrt.dll"
+      ]
+    },
+    {
+      "filename": "thumbnail-mpv/mpv-thumbnail-worker.exe",
+      "size_bytes": 652675,
+      "sha256": "e96615a72320660cddaecae030bdb7de55c6099d4796e01c398a617bf20d97f0",
+      "pe_imports": [
+        "KERNEL32.dll",
+        "libmpv-2.dll",
+        "msvcrt.dll"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "provider_run": 39518569492,
+  "source_closure_verified": false,
+  "api_http": 302,
+  "storage_http": 200,
+  "archive_sha256": "ff018dd35dbafa890bfd0d670206b9abd5b1652fb5b114d29d7990dfeb5821c9",
+  "archive_size_bytes": 103665,
+  "matching_log_files": [
+    "5_Building mpv (x86_64).txt",
+    "Building mpv (x86_64)/system.txt"
+  ],
+  "unattributed_revision_observations": []
+}

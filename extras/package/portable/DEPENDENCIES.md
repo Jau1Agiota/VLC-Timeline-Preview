@@ -30,3 +30,14 @@ with software decoding; use official GPU drivers, never unidentified DLL sites.
 
 A future offline edition requires a complete license/source audit or an audited,
 reproducibly built runtime with fulfillable corresponding-source delivery.
+
+Stage 2.4.8C clarification: retain the original DLL SHA-256
+04e4d27dc385dc18ddd93fbe69c75e635b864f3c6ec53a9122df54c2f7842f4a.
+Vulkan loader availability is a system prerequisite, not a request to bundle or
+replace libmpv. The startup check loads/releases vulkan-1.dll using the existing
+safe dependency search policy and reports Windows errors; it does not query GPU
+capability, install drivers or fetch DLLs. Compatible current official drivers
+commonly provide the loader but this is not guaranteed. A loadable loader without
+a Vulkan-capable GPU is not rejected on that basis. Original-runtime redistribution
+still requires complete matching source/notices and human review. No offline
+package is cleared; the existing first-launch-online setup remains unchanged.

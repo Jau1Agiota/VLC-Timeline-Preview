@@ -3,6 +3,10 @@ name: Windows diagnostic pilot (CI-1)
 on:
   workflow_dispatch:
     inputs:
+      portable_dependency_only:
+        description: Test startup Vulkan diagnostics only; no VLC build/runtime download
+        type: boolean
+        default: false
       stage:
         description: Pinned diagnostic source (Stage 2.4.3 remains the default)
         type: choice
@@ -28,7 +32,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ inputs.stage != '2.4.6A' && !inputs.native_only }}
+    if: ${{ !inputs.portable_dependency_only && inputs.stage != '2.4.6A' && !inputs.native_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
@@ -169,11 +173,11 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   libmpv-experiment:
-    if: ${{ inputs.stage == '2.4.6A' }}
+    if: ${{ !inputs.portable_dependency_only && inputs.stage == '2.4.6A' }}
     uses: ./.github/workflows/libmpv-preview-experiment.yml
 
   native-mpv:
-    if: ${{ !cancelled() && (inputs.stage == '2.4.6B' || inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && (needs.build.result == 'success' || (inputs.native_only && inputs.package_run_id != '')) }}
+    if: ${{ !inputs.portable_dependency_only && !cancelled() && (inputs.stage == '2.4.6B' || inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && (needs.build.result == 'success' || (inputs.native_only && inputs.package_run_id != '')) }}
     permissions:
       contents: read
       actions: read
@@ -258,7 +262,7 @@ jobs:
 
   image-evidence:
     needs: native-mpv
-    if: ${{ !cancelled() && ((inputs.stage == '2.4.6B' && needs.native-mpv.result == 'success') || ((inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && needs.native-mpv.result != 'skipped')) }}
+    if: ${{ !inputs.portable_dependency_only && !cancelled() && ((inputs.stage == '2.4.6B' && needs.native-mpv.result == 'success') || ((inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && needs.native-mpv.result != 'skipped')) }}
     permissions:
       contents: read
       actions: read
@@ -302,4 +306,94 @@ jobs:
           path: accuracy/
           if-no-files-found: warn
           retention-days: 14
+          overwrite: false
+
+  portable-dependencies:
+    if: ${{ inputs.portable_dependency_only }}
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - name: Check out preparatory startup tests
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Test diagnostics with Windows inbox PowerShell 5.1
+        shell: pwsh
+        run: |
+          $ps=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
+          & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/portable-vulkan.ps1
+          if($LASTEXITCODE -ne 0){throw 'Startup dependency regression tests failed'}
+          & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/portable-vulkan.ps1 -NativeProbe
+          if($LASTEXITCODE -ne 0){throw 'Native loader diagnostic test failed'}
+      - name: Read existing Stage F inventory metadata (no application binaries)
+        id: existing-inventory
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          github-token: ${{ github.token }}
+          run-id: 40221095044
+          name: stage-f-inventory-40221095044-1
+          path: original-stage-f-inventory
+      - name: Encode dependency inventory metadata within annotation limits
+        if: ${{ steps.existing-inventory.outcome == 'success' }}
+        shell: python
+        run: |
+          import base64, gzip, json, pathlib
+          source = pathlib.Path('original-stage-f-inventory/stage-f-inventory.json')
+          data = json.loads(source.read_text())
+          files = [{k: row[k] for k in ('filename','size_bytes','sha256','pe_imports')} for row in data['files']]
+          payload = base64.b64encode(gzip.compress(json.dumps(files,separators=(',',':')).encode(),mtime=0)).decode()
+          pages = [payload[i:i+3400] for i in range(0,len(payload),3400)]
+          if len(pages) > 40:
+              raise SystemExit('Inventory exceeds metadata transport limit; original artifact remains available')
+          pathlib.Path('inventory-pages.json').write_text(json.dumps(pages))
+      - name: Inventory metadata group 1
+        if: ${{ steps.existing-inventory.outcome == 'success' }}
+        shell: python
+        run: |
+          import json, pathlib
+          pages = json.loads(pathlib.Path('inventory-pages.json').read_text())
+          for index in range(0,min(10,len(pages))):
+              message = json.dumps({'part':index+1,'parts':len(pages),'data':pages[index]},separators=(',',':'))
+              print(f'::notice title=Stage F encoded inventory {index+1}/{len(pages)}::'+message)
+      - name: Inventory metadata group 2
+        if: ${{ steps.existing-inventory.outcome == 'success' }}
+        shell: python
+        run: |
+          import json, pathlib
+          pages = json.loads(pathlib.Path('inventory-pages.json').read_text())
+          for index in range(10,min(20,len(pages))):
+              message = json.dumps({'part':index+1,'parts':len(pages),'data':pages[index]},separators=(',',':'))
+              print(f'::notice title=Stage F encoded inventory {index+1}/{len(pages)}::'+message)
+      - name: Inventory metadata group 3
+        if: ${{ steps.existing-inventory.outcome == 'success' }}
+        shell: python
+        run: |
+          import json, pathlib
+          pages = json.loads(pathlib.Path('inventory-pages.json').read_text())
+          for index in range(20,min(30,len(pages))):
+              message = json.dumps({'part':index+1,'parts':len(pages),'data':pages[index]},separators=(',',':'))
+              print(f'::notice title=Stage F encoded inventory {index+1}/{len(pages)}::'+message)
+      - name: Inventory metadata group 4
+        if: ${{ steps.existing-inventory.outcome == 'success' }}
+        shell: python
+        run: |
+          import json, pathlib
+          pages = json.loads(pathlib.Path('inventory-pages.json').read_text())
+          for index in range(30,min(40,len(pages))):
+              message = json.dumps({'part':index+1,'parts':len(pages),'data':pages[index]},separators=(',',':'))
+              print(f'::notice title=Stage F encoded inventory {index+1}/{len(pages)}::'+message)
+      - name: Recover published original-provider provenance (read only)
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python ci/windows/original-runtime-provenance.py original-runtime-provenance.json
+      - name: Upload provenance metadata only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: original-runtime-provenance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: original-runtime-provenance.json
+          retention-days: 7
+          if-no-files-found: error
           overwrite: false

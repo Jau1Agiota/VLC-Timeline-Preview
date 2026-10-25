@@ -42,3 +42,11 @@ storage remain ineligible for previews, as in Stage E; ordinary playback works.
 VLC's native portable-directory support (src/win32/dirs.c) stores its own profile
 and Qt INI files under portable/; child APPDATA isolation supplements this.
 Do not share a writable extracted folder between mutually untrusted users.
+
+Vulkan prerequisite: the original preview runtime needs a Windows x64 loadable
+vulkan-1.dll. Official compatible graphics drivers commonly provide it, but not
+on every Windows installation. Startup checks loader availability without querying
+GPU capability or installing/downloading drivers. If unavailable, follow the
+reported Windows error and use official PC/graphics-vendor support; never obtain
+loose DLLs from unidentified sites. Stage 2.4.8C is preparatory: an offline ZIP has
+not been approved, and this existing edition still requires first-launch internet.

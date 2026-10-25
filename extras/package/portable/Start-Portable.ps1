@@ -9,6 +9,44 @@ $ErrorActionPreference='Stop'
 Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1') -ErrorAction Stop
 Add-Type -AssemblyName System.Windows.Forms
 $app=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+# Startup-only loader probe: no GPU enumeration, Vulkan calls, installation or network.
+function Initialize-PortableLibrary {
+    if('PortableLibrary' -as [type]){return}
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class PortableLibrary {
+ [DllImport("kernel32.dll", EntryPoint="LoadLibraryExW", CharSet=CharSet.Unicode, SetLastError=true)]
+ private static extern IntPtr NativeLoadLibraryEx(string path, IntPtr file, uint flags);
+ [ThreadStatic] private static int loadError;
+ public static IntPtr LoadLibraryEx(string path, IntPtr file, uint flags) {
+   IntPtr result = NativeLoadLibraryEx(path, file, flags);
+   loadError = Marshal.GetLastWin32Error();
+   return result;
+ }
+ public static int LastError() { return loadError; }
+ [DllImport("kernel32.dll")] public static extern bool FreeLibrary(IntPtr module);
+ [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetDriveType(string root);
+}
+'@
+}
+function Assert-PortableVulkanLoader([string]$RuntimeDirectory) {
+    Initialize-PortableLibrary
+    # Match the existing libmpv LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | DEFAULT_DIRS
+    # policy, including an already present runtime-local loader. Never search CWD/PATH.
+    $localLoader=Join-Path $RuntimeDirectory 'vulkan-1.dll'
+    $path='vulkan-1.dll'
+    $flags=0x00001000
+    if([IO.File]::Exists($localLoader)){$path=[IO.Path]::GetFullPath($localLoader);$flags=0x00001100}
+    $loader=[PortableLibrary]::LoadLibraryEx($path,[IntPtr]::Zero,$flags)
+    $loadError=[PortableLibrary]::LastError()
+    if($loader -eq [IntPtr]::Zero){
+        $detail=if($loadError -eq 193){'The loader must be compatible with a Windows x64 process.'}else{'The loader is unavailable or one of its own dependencies could not be loaded.'}
+        throw "The original preview runtime requires the Windows x64 Vulkan loader (vulkan-1.dll). $detail Windows error $loadError. Compatible, up-to-date graphics drivers commonly provide it, but availability is not guaranteed. Obtain drivers only from your PC or graphics vendor; do not download loose DLLs. This check does not require a Vulkan-capable GPU and does not install or download anything."
+    }
+    [PortableLibrary]::FreeLibrary($loader) | Out-Null
+}
+
 $gate=$null
 $temp=$null
 $localWorker=$null
@@ -55,19 +93,10 @@ try {
         if(-not [IO.File]::Exists($target)){[IO.File]::Copy($source,$target,$false)}
         if((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash){throw 'Cached worker differs from this package. Use a fresh extraction.'}
     }
-    # Detect missing transitive runtime imports (notably the GPU driver's Vulkan loader).
-    Add-Type @'
-using System;
-using System.Runtime.InteropServices;
-public static class PortableLibrary {
- [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
- public static extern IntPtr LoadLibraryEx(string path, IntPtr file, uint flags);
- [DllImport("kernel32.dll")] public static extern bool FreeLibrary(IntPtr module);
- [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetDriveType(string root);
-}
-'@
+    # Probe only after cached runtime and worker integrity checks.
+    Assert-PortableVulkanLoader $runtime
     $module=[PortableLibrary]::LoadLibraryEx($dll,[IntPtr]::Zero,0x00001100)
-    if($module -eq [IntPtr]::Zero){throw "Cannot load verified libmpv (Windows error $([Runtime.InteropServices.Marshal]::GetLastWin32Error())). Install/update the official GPU driver if vulkan-1.dll is unavailable. Do not download loose DLLs."}
+    if($module -eq [IntPtr]::Zero){throw "Cannot load verified libmpv (Windows error $([PortableLibrary]::LastError())). The Vulkan prerequisite check passed, but libmpv or another runtime dependency failed to load. Use a complete, checksum-verified package and report this error; do not download loose DLLs."}
     [PortableLibrary]::FreeLibrary($module) | Out-Null
     $workerRoot=$runtime
     if($StageWorkerLocally -or [PortableLibrary]::GetDriveType([IO.Path]::GetPathRoot($runtime)) -ne 3){

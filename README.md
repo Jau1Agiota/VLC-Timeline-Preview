@@ -48,8 +48,10 @@ experience, without downloading a runtime. It remains gated by the
 
 - Windows x64; Stage F targets Windows 10 1803+ / Windows 11, with inbox Windows
   PowerShell 5.1 and tar. A writable application folder is required.
-- The pinned preview DLL imports Vulkan's loader even with software decoding;
-  availability on a clean Windows installation has not been established.
+- The original pinned preview DLL requires a loadable Windows x64 `vulkan-1.dll`.
+  Compatible official graphics drivers commonly provide it, but availability is
+  not guaranteed. Startup checks loadability without querying GPU capability,
+  installing drivers or downloading a loader; other Windows prerequisites apply.
 - Initial preview support is local MP4/MKV on fixed drives. Network streams,
   removable-drive media, audio-only and non-seekable inputs may have no thumbnails.
 - Long-GOP, HEVC, variable-frame-rate and unusual timestamp origins can affect
@@ -101,3 +103,8 @@ that does not license the runtime DLL. The selected binary includes GPL/version-
 FFmpeg configuration, and its full corresponding-source and notice obligations
 remain unresolved. This repository's license files alone do not clear redistribution
 of an assembled Windows package. See the [licensing report](docs/STAGE_2_4_8_SELF_CONTAINED.md).
+
+[Stage 2.4.8C original-runtime review](docs/original-runtime/REVIEW.md) preserves
+the physically tested DLL and adds prerequisite diagnostics. The replacement
+runtime from PR24 is not adopted. Original-runtime redistribution remains gated;
+no new offline ZIP is available.

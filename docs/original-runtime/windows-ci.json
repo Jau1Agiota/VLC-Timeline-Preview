@@ -1,0 +1,31 @@
+{
+  "id": 40228088175,
+  "html_url": "https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/40228088175",
+  "head_sha": "bafbc9290951e971365961a3cf8dfe8adea90f3a",
+  "status": "completed",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "name": "portable-dependencies",
+      "conclusion": "success"
+    },
+    {
+      "name": "libmpv-experiment",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "native-mpv",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "build",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "image-evidence",
+      "conclusion": "skipped"
+    }
+  ],
+  "application_or_runtime_build": false,
+  "runtime_binary_upload": false
+}

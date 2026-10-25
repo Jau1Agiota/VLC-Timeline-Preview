@@ -133,3 +133,17 @@ public Release or replacement of Stage F artifacts is part of this stage.
   extraction benchmarks and a full VLC build were not run. No new GitHub-hosted
   CI result is claimed, and no package structure test can certify a nonexistent
   Stage 2.4.8 artifact. Existing packager tests retain their fail-closed DLL guard.
+
+## Stage 2.4.8C original-runtime policy
+
+[Original-runtime findings, manifest and acceptance plan](original-runtime/REVIEW.md)
+retain DLL SHA-256 `04e4d27dc385dc18ddd93fbe69c75e635b864f3c6ec53a9122df54c2f7842f4a`.
+Vulkan is a documented system prerequisite checked without GPU enumeration or
+installation. The original source/licensing gate remains unresolved; the existing
+packager rejection and first-launch-online path remain intact. No replacement
+runtime, offline ZIP or public Release is introduced.
+
+Stage C recovered the original Stage F regular-file inventory (1,341 entries) and
+passed hosted Windows PowerShell startup checks. This improves dependency evidence
+but does not establish original libmpv static-source or whole-package licensing
+closure. See the Stage C report for exact CI, files, hashes and remaining gates.

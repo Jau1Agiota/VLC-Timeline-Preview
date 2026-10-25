@@ -326,3 +326,16 @@ jobs:
           if($LASTEXITCODE -ne 0){throw 'Startup dependency regression tests failed'}
           & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/portable-vulkan.ps1 -NativeProbe
           if($LASTEXITCODE -ne 0){throw 'Native loader diagnostic test failed'}
+      - name: Recover published original-provider provenance (read only)
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python ci/windows/original-runtime-provenance.py original-runtime-provenance.json
+      - name: Upload provenance metadata only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: original-runtime-provenance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: original-runtime-provenance.json
+          retention-days: 7
+          if-no-files-found: error
+          overwrite: false

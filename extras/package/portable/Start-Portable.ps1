@@ -102,8 +102,12 @@ public static class PortableLibrary {
     if($gate){$gate.Dispose();$gate=$null}
     if($localWorker){$child.WaitForExit()}
 } catch {
-    if($ValidateOnly -or $SetupOnly){throw}
-    [Windows.Forms.MessageBox]::Show($_.Exception.Message,'VLC Timeline Preview could not start','OK','Error') | Out-Null
+    $problem=$_.Exception.GetBaseException()
+    try {
+        [IO.File]::WriteAllText((Join-Path $data ('startup-error-'+[guid]::NewGuid().ToString('N')+'.log')),$problem.ToString())
+    } catch {} # Read-only/missing storage still gets a dialog.
+    if($ValidateOnly -or $SetupOnly){throw $problem}
+    [Windows.Forms.MessageBox]::Show($problem.Message,'VLC Timeline Preview could not start','OK','Error') | Out-Null
     exit 1
 } finally {
     if($temp -and [IO.Directory]::Exists($temp)){Remove-Item -LiteralPath $temp -Recurse -Force}

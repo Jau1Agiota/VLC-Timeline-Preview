@@ -11,16 +11,6 @@ function Run-Setup([string]$Mode){
     if($LASTEXITCODE -ne 0){
         $safe=$details.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
         Write-Output "::error title=Portable setup failure::$safe"
-        # A failed packaged script can hide WebException behind Task.Wait.
-        # Repeat only for diagnostic attribution; never turn original failure into success.
-        $probe=Join-Path $app 'portable\Probe-Setup.ps1'
-        try {
-            $body=[IO.File]::ReadAllText($script).Replace('if($ValidateOnly -or $SetupOnly){throw}', 'if($ValidateOnly -or $SetupOnly){throw $_.Exception.GetBaseException()}')
-            [IO.File]::WriteAllText($probe,$body)
-            $rootDetails=(& $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $probe $Mode 2>&1 | Out-String)
-            $safe=$rootDetails.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
-            Write-Output "::error title=Portable setup root cause::$safe"
-        } finally {if(Test-Path -LiteralPath $probe){Remove-Item -LiteralPath $probe}}
         throw "Portable setup failed: $Mode"
     }
 }
@@ -59,20 +49,12 @@ try {
         Get-CimInstance Win32_Process -Filter "ParentProcessId=$($bootstrap.Id)" | Where-Object {
             $_.Name -eq 'powershell.exe' -and $_.CommandLine.Contains($script)
         } | ForEach-Object {Stop-Process -Id $_.ProcessId -Force}
-        $probe=Join-Path $app 'portable\Probe-Launch.ps1' 
-        try {
-            $body=[IO.File]::ReadAllText($script).Replace('if($ValidateOnly -or $SetupOnly){throw}', 'throw $_.Exception.GetBaseException()')
-            [IO.File]::WriteAllText($probe,$body)
-            $details=(& $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $probe -Diagnostics 2>&1 | Out-String)
-            $safe=$details.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
-            Write-Output "::error title=Direct launch probe::$safe"
-            foreach($log in @(Get-ChildItem -LiteralPath (Join-Path $app 'portable-data') -Filter 'diagnostic-*.log')){
-                $safe=([IO.File]::ReadAllText($log.FullName)).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
-                Write-Output "::error title=VLC startup log::$safe"
-            }
-        } finally {
-            if(Test-Path -LiteralPath $probe){Remove-Item -LiteralPath $probe}
-            Get-Process vlc -ErrorAction SilentlyContinue | Where-Object {$_.Id -notin $existing -and $_.Path -eq $expected} | Stop-Process
+        foreach($log in @(Get-ChildItem -LiteralPath (Join-Path $app 'portable-data') -Filter 'startup-error-*.log')){
+            $safe=([IO.File]::ReadAllText($log.FullName)).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Portable startup error::$safe"
+        }
+        foreach($v in @(Get-Process vlc -ErrorAction SilentlyContinue)){
+            Write-Output "::notice title=VLC process observation::pid=$($v.Id) path=$($v.Path)"
         }
         throw 'Native portable launcher did not start packaged VLC'
     }

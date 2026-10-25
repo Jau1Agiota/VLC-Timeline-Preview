@@ -124,36 +124,51 @@ class Packaging(unittest.TestCase):
             file.parent.mkdir(parents=True, exist_ok=True)
             file.write_bytes(b'fixture content\n')
 
-        if p.STAGE in {'2.4.6B','2.4.6C','2.4.6D','2.4.6E'}:
+        if p.STAGE in {'2.4.6B','2.4.6C','2.4.6D','2.4.6E','2.4.6F'}:
             for name in ('Start-Preview.ps1', 'Setup-Runtime.ps1', 'Get-Runtime.ps1', 'dependencies.json', 'THIRD_PARTY.md'):
                 (self.staging / 'thumbnail-mpv' / name).write_text('fixture material')
 
-        if p.STAGE in {'2.4.6D','2.4.6E'}:
+        if p.STAGE in {'2.4.6D','2.4.6E','2.4.6F'}:
             (self.staging/'thumbnail-mpv/Start-Preview.ps1').write_text('VLC_PLAYBACK_STABILITY_DEBUG')
             (self.staging/'thumbnail-mpv/STAGE_2_4_6D_STABILITY.md').write_text('fixture instructions')
 
-        if p.STAGE == '2.4.6E':
+        if p.STAGE in {'2.4.6E','2.4.6F'}:
             (self.staging/'thumbnail-mpv/STAGE_2_4_6E_VISUAL_POLISH.md').write_text('fixture visual instructions')
+        if p.STAGE == '2.4.6F':
+            (self.staging/'portable').mkdir()
+            for name in ('README.txt','portable/Start-Portable.ps1','portable/DEPENDENCIES.md','portable/STAGE_2_4_6F_PORTABLE.md'):
+                (self.staging/name).write_text('portable fixture')
+
+    def test_portable_material_required(self):
+        if p.STAGE != '2.4.6F': self.skipTest('Stage F launcher guard')
+        (self.staging/'portable/Start-Portable.ps1').unlink()
+        with self.assertRaises(ValueError): self.build()
+
+    def test_portable_cache_rejected(self):
+        if p.STAGE != '2.4.6F': self.skipTest('Stage F cache guard')
+        (self.staging/'portable-data').mkdir()
+        (self.staging/'portable-data/launch.lock').write_text('used package')
+        with self.assertRaises(ValueError): self.build()
 
     def test_visual_marker_required(self):
-        if p.STAGE != '2.4.6E': self.skipTest('Stage E appearance guard')
+        if p.STAGE not in {'2.4.6E','2.4.6F'}: self.skipTest('Stage E appearance guard')
         plugin=self.staging/'plugins/gui/libqt_plugin.dll'
         plugin.write_bytes(plugin.read_bytes().replace(p.VISUAL_MARKER,b''))
         with self.assertRaises(ValueError): self.build()
 
     def test_foreground_diagnostics_required(self):
-        if p.STAGE not in {'2.4.6D','2.4.6E'}: self.skipTest('Stage D instrumentation guard')
+        if p.STAGE not in {'2.4.6D','2.4.6E','2.4.6F'}: self.skipTest('Stage D instrumentation guard')
         plugin=self.staging/'plugins/gui/libqt_plugin.dll'
         plugin.write_bytes(plugin.read_bytes().replace(p.PLAYBACK_MARKER,b''))
         with self.assertRaises(ValueError): self.build()
 
     def test_diagnostic_launcher_required(self):
-        if p.STAGE not in {'2.4.6D','2.4.6E'}: self.skipTest('Stage D launcher guard')
+        if p.STAGE not in {'2.4.6D','2.4.6E','2.4.6F'}: self.skipTest('Stage D launcher guard')
         (self.staging/'thumbnail-mpv/Start-Preview.ps1').write_text('old launcher')
         with self.assertRaises(ValueError): self.build()
 
     def test_no_unreviewed_mpv_runtime(self):
-        if p.STAGE not in {'2.4.6B','2.4.6C','2.4.6D','2.4.6E'}: self.skipTest('stage-specific runtime guard')
+        if p.STAGE not in {'2.4.6B','2.4.6C','2.4.6D','2.4.6E','2.4.6F'}: self.skipTest('stage-specific runtime guard')
         (self.staging / 'thumbnail-mpv' / 'libmpv-2.dll').write_bytes(b'not distributable')
         with self.assertRaises(ValueError): self.build()
 
@@ -263,7 +278,7 @@ class Packaging(unittest.TestCase):
         self.assertTrue(triggers.startswith('  workflow_dispatch:'))
         self.assertEqual(re.findall(r'(?m)^  ([a-z_]+):', triggers), ['workflow_dispatch'])
         self.assertIn("default: '2.4.3'", triggers)
-        self.assertIn("options: ['2.4.3', '2.4.4', '2.4.5', '2.4.6A', '2.4.6B', '2.4.6C', '2.4.6D', '2.4.6E']", triggers)
+        self.assertIn("options: ['2.4.3', '2.4.4', '2.4.5', '2.4.6A', '2.4.6B', '2.4.6C', '2.4.6D', '2.4.6E', '2.4.6F']", triggers)
         self.assertRegex(workflow, r'permissions:\n  contents: read\n')
         self.assertNotRegex(workflow, r'contents: write|secrets\.|gh release|workflow_run:|pull_request:')
         uses = re.findall(r'uses: ([^\s#]+)', workflow)

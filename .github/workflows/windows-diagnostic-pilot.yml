@@ -422,14 +422,21 @@ jobs:
         shell: pwsh
         run: |
           $ps=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
-          & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/windows-integration.ps1 -LauncherExecutable 'tools-output/Start VLC Timeline Preview.exe'
-          if($LASTEXITCODE -ne 0){throw 'Windows integration tests failed'}
-          & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/offline-prototype.ps1
-          if($LASTEXITCODE -ne 0){throw 'Offline assembly regression failed'}
-          & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/portable-vulkan.ps1
-          if($LASTEXITCODE -ne 0){throw 'Vulkan tests failed'}
-          & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/portable-vulkan.ps1 -NativeProbe
-          if($LASTEXITCODE -ne 0){throw 'Native probe failed'}
+          function Invoke-InboxTest([string[]]$TestArguments) {
+            $PSNativeCommandUseErrorActionPreference=$false
+            $details=(& $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File @TestArguments 2>&1 | Out-String)
+            $status=$LASTEXITCODE
+            Write-Output $details
+            if($status -ne 0){
+              $safe=$details.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+              Write-Output "::error title=Windows integration regression::$safe"
+              throw 'Windows integration test failed'
+            }
+          }
+          Invoke-InboxTest @('test/ci/windows-integration.ps1','-LauncherExecutable','tools-output/Start VLC Timeline Preview.exe')
+          Invoke-InboxTest @('test/ci/offline-prototype.ps1')
+          Invoke-InboxTest @('test/ci/portable-vulkan.ps1')
+          Invoke-InboxTest @('test/ci/portable-vulkan.ps1','-NativeProbe')
       - name: Package first-party tools, source and instructions only
         shell: pwsh
         run: |

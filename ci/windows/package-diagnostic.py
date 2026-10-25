@@ -18,7 +18,7 @@ import tempfile
 import zipfile
 
 STAGE = os.environ.get("VLC_CI_STAGE", "2.4.3")
-SOURCE = {"2.4.6F": "4600855fdc88b2e1ecd73b8362ad35b93420b9a5",
+SOURCE = {"2.4.6F": "b4406e83c614463c9bc39560faf6a9026960e948",
           "2.4.3": "2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc",
           "2.4.4": "e879ce656c218eddec13926f03b5f0615d14dc61",
           "2.4.6E": "e577355ed22aea9d2703aad794f79a68f0a1ce42",

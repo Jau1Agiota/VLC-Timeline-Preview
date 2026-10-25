@@ -147,3 +147,12 @@ Stage C recovered the original Stage F regular-file inventory (1,341 entries) an
 passed hosted Windows PowerShell startup checks. This improves dependency evidence
 but does not establish original libmpv static-source or whole-package licensing
 closure. See the Stage C report for exact CI, files, hashes and remaining gates.
+
+## Stage 2.4.8D private prototype
+
+[Offline launcher and local assembly](STAGE_2_4_8D_OFFLINE_PROTOTYPE.md) now allow
+a private Windows ZIP to be constructed from the user's existing Stage F folder
+and original verified DLL, without runtime downloads. Existing redistribution
+findings remain recorded, but do not block this explicitly authorized private
+local workflow. No public packaging guard, original installation or runtime
+algorithm is changed; no assembled package is uploaded.

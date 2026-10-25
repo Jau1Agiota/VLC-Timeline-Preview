@@ -303,7 +303,7 @@ GETCONF
     if [[ $CI_STAGE == 2.4.6F ]]; then
         mkdir /out/staging/portable
         x86_64-w64-mingw32-gcc -std=c11 -O2 -Wall -Wextra -Werror -municode -mwindows \
-            /vlc/extras/package/portable/launcher.c -luser32 -o '/out/staging/Start VLC Timeline Preview.exe'
+            /vlc/extras/package/portable/launcher.c -luser32 -lcrypt32 -o '/out/staging/Start VLC Timeline Preview.exe'
         cp /vlc/extras/package/portable/{Start-Portable.ps1,DEPENDENCIES.md} /out/staging/portable/
         cp /vlc/extras/package/portable/README.txt /out/staging/README.txt
         cp /vlc/docs/STAGE_2_4_6F_PORTABLE.md /out/staging/portable/

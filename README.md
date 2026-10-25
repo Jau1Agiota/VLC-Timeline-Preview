@@ -8,13 +8,17 @@ VLC; this project is independently maintained and is not endorsed by VideoLAN.
 
 > **Download status:** A fully offline, self-contained public package is not yet
 > available. Stage 2.4.8 is blocked on runtime redistribution and dependency
-> completeness. No Stage 2.4.8 ZIP or GitHub Release has been produced.
+> completeness. No public Stage 2.4.8 ZIP or GitHub Release has been produced.
 
-## Private offline prototype
+## Private offline prototype and Windows integration
 
-[Stage 2.4.8D local assembly](docs/STAGE_2_4_8D_OFFLINE_PROTOTYPE.md) combines your
+[Stage 2.4.8E local assembly and Windows integration](docs/STAGE_2_4_8E_WINDOWS_INTEGRATION.md) combines your
 existing Stage F application and verified original DLL into a separate offline ZIP.
 After assembly, extract and double-click **Start VLC Timeline Preview.exe**.
+Optional **Register as Video Player.cmd** adds **VLC media player** to Windows
+Open with and Default apps for this user, without changing existing defaults.
+**Remove Registration.cmd** removes only this portable folder's registration.
+No registration, installer or administrator access is required for portable use.
 No runtime download or separate libmpv/MPC-QT installation is needed on first launch.
 A loadable Windows x64 Vulkan loader remains a documented system prerequisite.
 This is for private Windows testing; no public binary download or redistribution
@@ -38,6 +42,16 @@ Screenshots will be added after acceptance; placeholders are not test evidence.
 A displayed timestamp is not independently verified frame PTS. Exact mode does
 not establish frame accuracy for every media type.
 
+## Optional Windows file associations
+
+Stage E registers common video extensions using a unique, folder-specific
+application ID. Explorer passes media paths through the portable launcher,
+including spaces and Unicode. Official VLC's registry entries remain separate.
+Remove registration before moving/deleting the folder, then register its new
+location. File-open requests use separate portable sessions to avoid VLC's
+global instance mechanism; no-file launches focus this folder's most recent
+VLC instance. [Instructions and limitations](docs/STAGE_2_4_8E_WINDOWS_INTEGRATION.md).
+
 ## Download and use
 
 There is **no approved offline public download** yet. Do not redistribute a Stage F
@@ -57,7 +71,7 @@ experience, without downloading a runtime. It remains gated by the
 ## System requirements and limitations
 
 - Windows x64; Stage F targets Windows 10 1803+ / Windows 11, with inbox Windows
-  PowerShell 5.1 and tar. A writable application folder is required.
+  PowerShell 5.1 (Stage E needs no tar). A writable application folder is required.
 - The original pinned preview DLL requires a loadable Windows x64 `vulkan-1.dll`.
   Compatible official graphics drivers commonly provide it, but availability is
   not guaranteed. Startup checks loadability without querying GPU capability,
@@ -117,4 +131,11 @@ of an assembled Windows package. See the [licensing report](docs/STAGE_2_4_8_SEL
 [Stage 2.4.8C original-runtime review](docs/original-runtime/REVIEW.md) preserves
 the physically tested DLL and adds prerequisite diagnostics. The replacement
 runtime from PR24 is not adopted. Original-runtime redistribution remains gated;
-no new offline ZIP is available.
+no public offline ZIP is available.
+
+## Release preparation
+
+No public offline binary is approved yet. The [release checklist](docs/RELEASE_CHECKLIST.md)
+records source, notices, checksum and Windows acceptance gates. The manual
+Windows diagnostic pilot's tools-only mode distributes only this project's launcher,
+source and scripts, never VLC or the original third-party runtime.

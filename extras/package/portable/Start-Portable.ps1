@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Invoked by the double-click launcher. No machine configuration or elevation.
 param([ValidateSet('exact','fast')][string]$SeekMode='exact',
-      [switch]$Diagnostics, [switch]$PlaybackDiagnostics, [switch]$ValidateOnly, [switch]$SetupOnly, [switch]$StageWorkerLocally)
+      [switch]$Diagnostics, [switch]$PlaybackDiagnostics, [switch]$ValidateOnly, [switch]$SetupOnly, [switch]$StageWorkerLocally, [string]$ExplorerArgumentsBase64)
 $ErrorActionPreference='Stop'
 # Explorer, cmd, and PowerShell 7 supply different PSModulePath values.
 # Get-FileHash is a script function in Windows PowerShell's built-in utility
@@ -50,6 +50,10 @@ function Assert-PortableVulkanLoader([string]$RuntimeDirectory) {
 $gate=$null
 $localWorker=$null
 try {
+    $integration=Join-Path $PSScriptRoot 'Windows-Integration.ps1'
+    if(-not [IO.File]::Exists($integration)){throw 'Missing portable Windows integration support file. Extract the complete new ZIP.'}
+    . $integration
+    $media=@(ConvertFrom-ExplorerArguments $ExplorerArgumentsBase64)
     $data=Join-Path $app 'portable-data'
     # Fail when the private extracted folder is not writable.
     [IO.Directory]::CreateDirectory($data) | Out-Null
@@ -64,12 +68,12 @@ try {
     $manifestPath=Join-Path $app 'OFFLINE_PROTOTYPE_MANIFEST.json'
     if(-not [IO.File]::Exists($manifestPath)){throw 'Offline package manifest is missing. Use Assemble-Offline.ps1 with a verified local Stage F copy, then extract the complete new ZIP.'}
     $manifest=[IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json
-    if($manifest.prototype -ne '2.4.8D' -or $manifest.dll_sha256 -ne $originalHash -or -not $manifest.files_sha256){throw 'Unexpected offline package manifest. Use a fresh local assembly.'}
+    if($manifest.prototype -ne '2.4.8E' -or $manifest.dll_sha256 -ne $originalHash -or -not $manifest.files_sha256){throw 'Unexpected offline package manifest. Use a fresh local assembly.'}
     $runtime=$mpv
     $dll=Join-Path $runtime 'libmpv-2.dll'
     if(-not [IO.File]::Exists($dll)){throw 'Bundled libmpv-2.dll is missing. Reassemble this private package using your verified original DLL. This launcher never downloads runtimes.'}
     if((Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant() -ne $originalHash){throw 'Bundled libmpv checksum mismatch. Use the approved original DLL and a fresh local assembly.'}
-    foreach($file in @('vlc.exe','libvlc.dll','libvlccore.dll','Start VLC Timeline Preview.exe','plugins/gui/libqt_plugin.dll','thumbnail-mpv/mpv-thumbnail-worker.exe','thumbnail-mpv/mpv-thumbnail-accurate-worker.exe')) {
+    foreach($file in @('vlc.exe','libvlc.dll','libvlccore.dll','Start VLC Timeline Preview.exe','plugins/gui/libqt_plugin.dll','thumbnail-mpv/mpv-thumbnail-worker.exe','thumbnail-mpv/mpv-thumbnail-accurate-worker.exe','portable/Windows-Integration.ps1')) {
         $entry=$manifest.files_sha256.PSObject.Properties[$file]
         $path=Join-Path $app ($file.Replace('/',[IO.Path]::DirectorySeparatorChar))
         if($null -eq $entry -or -not [IO.File]::Exists($path) -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $entry.Value){throw "Missing or changed offline component: $file. Extract a fresh private assembly."}
@@ -93,6 +97,7 @@ try {
         $workerRoot=$localWorker
     }
     if($ValidateOnly -or $SetupOnly){return}
+    if($media.Count -eq 0 -and (Show-PortableInstance $app $data)){return}
     $info=New-Object Diagnostics.ProcessStartInfo
     $info.FileName=Join-Path $app 'vlc.exe'
     $info.WorkingDirectory=$app
@@ -111,7 +116,9 @@ try {
     foreach($folder in @('config','cache')){[IO.Directory]::CreateDirectory((Join-Path $data $folder)) | Out-Null}
     $info.Arguments='--no-one-instance --no-qt-privacy-ask --no-qt-updates-notif --verbose=0'
     if($Diagnostics -or $PlaybackDiagnostics){$info.Arguments+=' --verbose=2 --file-logging --logfile="'+(Join-Path $data ('diagnostic-'+[guid]::NewGuid().ToString('N')+'.log'))+'"'}
+    foreach($path in $media){$info.Arguments+=' '+(ConvertTo-WindowsArgument $path)}
     $child=[Diagnostics.Process]::Start($info)
+    Save-PortableInstance $child $data
     # For removable storage only, retain the temporary worker while this VLC lives.
     if($gate){$gate.Dispose();$gate=$null}
     if($localWorker){$child.WaitForExit()}

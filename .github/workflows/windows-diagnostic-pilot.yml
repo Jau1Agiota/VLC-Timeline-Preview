@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       offline_prototype_only:
-        description: Test private local assembly and offline startup only (no binary upload)
+        description: Test offline integration; upload first-party tools only (no VLC or runtime)
         type: boolean
         default: false
       portable_dependency_only:
@@ -405,26 +405,75 @@ jobs:
   offline-prototype:
     if: ${{ inputs.offline_prototype_only }}
     runs-on: windows-2022
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: Check out local-only prototype tooling
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ github.workflow_sha }}
           persist-credentials: false
-      - name: Verify offline assembly and dependency diagnostics with inbox PowerShell
+      - name: Compile first-party Unicode bootstrap only
+        shell: cmd
+        run: |
+          for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath`) do call "%%i\VC\Auxiliary\Build\vcvars64.bat"
+          if errorlevel 1 exit /b 1
+          mkdir tools-output
+          cl /nologo /std:c11 /O2 /MT /W4 /WX /D_CRT_SECURE_NO_WARNINGS extras\package\portable\launcher.c /Fe:"tools-output\Start VLC Timeline Preview.exe" /Fo:tools-output\launcher.obj /link /SUBSYSTEM:WINDOWS user32.lib crypt32.lib
+          if errorlevel 1 exit /b 1
+          dumpbin /dependents "tools-output\Start VLC Timeline Preview.exe" > tools-output\launcher-imports.txt
+      - name: Test launcher, registration and offline assembly with inbox PowerShell 5.1
         shell: pwsh
         run: |
+          $imports=@([regex]::Matches((Get-Content tools-output/launcher-imports.txt -Raw),'(?im)^\s+([a-z0-9_.-]+\.dll)\s*$') | ForEach-Object {$_.Groups[1].Value})
+          if($imports.Count -eq 0){throw 'No launcher imports recorded'}
+          foreach($dll in $imports){if($dll -notmatch '^(?i:kernel32|user32|crypt32|msvcrt|api-ms-win-crt-[a-z0-9-]+)\.dll$'){throw "Unexpected non-system launcher dependency: $dll"}}
           $ps=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
-          $PSNativeCommandUseErrorActionPreference=$false
-          $details=(& $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/offline-prototype.ps1 2>&1 | Out-String)
-          Write-Output $details
-          if($LASTEXITCODE -ne 0){
-            $safe=$details.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
-            Write-Output "::error title=Offline assembly regression::$safe"
-            throw 'Private offline assembly tests failed'
+          function Invoke-InboxTest([string[]]$TestArguments) {
+            $PSNativeCommandUseErrorActionPreference=$false
+            $details=(& $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File @TestArguments 2>&1 | Out-String)
+            $status=$LASTEXITCODE
+            Write-Output $details
+            if($status -ne 0){
+              $safe=$details.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+              Write-Output "::error title=Windows integration regression::$safe"
+              throw 'Windows integration test failed'
+            }
           }
-          & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/portable-vulkan.ps1
-          if($LASTEXITCODE -ne 0){throw 'Vulkan regression tests failed'}
-          & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/portable-vulkan.ps1 -NativeProbe
-          if($LASTEXITCODE -ne 0){throw 'Native dependency probe failed'}
+          Invoke-InboxTest @('test/ci/windows-integration.ps1','-LauncherExecutable','tools-output/Start VLC Timeline Preview.exe')
+          Invoke-InboxTest @('test/ci/offline-prototype.ps1')
+          Invoke-InboxTest @('test/ci/portable-vulkan.ps1')
+          Invoke-InboxTest @('test/ci/portable-vulkan.ps1','-NativeProbe')
+      - name: Package first-party tools, source and instructions only
+        shell: pwsh
+        run: |
+          $name='VLC-Timeline-Preview-stage248E-tools-'+$env:GITHUB_SHA.Substring(0,12)
+          $root=Join-Path 'delivery' $name
+          New-Item -ItemType Directory -Path "$root/portable" -Force | Out-Null
+          Copy-Item 'tools-output/Start VLC Timeline Preview.exe','tools-output/launcher-imports.txt' $root
+          Copy-Item 'extras/package/portable/*' "$root/portable/"
+          Copy-Item COPYING,COPYING.LIB $root
+          Copy-Item docs/STAGE_2_4_8E_WINDOWS_INTEGRATION.md "$root/INSTRUCTIONS.md"
+          $files=[ordered]@{}
+          $full=(Resolve-Path $root).Path
+          Get-ChildItem -LiteralPath $root -File -Recurse | Sort-Object FullName | ForEach-Object {
+            $relative=$_.FullName.Substring($full.Length+1).Replace('\','/')
+            if($_.Name -eq 'libmpv-2.dll' -or $_.Extension -eq '.dll'){throw 'Third-party runtime prohibited'}
+            $files[$relative]=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          }
+          @{source_commit=$env:GITHUB_SHA;scope='first-party-tools-only';public_binary_runtime=$false;files_sha256=$files} | ConvertTo-Json -Depth 8 | Set-Content "$root/TOOLS_MANIFEST.json" -Encoding utf8
+          Compress-Archive -LiteralPath $root -DestinationPath "delivery/$name.zip"
+          # Read every entry to verify archive readability before delivery.
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip=[IO.Compression.ZipFile]::OpenRead((Resolve-Path "delivery/$name.zip"))
+          try{foreach($entry in $zip.Entries){$stream=$entry.Open();try{$stream.CopyTo([IO.Stream]::Null)}finally{$stream.Dispose()}}}finally{$zip.Dispose()}
+          $hash=(Get-FileHash "delivery/$name.zip" -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $name.zip" | Set-Content "delivery/$name.zip.sha256" -Encoding ascii
+      - name: Upload tools only (never assembled VLC/runtime)
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: windows-integration-tools-${{ github.sha }}
+          path: |
+            delivery/*.zip
+            delivery/*.sha256
+          retention-days: 14
+          if-no-files-found: error
+          overwrite: false

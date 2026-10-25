@@ -1,0 +1,86 @@
+{
+  "stage": "2.4.8E",
+  "date_utc": "2026-10-25",
+  "base_commit": "47a289592f3239e445ccbdcf76ec8934c7ca824c",
+  "implementation_commit": "94549cd2048be85386c5f004c3806c5b9e1264fa",
+  "windows_ci": {
+    "run_id": 40239015824,
+    "url": "https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/40239015824",
+    "status": "success",
+    "runner": "windows-2022",
+    "powershell": "inbox Windows PowerShell 5.1",
+    "tests": [
+      "MSVC strict-warning x64 native launcher compilation with /MT",
+      "import allowlist rejects non-system runtime dependencies",
+      "native bootstrap to PS5 encoded Unicode/spaces/metacharacter file arguments",
+      "multiple files and no-argument native bootstrap",
+      "CRT quote/parser roundtrips and invalid/missing media rejection",
+      "per-folder live instance focus, cross-folder and stale-PID rejection using first-party GUI fixture",
+      "current-user registration and repeated registration/removal",
+      "actual default and UserChoice values unchanged",
+      "separate official-VLC-like ProgID sentinel unchanged",
+      "owner conflict fail-closed and moved/missing-folder removal",
+      "synthetic offline assembly, manifest, ZIP hash/readback/extraction, repeat/output guard, unchanged worker fixtures",
+      "Vulkan mock and native loader probes"
+    ],
+    "full_vlc_or_decoder_build": false,
+    "real_media_playback_test": false,
+    "physical_windows_acceptance": false
+  },
+  "tools_artifact": {
+    "id": 12615990861,
+    "url": "https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/40239015824/artifacts/12615990861",
+    "size_bytes": 93630,
+    "github_artifact_wrapper_sha256": "c4f6115bead9041763239856af0771d8153c73e908d5780ff12b5101bcea6306",
+    "inner_zip_sha256": "provided as .zip.sha256 inside artifact; wrapper digest is not the inner ZIP digest",
+    "contents": "first-party launcher/support scripts/source and notices only; no VLC/libmpv runtime",
+    "expires_at_utc": "2026-11-08T22:12:01Z"
+  },
+  "local_tests": {
+    "pinned_gcc": "x86_64-w64-mingw32-gcc 6.4.0",
+    "compiler_flags": "-std=c11 -O2 -Wall -Wextra -Werror -municode -mwindows; -luser32 -lcrypt32",
+    "launcher_imports": [
+      "CRYPT32.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "USER32.dll"
+    ],
+    "powershell": "7.4.13 Linux, not native Windows acceptance",
+    "synthetic_assembly": "passed",
+    "original_dll_hash_copy_zip_readback": "passed with genuine original DLL and synthetic VLC files; not a playable VLC package",
+    "public_guard_and_packaging_suite": {
+      "passed": 47,
+      "skipped": 1
+    },
+    "bash_syntax": "passed",
+    "shellcheck": "0.10.0 passed",
+    "actionlint": "passed",
+    "git_diff_check": "passed"
+  },
+  "runtime_sha256": "04e4d27dc385dc18ddd93fbe69c75e635b864f3c6ec53a9122df54c2f7842f4a",
+  "earlier_ci_runs": [
+    {
+      "id": 40238700879,
+      "status": "failure",
+      "cause": "test compared absent extension parent with newly created empty parent, rather than association values; native launcher passed; detailed annotations added next run"
+    },
+    {
+      "id": 40238829541,
+      "status": "failure",
+      "cause": "same fixture assertion, confirmed through sanitized check annotations; corrected absence/empty value comparison"
+    },
+    {
+      "id": 40238919106,
+      "status": "success",
+      "note": "native forwarding, registry, instance focus, offline/Vulkan checks passed; subsequent commit adds explicit static CRT/import guard"
+    }
+  ],
+  "remaining_limitations": [
+    "file-open requests intentionally start separate portable sessions; no safe single-window media handoff implemented",
+    "only last tracked live instance is focused by no-file launches; concurrent startup is guarded, not queued",
+    "full genuine Stage F application not present in cloud; private assembly takes place on user Windows PC",
+    "native physical Windows/default-app chooser/media performance acceptance pending",
+    "screenshot placeholders remain pending Windows acceptance captures",
+    "public binary/runtime redistribution not cleared; no Release publishing code or contents-write permission"
+  ]
+}

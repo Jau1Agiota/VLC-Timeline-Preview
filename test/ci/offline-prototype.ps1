@@ -26,12 +26,15 @@ try {
     $base=Join-Path $root 'Original Stage F with spaces';[IO.Directory]::CreateDirectory($base) | Out-Null
     $badDll=Join-Path $root 'bad local fixture.dll';[IO.File]::WriteAllText($badDll,'synthetic fixture, not libmpv')
     $dll=if($OriginalDll){[IO.Path]::GetFullPath($OriginalDll)}else{$badDll}
-    $output=Join-Path $root 'VLC stage248D private with spaces'
+    $output=Join-Path $root 'VLC stage248E private with spaces'
+    $fixtureLauncher=Join-Path $root 'new launcher.exe'
+    $bytes=New-Object byte[] 256;$bytes[0]=0x4d;$bytes[1]=0x5a;$bytes[60]=64;$bytes[64]=0x50;$bytes[65]=0x45;$bytes[68]=0x64;$bytes[69]=0x86;$bytes[88]=0x0b;$bytes[89]=0x02
+    [IO.File]::WriteAllBytes($fixtureLauncher,$bytes)
     Reject {Assert-OriginalRuntime (Join-Path $root 'missing.dll')} 'missing'
     Reject {Assert-OriginalRuntime $badDll} 'SHA-256 mismatch'
     if($OriginalDll){Assert-OriginalRuntime $dll | Out-Null}
     foreach($bad in @('../outside','a/../outside','/absolute','C:/file','a\b','a//b','CON','a.')){Reject {Get-PackagePath $base $bad} 'Unsafe'}
-    Reject {Invoke-OfflineAssembly $base $badDll $output (Split-Path $assembly)} 'SHA-256 mismatch'
+    Reject {Invoke-OfflineAssembly $base $badDll $output (Split-Path $assembly) $fixtureLauncher} 'SHA-256 mismatch'
     if(Test-Path $output){throw 'Invalid runtime created output'}
     # Positive assembly path is exercised with a scoped validator fixture only.
     # There is NO production parameter or environment switch to bypass the DLL pin.
@@ -42,7 +45,7 @@ try {
         return Get-LocalHash $Path
     }
     }
-    Reject {Invoke-OfflineAssembly $base $dll $output (Split-Path $assembly)} 'BUILD_MANIFEST.json is missing'
+    Reject {Invoke-OfflineAssembly $base $dll $output (Split-Path $assembly) $fixtureLauncher} 'BUILD_MANIFEST.json is missing'
     $files=[ordered]@{}
     $names=@('vlc.exe','libvlc.dll','libvlccore.dll','Start VLC Timeline Preview.exe','plugins/gui/libqt_plugin.dll','thumbnail-preview/thumbnail-helper.exe','thumbnail-preview/libvlc.dll','thumbnail-preview/libvlccore.dll','thumbnail-mpv/mpv-thumbnail-worker.exe','thumbnail-mpv/mpv-thumbnail-accurate-worker.exe','thumbnail-mpv/dependencies.json','COPYING.txt','AUTHORS.txt','THANKS.txt','thumbnail-preview/COPYING.txt','portable/Start-Portable.ps1','CI_1_README.txt','thumbnail-mpv/Get-Runtime.ps1','thumbnail-mpv/Setup-Runtime.ps1','thumbnail-mpv/Start-Preview.ps1')
     foreach($name in $names){
@@ -58,19 +61,22 @@ try {
     [IO.File]::WriteAllText((Join-Path $base 'BUILD_MANIFEST.json'),(@{source_commit='e29d1dc98c01e64de60de0fe2f299acd2af57aca';files_sha256=$files} | ConvertTo-Json -Depth 8))
     [IO.Directory]::CreateDirectory((Join-Path $base 'portable-data/runtime')) | Out-Null
     [IO.File]::WriteAllText((Join-Path $base 'portable-data/runtime/do-not-copy.txt'),'private cache')
-    Reject {Invoke-OfflineAssembly $base $dll (Join-Path $base 'unsafe output') (Split-Path $assembly)} 'outside'
+    Reject {Invoke-OfflineAssembly $base $dll (Join-Path $base 'unsafe output') (Split-Path $assembly) $fixtureLauncher} 'outside'
     $missing=Join-Path $base 'vlc.exe';$save=[IO.File]::ReadAllBytes($missing);[IO.File]::Delete($missing)
-    Reject {Invoke-OfflineAssembly $base $dll $output (Split-Path $assembly)} 'Missing baseline file'
+    Reject {Invoke-OfflineAssembly $base $dll $output (Split-Path $assembly) $fixtureLauncher} 'Missing baseline file'
     [IO.File]::WriteAllBytes($missing,$save)
     [IO.File]::WriteAllText($missing,'corrupt')
-    Reject {Invoke-OfflineAssembly $base $dll $output (Split-Path $assembly)} 'differs'
+    Reject {Invoke-OfflineAssembly $base $dll $output (Split-Path $assembly) $fixtureLauncher} 'differs'
     [IO.File]::WriteAllBytes($missing,$save)
-    Invoke-OfflineAssembly $base $dll $output (Split-Path $assembly)
+    Invoke-OfflineAssembly $base $dll $output (Split-Path $assembly) $fixtureLauncher
+    foreach($name in @('portable/Windows-Integration.ps1','portable/Register-Player.ps1','Register as Video Player.cmd','Remove Registration.cmd')){if(-not (Test-Path -LiteralPath (Join-Path $output $name))){throw 'Windows integration utility missing'}}
+    $newManifest=[IO.File]::ReadAllText((Join-Path $output 'OFFLINE_PROTOTYPE_MANIFEST.json')) | ConvertFrom-Json
+    if($newManifest.prototype -ne '2.4.8E' -or $newManifest.public_redistribution_cleared){throw 'Prototype/release gate changed'}
     if(Test-Path (Join-Path $output 'portable-data')){throw 'Used cache copied'}
     foreach($name in @('Get-Runtime.ps1','Setup-Runtime.ps1','Start-Preview.ps1')){if(Test-Path (Join-Path $output ('thumbnail-mpv/'+$name))){throw 'Old setup script shipped'}}
     if((Get-LocalHash (Join-Path $output 'thumbnail-mpv/mpv-thumbnail-accurate-worker.exe')) -ne $files['thumbnail-mpv/mpv-thumbnail-accurate-worker.exe']){throw 'Worker changed'}
     $oldHash=Get-LocalHash ($output+'.zip')
-    Reject {Invoke-OfflineAssembly $base $dll $output (Split-Path $assembly)} 'already exists'
+    Reject {Invoke-OfflineAssembly $base $dll $output (Split-Path $assembly) $fixtureLauncher} 'already exists'
     if((Get-LocalHash ($output+'.zip')) -ne $oldHash){throw 'Repeated assembly changed ZIP'}
     $check=[IO.Compression.ZipFile]::OpenRead($output+'.zip')
     try {foreach($entry in $check.Entries){if($entry.FullName.Contains('\')){throw 'Noncanonical ZIP separator'}}}finally{$check.Dispose()}

@@ -1,12 +1,13 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Invoked by the double-click launcher. No machine configuration or elevation.
 param([ValidateSet('exact','fast')][string]$SeekMode='exact',
-      [switch]$Diagnostics, [switch]$PlaybackDiagnostics, [switch]$ValidateOnly, [switch]$SetupOnly)
+      [switch]$Diagnostics, [switch]$PlaybackDiagnostics, [switch]$ValidateOnly, [switch]$SetupOnly, [switch]$StageWorkerLocally)
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Windows.Forms
 $app=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $gate=$null
 $temp=$null
+$localWorker=$null
 try {
     $data=Join-Path $app 'portable-data'
     # Fail before download when the extracted folder is not writable.
@@ -58,11 +59,25 @@ public static class PortableLibrary {
  [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
  public static extern IntPtr LoadLibraryEx(string path, IntPtr file, uint flags);
  [DllImport("kernel32.dll")] public static extern bool FreeLibrary(IntPtr module);
+ [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetDriveType(string root);
 }
 '@
     $module=[PortableLibrary]::LoadLibraryEx($dll,[IntPtr]::Zero,0x00001100)
     if($module -eq [IntPtr]::Zero){throw "Cannot load verified libmpv (Windows error $([Runtime.InteropServices.Marshal]::GetLastWin32Error())). Install/update the official GPU driver if vulkan-1.dll is unavailable. Do not download loose DLLs."}
     [PortableLibrary]::FreeLibrary($module) | Out-Null
+    $workerRoot=$runtime
+    if($StageWorkerLocally -or [PortableLibrary]::GetDriveType([IO.Path]::GetPathRoot($runtime)) -ne 3){
+        # Existing controller permits helpers only on DRIVE_FIXED. Do not bypass it.
+        $localTemp=[IO.Path]::GetTempPath()
+        if([PortableLibrary]::GetDriveType([IO.Path]::GetPathRoot($localTemp)) -ne 3){throw 'Preview helper requires a writable local fixed-drive TEMP folder when running from removable storage.'}
+        $localWorker=Join-Path $localTemp ('vlc-preview-portable-'+[guid]::NewGuid().ToString('N'))
+        [IO.Directory]::CreateDirectory($localWorker) | Out-Null
+        foreach($file in @('libmpv-2.dll','mpv-thumbnail-worker.exe','mpv-thumbnail-accurate-worker.exe')){
+            [IO.File]::Copy((Join-Path $runtime $file),(Join-Path $localWorker $file),$false)
+            if((Get-FileHash -LiteralPath (Join-Path $localWorker $file) -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath (Join-Path $runtime $file) -Algorithm SHA256).Hash){throw 'Temporary worker copy checksum mismatch.'}
+        }
+        $workerRoot=$localWorker
+    }
     if($ValidateOnly -or $SetupOnly){return}
     $info=New-Object Diagnostics.ProcessStartInfo
     $info.FileName=Join-Path $app 'vlc.exe'
@@ -71,7 +86,7 @@ public static class PortableLibrary {
     $info.EnvironmentVariables['VLC_THUMBNAIL_BACKEND']='libmpv'
     $info.EnvironmentVariables['VLC_MPV_SEEK']=$SeekMode
     $worker=if($SeekMode -eq 'exact'){'mpv-thumbnail-accurate-worker.exe'}else{'mpv-thumbnail-worker.exe'}
-    $info.EnvironmentVariables['VLC_MPV_HELPER']=Join-Path $runtime $worker
+    $info.EnvironmentVariables['VLC_MPV_HELPER']=Join-Path $workerRoot $worker
     $info.EnvironmentVariables['VLC_TIMELINE_HOVER_DEBUG']=$(if($Diagnostics){'1'}else{'0'})
     $info.EnvironmentVariables['VLC_PLAYBACK_STABILITY_DEBUG']=$(if($PlaybackDiagnostics){'1'}else{'0'})
     # Child-only profile/cache isolation; never alter the user's normal VLC profile.
@@ -82,12 +97,21 @@ public static class PortableLibrary {
     foreach($folder in @('config','cache')){[IO.Directory]::CreateDirectory((Join-Path $data $folder)) | Out-Null}
     $info.Arguments='--no-one-instance --no-qt-privacy-ask --no-qt-updates-notif --verbose=0'
     if($Diagnostics -or $PlaybackDiagnostics){$info.Arguments+=' --verbose=2 --file-logging --logfile="'+(Join-Path $data ('diagnostic-'+[guid]::NewGuid().ToString('N')+'.log'))+'"'}
-    [Diagnostics.Process]::Start($info) | Out-Null
+    $child=[Diagnostics.Process]::Start($info)
+    # For removable storage only, retain the temporary worker while this VLC lives.
+    if($gate){$gate.Dispose();$gate=$null}
+    if($localWorker){$child.WaitForExit()}
 } catch {
     if($ValidateOnly -or $SetupOnly){throw}
     [Windows.Forms.MessageBox]::Show($_.Exception.Message,'VLC Timeline Preview could not start','OK','Error') | Out-Null
     exit 1
 } finally {
     if($temp -and [IO.Directory]::Exists($temp)){Remove-Item -LiteralPath $temp -Recurse -Force}
+    if($localWorker -and [IO.Directory]::Exists($localWorker)){
+        # The controller may still be reaping a worker at VLC shutdown; bounded retry.
+        for($attempt=0;$attempt -lt 10;$attempt++){
+            try {Remove-Item -LiteralPath $localWorker -Recurse -Force; break} catch {Start-Sleep -Milliseconds 200}
+        }
+    }
     if($gate){$gate.Dispose()}
 }

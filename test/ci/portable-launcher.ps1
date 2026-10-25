@@ -23,6 +23,8 @@ try {
     if($LASTEXITCODE -eq 0){throw 'Mismatched worker accepted'}
 } finally {[IO.File]::WriteAllBytes($worker,$backup)}
 Run-Setup '-ValidateOnly'
+& $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $script -ValidateOnly -StageWorkerLocally
+if($LASTEXITCODE -ne 0){throw 'Fixed-drive staging validation failed'}
 $expected=Join-Path $app 'vlc.exe'
 $existing=@(Get-Process vlc -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
 Start-Process -FilePath (Join-Path $app 'Start VLC Timeline Preview.exe') | Out-Null

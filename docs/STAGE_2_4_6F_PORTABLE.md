@@ -65,3 +65,14 @@ USB folder, blocked network, missing/corrupt runtime, close/relaunch. No accurac
 or playback-freeze resolution claims. Keep draft until user acceptance.
 
 Build/CI/artifact evidence will be recorded after execution.
+
+Removable-storage detail: the unchanged preview controller requires helper and
+media paths on fixed local drives (thumbnailpreview.cpp localPath). When the
+application is on USB/removable storage, startup stages a checksum-verified
+helper/DLL copy in the user's local fixed-drive TEMP, retains it for that VLC
+process and removes it on exit (forced termination can leave that private temp
+folder). The download cache stays in portable-data. Videos on removable/UNC
+storage remain ineligible for previews, as in Stage E; ordinary playback works.
+VLC's native portable-directory support (src/win32/dirs.c) stores its own profile
+and Qt INI files under portable/; child APPDATA isolation supplements this.
+Do not share a writable extracted folder between mutually untrusted users.

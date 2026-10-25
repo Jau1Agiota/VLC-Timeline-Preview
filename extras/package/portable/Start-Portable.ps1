@@ -48,52 +48,33 @@ function Assert-PortableVulkanLoader([string]$RuntimeDirectory) {
 }
 
 $gate=$null
-$temp=$null
 $localWorker=$null
 try {
     $data=Join-Path $app 'portable-data'
-    # Fail before download when the extracted folder is not writable.
+    # Fail when the private extracted folder is not writable.
     [IO.Directory]::CreateDirectory($data) | Out-Null
     $gate=[IO.File]::Open((Join-Path $data 'launch.lock'),'OpenOrCreate','ReadWrite','None')
     $mpv=Join-Path $app 'thumbnail-mpv'
     foreach($file in @('vlc.exe','libvlc.dll','libvlccore.dll','thumbnail-mpv\mpv-thumbnail-worker.exe','thumbnail-mpv\mpv-thumbnail-accurate-worker.exe','thumbnail-mpv\dependencies.json')) {
         if(-not [IO.File]::Exists((Join-Path $app $file))){throw "Missing package dependency: $file. Extract the complete ZIP again into a new folder."}
     }
-    $lock=Get-Content -LiteralPath (Join-Path $mpv 'dependencies.json') -Raw | ConvertFrom-Json
-    $runtime=Join-Path $data 'runtime'
+    $originalHash='04e4d27dc385dc18ddd93fbe69c75e635b864f3c6ec53a9122df54c2f7842f4a'
+    $lock=[IO.File]::ReadAllText((Join-Path $mpv 'dependencies.json')) | ConvertFrom-Json
+    if($lock.dll_sha256 -ne $originalHash){throw 'Runtime metadata does not identify the approved original libmpv DLL.'}
+    $manifestPath=Join-Path $app 'OFFLINE_PROTOTYPE_MANIFEST.json'
+    if(-not [IO.File]::Exists($manifestPath)){throw 'Offline package manifest is missing. Use Assemble-Offline.ps1 with a verified local Stage F copy, then extract the complete new ZIP.'}
+    $manifest=[IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json
+    if($manifest.prototype -ne '2.4.8D' -or $manifest.dll_sha256 -ne $originalHash -or -not $manifest.files_sha256){throw 'Unexpected offline package manifest. Use a fresh local assembly.'}
+    $runtime=$mpv
     $dll=Join-Path $runtime 'libmpv-2.dll'
-    if(-not [IO.File]::Exists($dll)) {
-        if($ValidateOnly){throw 'Verified runtime is not installed.'}
-        if(-not $SetupOnly){[Windows.Forms.MessageBox]::Show('First launch downloads the pinned libmpv runtime (internet required). Please wait after clicking OK. It is verified and kept inside this portable folder. No administrator access is needed.','VLC Timeline Preview setup','OK','Information') | Out-Null}
-        [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
-        $temp=Join-Path $data ('setup-'+[guid]::NewGuid().ToString('N'))
-        [IO.Directory]::CreateDirectory($temp) | Out-Null
-        $archive=Join-Path $temp 'runtime.7z'
-        $web=New-Object Net.WebClient
-        try {
-            $download=$web.DownloadFileTaskAsync([uri]$lock.url,$archive)
-            if(-not $download.Wait(300000)){$web.CancelAsync(); throw 'Runtime download timed out after five minutes. Please retry later.'}
-        } finally {$web.Dispose()}
-        if((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $lock.sha256){throw 'Downloaded runtime archive checksum mismatch. No runtime was installed.'}
-        # Windows 10 1803+ inbox bsdtar/libarchive supports 7z; no extra codec pack.
-        $tar=Join-Path $env:SystemRoot 'System32\tar.exe'
-        if(-not [IO.File]::Exists($tar)){throw 'Windows inbox tar.exe is missing. Use Windows 10 1803 or newer / Windows 11.'}
-        & $tar -xf $archive -C $temp libmpv-2.dll 2> (Join-Path $temp 'extract.log')
-        if($LASTEXITCODE -ne 0){throw 'Windows tar could not extract the pinned runtime. Runtime was not installed.'}
-        $candidate=Join-Path $temp 'libmpv-2.dll'
-        if((Get-FileHash -LiteralPath $candidate -Algorithm SHA256).Hash.ToLowerInvariant() -ne $lock.dll_sha256){throw 'Extracted runtime checksum mismatch.'}
-        [IO.Directory]::CreateDirectory($runtime) | Out-Null
-        # No replacement of an existing DLL. A concurrent launcher cannot hold launch.lock.
-        [IO.File]::Move($candidate,$dll)
+    if(-not [IO.File]::Exists($dll)){throw 'Bundled libmpv-2.dll is missing. Reassemble this private package using your verified original DLL. This launcher never downloads runtimes.'}
+    if((Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant() -ne $originalHash){throw 'Bundled libmpv checksum mismatch. Use the approved original DLL and a fresh local assembly.'}
+    foreach($file in @('vlc.exe','libvlc.dll','libvlccore.dll','Start VLC Timeline Preview.exe','plugins/gui/libqt_plugin.dll','thumbnail-mpv/mpv-thumbnail-worker.exe','thumbnail-mpv/mpv-thumbnail-accurate-worker.exe')) {
+        $entry=$manifest.files_sha256.PSObject.Properties[$file]
+        $path=Join-Path $app ($file.Replace('/',[IO.Path]::DirectorySeparatorChar))
+        if($null -eq $entry -or -not [IO.File]::Exists($path) -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $entry.Value){throw "Missing or changed offline component: $file. Extract a fresh private assembly."}
     }
-    if((Get-FileHash -LiteralPath $dll -Algorithm SHA256).Hash.ToLowerInvariant() -ne $lock.dll_sha256){throw 'Cached libmpv checksum mismatch. Preserve the folder for investigation; use a fresh extraction.'}
-    foreach($name in @('mpv-thumbnail-worker.exe','mpv-thumbnail-accurate-worker.exe')) {
-        $source=Join-Path $mpv $name
-        $target=Join-Path $runtime $name
-        if(-not [IO.File]::Exists($target)){[IO.File]::Copy($source,$target,$false)}
-        if((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash){throw 'Cached worker differs from this package. Use a fresh extraction.'}
-    }
-    # Probe only after cached runtime and worker integrity checks.
+    # Probe only after bundled runtime and worker integrity checks.
     Assert-PortableVulkanLoader $runtime
     $module=[PortableLibrary]::LoadLibraryEx($dll,[IntPtr]::Zero,0x00001100)
     if($module -eq [IntPtr]::Zero){throw "Cannot load verified libmpv (Windows error $([PortableLibrary]::LastError())). The Vulkan prerequisite check passed, but libmpv or another runtime dependency failed to load. Use a complete, checksum-verified package and report this error; do not download loose DLLs."}
@@ -143,7 +124,6 @@ try {
     [Windows.Forms.MessageBox]::Show($problem.Message,'VLC Timeline Preview could not start','OK','Error') | Out-Null
     exit 1
 } finally {
-    if($temp -and [IO.Directory]::Exists($temp)){Remove-Item -LiteralPath $temp -Recurse -Force}
     if($localWorker -and [IO.Directory]::Exists($localWorker)){
         # The controller may still be reaping a worker at VLC shutdown; bounded retry.
         for($attempt=0;$attempt -lt 10;$attempt++){

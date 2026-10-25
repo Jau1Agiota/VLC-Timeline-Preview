@@ -53,3 +53,9 @@ build*/
 contrib-*
 install-*
 !extras/package/apple/build.sh
+
+# Stage 2.4.8D private runtime/cache: never source-controlled.
+libmpv-2.dll
+portable-data/
+OFFLINE_PROTOTYPE_MANIFEST.json
+BASE_STAGE_F_BUILD_MANIFEST.json

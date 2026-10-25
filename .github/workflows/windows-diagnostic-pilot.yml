@@ -3,6 +3,10 @@ name: Windows diagnostic pilot (CI-1)
 on:
   workflow_dispatch:
     inputs:
+      offline_prototype_only:
+        description: Test private local assembly and offline startup only (no binary upload)
+        type: boolean
+        default: false
       portable_dependency_only:
         description: Test startup Vulkan diagnostics only; no VLC build/runtime download
         type: boolean
@@ -32,7 +36,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ !inputs.portable_dependency_only && inputs.stage != '2.4.6A' && !inputs.native_only }}
+    if: ${{ !inputs.offline_prototype_only && !inputs.portable_dependency_only && inputs.stage != '2.4.6A' && !inputs.native_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
@@ -173,11 +177,11 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   libmpv-experiment:
-    if: ${{ !inputs.portable_dependency_only && inputs.stage == '2.4.6A' }}
+    if: ${{ !inputs.offline_prototype_only && !inputs.portable_dependency_only && inputs.stage == '2.4.6A' }}
     uses: ./.github/workflows/libmpv-preview-experiment.yml
 
   native-mpv:
-    if: ${{ !inputs.portable_dependency_only && !cancelled() && (inputs.stage == '2.4.6B' || inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && (needs.build.result == 'success' || (inputs.native_only && inputs.package_run_id != '')) }}
+    if: ${{ !inputs.offline_prototype_only && !inputs.portable_dependency_only && !cancelled() && (inputs.stage == '2.4.6B' || inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && (needs.build.result == 'success' || (inputs.native_only && inputs.package_run_id != '')) }}
     permissions:
       contents: read
       actions: read
@@ -262,7 +266,7 @@ jobs:
 
   image-evidence:
     needs: native-mpv
-    if: ${{ !inputs.portable_dependency_only && !cancelled() && ((inputs.stage == '2.4.6B' && needs.native-mpv.result == 'success') || ((inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && needs.native-mpv.result != 'skipped')) }}
+    if: ${{ !inputs.offline_prototype_only && !inputs.portable_dependency_only && !cancelled() && ((inputs.stage == '2.4.6B' && needs.native-mpv.result == 'success') || ((inputs.stage == '2.4.6C' || inputs.stage == '2.4.6D' || inputs.stage == '2.4.6E' || inputs.stage == '2.4.6F') && needs.native-mpv.result != 'skipped')) }}
     permissions:
       contents: read
       actions: read
@@ -309,7 +313,7 @@ jobs:
           overwrite: false
 
   portable-dependencies:
-    if: ${{ inputs.portable_dependency_only }}
+    if: ${{ inputs.portable_dependency_only && !inputs.offline_prototype_only }}
     runs-on: windows-2022
     timeout-minutes: 10
     steps:
@@ -397,3 +401,30 @@ jobs:
           retention-days: 7
           if-no-files-found: error
           overwrite: false
+
+  offline-prototype:
+    if: ${{ inputs.offline_prototype_only }}
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - name: Check out local-only prototype tooling
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+      - name: Verify offline assembly and dependency diagnostics with inbox PowerShell
+        shell: pwsh
+        run: |
+          $ps=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
+          $PSNativeCommandUseErrorActionPreference=$false
+          $details=(& $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/offline-prototype.ps1 2>&1 | Out-String)
+          Write-Output $details
+          if($LASTEXITCODE -ne 0){
+            $safe=$details.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Offline assembly regression::$safe"
+            throw 'Private offline assembly tests failed'
+          }
+          & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/portable-vulkan.ps1
+          if($LASTEXITCODE -ne 0){throw 'Vulkan regression tests failed'}
+          & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/portable-vulkan.ps1 -NativeProbe
+          if($LASTEXITCODE -ne 0){throw 'Native dependency probe failed'}

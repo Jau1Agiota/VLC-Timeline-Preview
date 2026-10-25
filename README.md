@@ -10,6 +10,16 @@ VLC; this project is independently maintained and is not endorsed by VideoLAN.
 > available. Stage 2.4.8 is blocked on runtime redistribution and dependency
 > completeness. No Stage 2.4.8 ZIP or GitHub Release has been produced.
 
+## Private offline prototype
+
+[Stage 2.4.8D local assembly](docs/STAGE_2_4_8D_OFFLINE_PROTOTYPE.md) combines your
+existing Stage F application and verified original DLL into a separate offline ZIP.
+After assembly, extract and double-click **Start VLC Timeline Preview.exe**.
+No runtime download or separate libmpv/MPC-QT installation is needed on first launch.
+A loadable Windows x64 Vulkan loader remains a documented system prerequisite.
+This is for private Windows testing; no public binary download or redistribution
+clearance is provided by this stage.
+
 ## Preview
 
 <!-- Screenshot placeholder: windowed orange-glow thumbnail and timestamp. -->

@@ -1,0 +1,40 @@
+{
+  "id": 40231201344,
+  "head_sha": "f93118c85a2c54465f360744718afae9c4a80fb6",
+  "html_url": "https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/40231201344",
+  "status": "completed",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "name": "offline-prototype",
+      "conclusion": "success"
+    },
+    {
+      "name": "native-mpv",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "portable-dependencies",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "build",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "libmpv-experiment",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "image-evidence",
+      "conclusion": "skipped"
+    }
+  ],
+  "binary_artifacts_uploaded": 0,
+  "real_vlc_package_tested": false,
+  "physical_windows_acceptance": false,
+  "licensing_investigation_performed": false,
+  "original_dll_sha256": "04e4d27dc385dc18ddd93fbe69c75e635b864f3c6ec53a9122df54c2f7842f4a",
+  "windows_tests": "inbox PS5.1 synthetic assembly and real negative startup; native/mocked Vulkan guard",
+  "linux_tests": "PowerShell7.4.13, synthetic VLC fixture with genuine original DLL, production pin verification, copying and ZIP roundtrip; not playable VLC"
+}

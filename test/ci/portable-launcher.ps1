@@ -11,6 +11,16 @@ function Run-Setup([string]$Mode){
     if($LASTEXITCODE -ne 0){
         $safe=$details.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
         Write-Output "::error title=Portable setup failure::$safe"
+        # A failed packaged script can hide WebException behind Task.Wait.
+        # Repeat only for diagnostic attribution; never turn original failure into success.
+        $probe=Join-Path $app 'portable\Probe-Setup.ps1'
+        try {
+            $body=[IO.File]::ReadAllText($script).Replace('if($ValidateOnly -or $SetupOnly){throw}', 'if($ValidateOnly -or $SetupOnly){throw $_.Exception.GetBaseException()}')
+            [IO.File]::WriteAllText($probe,$body)
+            $rootDetails=(& $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $probe $Mode 2>&1 | Out-String)
+            $safe=$rootDetails.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Portable setup root cause::$safe"
+        } finally {if(Test-Path -LiteralPath $probe){Remove-Item -LiteralPath $probe}}
         throw "Portable setup failed: $Mode"
     }
 }

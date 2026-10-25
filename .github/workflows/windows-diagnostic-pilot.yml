@@ -219,6 +219,14 @@ jobs:
           }
           & "$app/thumbnail-mpv/Setup-Runtime.ps1" -Destination "$env:RUNNER_TEMP/mpv-runtime"
           if(Test-Path C:/VulkanSDK){Get-ChildItem C:/VulkanSDK -Directory | ForEach-Object {$env:PATH="$($_.FullName)/Bin;$env:PATH"}}
+          if($env:VLC_CI_STAGE -eq '2.4.6F'){
+            try { & ./test/ci/portable-launcher.ps1 -Application $app }
+            catch {
+              $detail=($_ | Out-String).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+              Write-Output "::error title=Stage F launcher check::$detail"
+              throw
+            }
+          }
           if($env:VLC_CI_STAGE -in @('2.4.6C','2.4.6D','2.4.6E','2.4.6F')){
             python prototypes/stage_2_4_6C/benchmark.py --fast "$env:RUNNER_TEMP/mpv-runtime/mpv-thumbnail-worker.exe" --exact "$env:RUNNER_TEMP/mpv-runtime/mpv-thumbnail-accurate-worker.exe" --libvlc "$app/thumbnail-preview/thumbnail-helper.exe" --fixtures fixtures --output results
           }else{
@@ -235,14 +243,6 @@ jobs:
           $p=Start-Process "$app/vlc.exe" -ArgumentList '--no-one-instance','--intf=dummy','--vout=dummy','--aout=dummy','--play-and-exit',('"'+(Resolve-Path fixtures/ordinary.mp4).Path+'"') -PassThru
           if(-not $p.WaitForExit(45000)){$p.Kill();throw 'VLC process launch/exit timeout'}
           if($p.ExitCode -ne 0){throw "VLC process exit $($p.ExitCode)"}
-          if($env:VLC_CI_STAGE -eq '2.4.6F'){
-            try { & ./test/ci/portable-launcher.ps1 -Application $app }
-            catch {
-              $detail=($_ | Out-String).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
-              Write-Output "::error title=Stage F launcher check::$detail"
-              throw
-            }
-          }
           if($env:VLC_CI_STAGE -in @('2.4.6D','2.4.6E','2.4.6F')){
             $smokeOutput=Join-Path (Resolve-Path results).Path "qt-stability-smoke"
             & ./test/modules/gui/qt/stability-smoke.ps1 -Application "$app/vlc.exe" -Media (Resolve-Path fixtures/ordinary.mp4).Path -Output $smokeOutput

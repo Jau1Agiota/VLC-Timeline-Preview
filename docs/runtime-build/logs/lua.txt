@@ -1,0 +1,45 @@
+make: Entering directory '/workspace/stage248B-final/src/lua/src'
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lapi.o lapi.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lcode.o lcode.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o ldebug.o ldebug.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o ldo.o ldo.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o ldump.o ldump.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lfunc.o lfunc.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lgc.o lgc.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o llex.o llex.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lmem.o lmem.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lobject.o lobject.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lopcodes.o lopcodes.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lparser.o lparser.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lstate.o lstate.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lstring.o lstring.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o ltable.o ltable.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o ltm.o ltm.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lundump.o lundump.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lvm.o lvm.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lzio.o lzio.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lauxlib.o lauxlib.c
+lauxlib.c:577:61: warning: while loop has empty body [-Wempty-body]
+  577 |    while ((c = getc(lf.f)) != EOF && c != LUA_SIGNATURE[0]) ;
+      |                                                             ^
+lauxlib.c:577:61: note: put the semicolon on a separate line to silence this warning
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lbaselib.o lbaselib.c
+1 warning generated.
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o ldblib.o ldblib.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o liolib.o liolib.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lmathlib.o lmathlib.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o loslib.o loslib.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o ltablib.o ltablib.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o lstrlib.o lstrlib.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o loadlib.o loadlib.c
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang -O2 -Wall    -c -o linit.o linit.c
+ltablib.c:140:5: warning: misleading indentation; statement is not part of the previous 'if' [-Wmisleading-indentation]
+  140 |     luaL_addvalue(b);
+      |     ^
+ltablib.c:137:3: note: previous statement is here
+  137 |   if (!lua_isstring(L, -1))
+      |   ^
+1 warning generated.
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/llvm-ar rcu liblua.a lapi.o lcode.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o lmem.o lobject.o lopcodes.o lparser.o lstate.o lstring.o ltable.o ltm.o lundump.o lvm.o lzio.o lauxlib.o lbaselib.o ldblib.o liolib.o lmathlib.o loslib.o ltablib.o lstrlib.o loadlib.o linit.o	# DLL needs all object files
+/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/llvm-ranlib liblua.a
+make: Leaving directory '/workspace/stage248B-final/src/lua/src'

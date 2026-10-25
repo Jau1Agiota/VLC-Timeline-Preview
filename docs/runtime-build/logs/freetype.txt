@@ -1,0 +1,166 @@
+The Meson build system
+Version: 1.8.3
+Source dir: /workspace/stage248B-final/src/freetype
+Build dir: /workspace/stage248B-final/build/freetype
+Build type: cross build
+Project name: freetype2
+Project version: 2.13.3
+C compiler for the host machine: /workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang (clang 21.1.4 "clang version 21.1.4 (https://github.com/llvm/llvm-project.git 222fc11f2b8f25f6a0f4976272ef1bb7bf49521d)")
+C linker for the host machine: /workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang ld.lld 21.1.4
+C compiler for the build machine: cc (gcc 14.2.0 "cc (Debian 14.2.0-19) 14.2.0")
+C linker for the build machine: cc ld.bfd 2.44
+Build machine cpu family: x86_64
+Build machine cpu: x86_64
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Target machine cpu family: x86_64
+Target machine cpu: x86_64
+Program python3 found: YES (/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3)
+Has header "unistd.h" : YES 
+Has header "fcntl.h" : YES 
+Has header "sys/mman.h" : NO 
+Windows resource compiler: llvm-windres, compatible with GNU windres
+Found pkg-config: YES (/workspace/stage248B-final/tools/native/bin/pkgconf) 2.3.0
+Found CMake: NO
+Run-time dependency bzip2 found: NO (tried pkgconfig and cmake)
+Library bz2 skipped: feature bzip2 disabled
+Dependency libpng skipped: feature png disabled
+Dependency harfbuzz skipped: feature harfbuzz disabled
+Dependency libbrotlidec skipped: feature brotli disabled
+Build targets in project: 5
+
+freetype2 2.13.3
+
+  Operating System
+    OS             : windows
+
+  Used Libraries
+    Zlib           : none
+    Bzip2          : no
+    Png            : no
+    Harfbuzz       : no
+    Brotli         : no
+
+  User defined options
+    Cross files    : /workspace/stage248B-final/cross.ini
+    auto_features  : disabled
+    buildtype      : release
+    default_library: static
+    libdir         : lib
+    prefix         : /workspace/stage248B-final/prefix
+    wrap_mode      : nofallback
+    zlib           : disabled
+
+Found ninja-1.11.1.git.kitware.jobserver-1 at /workspace/stage248B-final/tools/python/bin/ninja
+ninja: Entering directory `/workspace/stage248B-final/build/freetype'
+[1/45] Generating ftmodule.h with a custom command
+[2/45] Compiling Windows resource src_base_ftver.rc
+[3/45] Generating ftoption.h with a custom command
+[4/45] Compiling C object libfreetype.a.p/src_base_ftinit.c.obj
+[5/45] Compiling C object libfreetype.a.p/src_cff_cff.c.obj
+[6/45] Compiling C object libfreetype.a.p/src_type1_type1.c.obj
+[7/45] Compiling C object libfreetype.a.p/src_cid_type1cid.c.obj
+[8/45] Compiling C object libfreetype.a.p/src_type42_type42.c.obj
+[9/45] Compiling C object libfreetype.a.p/src_winfonts_winfnt.c.obj
+[10/45] Compiling C object libfreetype.a.p/src_pfr_pfr.c.obj
+[11/45] Compiling C object libfreetype.a.p/src_pcf_pcf.c.obj
+[12/45] Compiling C object libfreetype.a.p/src_truetype_truetype.c.obj
+[13/45] Compiling C object libfreetype.a.p/src_base_ftbase.c.obj
+[14/45] Compiling C object libfreetype.a.p/src_bdf_bdf.c.obj
+[15/45] Compiling C object libfreetype.a.p/src_smooth_smooth.c.obj
+[16/45] Compiling C object libfreetype.a.p/src_pshinter_pshinter.c.obj
+[17/45] Compiling C object libfreetype.a.p/src_raster_raster.c.obj
+[18/45] Compiling C object libfreetype.a.p/src_svg_svg.c.obj
+[19/45] Compiling C object libfreetype.a.p/src_autofit_autofit.c.obj
+[20/45] Compiling C object libfreetype.a.p/src_gzip_ftgzip.c.obj
+[21/45] Compiling C object libfreetype.a.p/src_sfnt_sfnt.c.obj
+In file included from ../../src/freetype/src/sfnt/sfnt.c:30:
+../../src/freetype/src/sfnt/ttsvg.c:288:16: warning: unused variable 'memory' [-Wunused-variable]
+  288 |     FT_Memory  memory = face->root.memory;
+      |                ^~~~~~
+1 warning generated.
+[22/45] Compiling C object libfreetype.a.p/src_lzw_ftlzw.c.obj
+[23/45] Compiling C object libfreetype.a.p/src_cache_ftcache.c.obj
+[24/45] Compiling C object libfreetype.a.p/src_psnames_psnames.c.obj
+[25/45] Compiling C object libfreetype.a.p/src_base_ftbbox.c.obj
+[26/45] Compiling C object libfreetype.a.p/src_sdf_sdf.c.obj
+[27/45] Compiling C object libfreetype.a.p/src_base_ftbdf.c.obj
+[28/45] Compiling C object libfreetype.a.p/src_base_ftcid.c.obj
+[29/45] Compiling C object libfreetype.a.p/src_base_ftfstype.c.obj
+[30/45] Compiling C object libfreetype.a.p/src_base_ftgasp.c.obj
+[31/45] Compiling C object libfreetype.a.p/src_base_ftglyph.c.obj
+[32/45] Compiling C object libfreetype.a.p/src_base_ftbitmap.c.obj
+[33/45] Compiling C object libfreetype.a.p/src_base_ftgxval.c.obj
+[34/45] Compiling C object libfreetype.a.p/src_base_ftpatent.c.obj
+[35/45] Compiling C object libfreetype.a.p/src_base_ftotval.c.obj
+[36/45] Compiling C object libfreetype.a.p/src_base_ftmm.c.obj
+[37/45] Compiling C object libfreetype.a.p/src_base_ftpfr.c.obj
+[38/45] Compiling C object libfreetype.a.p/src_base_ftsynth.c.obj
+[39/45] Compiling C object libfreetype.a.p/src_base_fttype1.c.obj
+[40/45] Compiling C object libfreetype.a.p/src_base_ftwinfnt.c.obj
+[41/45] Compiling C object libfreetype.a.p/src_base_ftsystem.c.obj
+[42/45] Compiling C object libfreetype.a.p/builds_windows_ftdebug.c.obj
+[43/45] Compiling C object libfreetype.a.p/src_base_ftstroke.c.obj
+[44/45] Compiling C object libfreetype.a.p/src_psaux_psaux.c.obj
+[45/45] Linking static target libfreetype.a
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /workspace/stage248B-final/tools/python/bin/ninja -C /workspace/stage248B-final/build/freetype -j 4
+ninja: Entering directory `/workspace/stage248B-final/build/freetype'
+ninja: no work to do.
+Installing ftmodule.h to /workspace/stage248B-final/prefix/include/freetype2/freetype/config
+Installing ftoption.h to /workspace/stage248B-final/prefix/include/freetype2/freetype/config
+Installing libfreetype.a to /workspace/stage248B-final/prefix/lib
+Installing /workspace/stage248B-final/src/freetype/include/ft2build.h to /workspace/stage248B-final/prefix/include/freetype2
+Installing /workspace/stage248B-final/src/freetype/include/freetype/freetype.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftadvanc.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftbbox.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftbdf.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftbitmap.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftbzip2.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftcache.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftchapters.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftcid.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftcolor.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftdriver.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/fterrdef.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/fterrors.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftfntfmt.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftgasp.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftglyph.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftgxval.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftgzip.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftimage.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftincrem.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftlcdfil.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftlist.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftlzw.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftmac.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftmm.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftmodapi.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftmoderr.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftotval.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftoutln.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftparams.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftpfr.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftrender.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftsizes.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftsnames.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftstroke.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftsynth.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftsystem.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/fttrigon.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/fttypes.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ftwinfnt.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/otsvg.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/t1tables.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/ttnameid.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/tttables.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/tttags.h to /workspace/stage248B-final/prefix/include/freetype2/freetype
+Installing /workspace/stage248B-final/src/freetype/include/freetype/config/ftconfig.h to /workspace/stage248B-final/prefix/include/freetype2/freetype/config
+Installing /workspace/stage248B-final/src/freetype/include/freetype/config/ftheader.h to /workspace/stage248B-final/prefix/include/freetype2/freetype/config
+Installing /workspace/stage248B-final/src/freetype/include/freetype/config/ftstdlib.h to /workspace/stage248B-final/prefix/include/freetype2/freetype/config
+Installing /workspace/stage248B-final/src/freetype/include/freetype/config/integer-types.h to /workspace/stage248B-final/prefix/include/freetype2/freetype/config
+Installing /workspace/stage248B-final/src/freetype/include/freetype/config/mac-support.h to /workspace/stage248B-final/prefix/include/freetype2/freetype/config
+Installing /workspace/stage248B-final/src/freetype/include/freetype/config/public-macros.h to /workspace/stage248B-final/prefix/include/freetype2/freetype/config
+Installing /workspace/stage248B-final/src/freetype/builds/unix/freetype2.m4 to /workspace/stage248B-final/prefix/share/aclocal
+Installing /workspace/stage248B-final/build/freetype/meson-private/freetype2.pc to /workspace/stage248B-final/prefix/lib/pkgconfig

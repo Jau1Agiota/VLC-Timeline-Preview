@@ -1,0 +1,52 @@
+[
+  {
+    "original": "harfbuzz.log",
+    "committed": "harfbuzz.txt",
+    "sha256": "3aa16c7d2aa0310125f5c994b1ef4d26838b297f4022e02f45a5d80aa1156de1"
+  },
+  {
+    "original": "lua.log",
+    "committed": "lua.txt",
+    "sha256": "c829ce2a3a06514af0b1a019a8309b9bd583d5555caaaf0291111c3a9758eda9"
+  },
+  {
+    "original": "ffmpeg.log",
+    "committed": "ffmpeg.txt",
+    "sha256": "418da40895211371822edb6a9efbfaa6b2b8c2a292bb76340a4f4b25bac86368"
+  },
+  {
+    "original": "libplacebo.log",
+    "committed": "libplacebo.txt",
+    "sha256": "98a15094c1fea770af7e3be3d65f05a58ee842f347d913be4c0a0db8da224475"
+  },
+  {
+    "original": "freetype.log",
+    "committed": "freetype.txt",
+    "sha256": "98375db13e2a4abd9518c6660e66aa12f7144bd55bb3a83c36a64d73fe5fb865"
+  },
+  {
+    "original": "python-tools.log",
+    "committed": "python-tools.txt",
+    "sha256": "6990071fe65d7e06e877ab84ce323cad2f6638cdb5a25f8a96e9dc863fced9ac"
+  },
+  {
+    "original": "fribidi.log",
+    "committed": "fribidi.txt",
+    "sha256": "856488c60c56e7187a08416bd049caa5e5e1ba916ea19c82eb96bbd3b07e7a34"
+  },
+  {
+    "original": "libass.log",
+    "committed": "libass.txt",
+    "sha256": "89e5b7504dc22950cd287dab6a68a1303d41db8e7ae041b510a1f1324a675ae4"
+  },
+  {
+    "original": "mpv.log",
+    "committed": "mpv.txt",
+    "sha256": "4017e6db5eafd70720a5797dab1af18dd538d7e0e33c7b094193d42a229e52e9"
+  },
+  {
+    "original": "pkgconf.log",
+    "committed": "pkgconf.txt",
+    "sha256": "621eb159e25d66dcd59d5c17d385405d2ed2a9d682d3bffe240f8c26d7f53b22"
+  }
+]

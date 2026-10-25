@@ -1,0 +1,185 @@
+The Meson build system
+Version: 1.8.3
+Source dir: /workspace/stage248B-final/src/libplacebo
+Build dir: /workspace/stage248B-final/build/libplacebo
+Build type: cross build
+Project name: libplacebo
+Project version: 7.360.1
+C compiler for the host machine: /workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang (clang 21.1.4 "clang version 21.1.4 (https://github.com/llvm/llvm-project.git 222fc11f2b8f25f6a0f4976272ef1bb7bf49521d)")
+C linker for the host machine: /workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang ld.lld 21.1.4
+C++ compiler for the host machine: /workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang++ (clang 21.1.4 "clang version 21.1.4 (https://github.com/llvm/llvm-project.git 222fc11f2b8f25f6a0f4976272ef1bb7bf49521d)")
+C++ linker for the host machine: /workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang++ ld.lld 21.1.4
+C compiler for the build machine: cc (gcc 14.2.0 "cc (Debian 14.2.0-19) 14.2.0")
+C linker for the build machine: cc ld.bfd 2.44
+C++ compiler for the build machine: c++ (gcc 14.2.0 "c++ (Debian 14.2.0-19) 14.2.0")
+C++ linker for the build machine: c++ ld.bfd 2.44
+Build machine cpu family: x86_64
+Build machine cpu: x86_64
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Target machine cpu family: x86_64
+Target machine cpu: x86_64
+Compiler for C supports arguments -Wincompatible-pointer-types: YES 
+Compiler for C supports arguments -Wc23-extensions: YES 
+Compiler for C supports link arguments -Wl,--exclude-libs=ALL: NO 
+Configuring libplacebo.rc using configuration
+Configuring demos.rc using configuration
+Library m found: YES
+Program python3 found: YES (/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3)
+Dependency libunwind skipped: feature unwind disabled
+Library execinfo found: NO
+Checking for function "backtrace_symbols" with dependency -lexecinfo: NO 
+Check usable header "dbghelp.h" : YES 
+Library shlwapi found: YES
+Fetching value of define "__MINGW32__" : 1 
+Program llvm-dlltool found: YES (/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/llvm-dlltool)
+Dependency shaderc skipped: feature shaderc disabled
+Check usable header "d3d11.h" : YES 
+Check usable header "d3d11_4.h" skipped: feature d3d11 disabled
+Check usable header "dxgi1_6.h" skipped: feature d3d11 disabled
+Dependency spirv-cross-c-shared skipped: feature d3d11 disabled
+Library version skipped: feature d3d11 disabled
+Found pkg-config: YES (/workspace/stage248B-final/tools/native/bin/pkgconf) 2.3.0
+Run-time dependency vulkan found: NO (tried pkgconfig and system)
+Header "vulkan/vulkan_core.h" has symbol "VK_VERSION_1_4" with dependency vulkan: YES 
+Dependency lcms2 skipped: feature lcms disabled
+src/libplacebo/src/meson.build:171: WARNING: Building without any graphics API. libplacebo built this way still has some limited use (e.g. generating GLSL shaders), but most of its functionality will be missing or impaired!
+Dependency dovi skipped: feature libdovi disabled
+Dependency libxxhash skipped: feature xxhash disabled
+Configuring config.h using configuration
+Configuring config_internal.h using configuration
+Windows resource compiler: llvm-windres, compatible with GNU windres
+WARNING: Library target 'placebo' has 'name_prefix' set. Compilers may not find it from its '-lplacebo' linker flag in the 'libplacebo.pc' pkg-config file.
+WARNING: Library target 'placebo' has 'name_prefix' set. Compilers may not find it from its '-lplacebo' linker flag in the 'libplacebo-uninstalled.pc' pkg-config file.
+Build targets in project: 17
+
+libplacebo 7.360.1
+
+  Optional features
+    d3d11          : NO
+    dovi           : NO
+    gl-proc-addr   : NO
+    glslang        : NO
+    lcms           : NO
+    libdovi        : NO
+    opengl         : NO
+    shaderc        : NO
+    vk-proc-addr   : NO
+    vulkan         : NO
+    xxhash         : NO
+
+  User defined options
+    Cross files    : /workspace/stage248B-final/cross.ini
+    auto_features  : disabled
+    buildtype      : release
+    d3d11          : disabled
+    default_library: static
+    demos          : false
+    gl-proc-addr   : disabled
+    glslang        : disabled
+    libdir         : lib
+    opengl         : disabled
+    prefix         : /workspace/stage248B-final/prefix
+    shaderc        : disabled
+    tests          : false
+    vk-proc-addr   : disabled
+    vulkan         : disabled
+    wrap_mode      : nofallback
+
+Found ninja-1.11.1.git.kitware.jobserver-1 at /workspace/stage248B-final/tools/python/bin/ninja
+ninja: Entering directory `/workspace/stage248B-final/build/libplacebo'
+[1/55] Generating src/ucrt_math.lib with a custom command
+[2/55] Generating src/shaders.c with a custom command (wrapped by meson to set env)
+[3/55] Generating src/renderer.c with a custom command (wrapped by meson to set env)
+[4/55] Generating src/shaders/colorspace.c with a custom command (wrapped by meson to set env)
+[5/55] Generating src/shaders/custom.c with a custom command (wrapped by meson to set env)
+[6/55] Generating src/shaders/custom_mpv.c with a custom command (wrapped by meson to set env)
+[7/55] Generating src/shaders/dithering.c with a custom command (wrapped by meson to set env)
+[8/55] Generating src/shaders/deinterlacing.c with a custom command (wrapped by meson to set env)
+[9/55] Generating src/shaders/film_grain.c with a custom command (wrapped by meson to set env)
+[10/55] Generating src/shaders/film_grain_av1.c with a custom command (wrapped by meson to set env)
+[11/55] Generating src/shaders/film_grain_h274.c with a custom command (wrapped by meson to set env)
+[12/55] Generating src/shaders/icc.c with a custom command (wrapped by meson to set env)
+[13/55] Generating src/version.h with a custom command
+[14/55] Generating src/shaders/lut.c with a custom command (wrapped by meson to set env)
+[15/55] Compiling Windows resource src/libplacebo.rc
+[16/55] Generating src/shaders/sampling.c with a custom command (wrapped by meson to set env)
+[17/55] Compiling C object src/libplacebo.a.p/meson-generated_.._shaders.c.obj
+[18/55] Compiling C object src/libplacebo.a.p/meson-generated_.._shaders_colorspace.c.obj
+[19/55] Compiling C object src/libplacebo.a.p/meson-generated_.._shaders_custom.c.obj
+[20/55] Compiling C object src/libplacebo.a.p/meson-generated_.._shaders_deinterlacing.c.obj
+[21/55] Compiling C object src/libplacebo.a.p/meson-generated_.._shaders_film_grain.c.obj
+[22/55] Compiling C object src/libplacebo.a.p/meson-generated_.._shaders_dithering.c.obj
+[23/55] Compiling C object src/libplacebo.a.p/meson-generated_.._shaders_custom_mpv.c.obj
+[24/55] Compiling C object src/libplacebo.a.p/meson-generated_.._shaders_icc.c.obj
+[25/55] Compiling C object src/libplacebo.a.p/meson-generated_.._renderer.c.obj
+[26/55] Compiling C object src/libplacebo.a.p/meson-generated_.._shaders_film_grain_av1.c.obj
+[27/55] Compiling C object src/libplacebo.a.p/meson-generated_.._shaders_film_grain_h274.c.obj
+[28/55] Compiling C object src/libplacebo.a.p/meson-generated_.._shaders_lut.c.obj
+[29/55] Compiling C object src/libplacebo.a.p/cache.c.obj
+[30/55] Compiling C object src/libplacebo.a.p/colorspace.c.obj
+[31/55] Compiling C object src/libplacebo.a.p/meson-generated_.._shaders_sampling.c.obj
+[32/55] Compiling C object src/libplacebo.a.p/common.c.obj
+[33/55] Compiling C object src/libplacebo.a.p/dither.c.obj
+[34/55] Compiling C object src/libplacebo.a.p/dummy.c.obj
+[35/55] Compiling C object src/libplacebo.a.p/filters.c.obj
+[36/55] Compiling C object src/libplacebo.a.p/dispatch.c.obj
+[37/55] Compiling C object src/libplacebo.a.p/format.c.obj
+[38/55] Compiling C object src/libplacebo.a.p/gamut_mapping.c.obj
+[39/55] Compiling C object src/libplacebo.a.p/glsl_spirv.c.obj
+[40/55] Compiling C object src/libplacebo.a.p/gpu.c.obj
+[41/55] Compiling C object src/libplacebo.a.p/gpu_utils.c.obj
+[42/55] Compiling C++ object src/libplacebo.a.p/convert.cc.obj
+[43/55] Compiling C object src/libplacebo.a.p/log.c.obj
+[44/55] Compiling C object src/libplacebo.a.p/pl_alloc.c.obj
+[45/55] Compiling C object src/libplacebo.a.p/pl_string.c.obj
+[46/55] Compiling C object src/libplacebo.a.p/swapchain.c.obj
+[47/55] Compiling C object src/libplacebo.a.p/tone_mapping.c.obj
+[48/55] Compiling C object src/libplacebo.a.p/options.c.obj
+[49/55] Compiling C object src/libplacebo.a.p/utils_dolbyvision.c.obj
+[50/55] Compiling C object src/libplacebo.a.p/utils_frame_queue.c.obj
+[51/55] Compiling C object src/libplacebo.a.p/utils_upload.c.obj
+[52/55] Compiling C object src/libplacebo.a.p/d3d11_stubs.c.obj
+[53/55] Compiling C object src/libplacebo.a.p/opengl_stubs.c.obj
+[54/55] Compiling C object src/libplacebo.a.p/vulkan_stubs.c.obj
+[55/55] Linking static target src/libplacebo.a
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /workspace/stage248B-final/tools/python/bin/ninja -C /workspace/stage248B-final/build/libplacebo -j 4
+ninja: Entering directory `/workspace/stage248B-final/build/libplacebo'
+[1/4] Generating src/version.h with a custom command
+Installing src/libplacebo.a to /workspace/stage248B-final/prefix/lib
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/cache.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/colorspace.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/common.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/d3d11.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/dispatch.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/dither.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/dummy.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/filters.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/gamut_mapping.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/gpu.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/log.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/opengl.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/options.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/renderer.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/shaders/colorspace.h to /workspace/stage248B-final/prefix/include/libplacebo/shaders
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/shaders/custom.h to /workspace/stage248B-final/prefix/include/libplacebo/shaders
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/shaders/deinterlacing.h to /workspace/stage248B-final/prefix/include/libplacebo/shaders
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/shaders/dithering.h to /workspace/stage248B-final/prefix/include/libplacebo/shaders
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/shaders/film_grain.h to /workspace/stage248B-final/prefix/include/libplacebo/shaders
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/shaders/icc.h to /workspace/stage248B-final/prefix/include/libplacebo/shaders
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/shaders/lut.h to /workspace/stage248B-final/prefix/include/libplacebo/shaders
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/shaders/sampling.h to /workspace/stage248B-final/prefix/include/libplacebo/shaders
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/shaders.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/swapchain.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/tone_mapping.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/utils/dav1d.h to /workspace/stage248B-final/prefix/include/libplacebo/utils
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/utils/dav1d_internal.h to /workspace/stage248B-final/prefix/include/libplacebo/utils
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/utils/dolbyvision.h to /workspace/stage248B-final/prefix/include/libplacebo/utils
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/utils/frame_queue.h to /workspace/stage248B-final/prefix/include/libplacebo/utils
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/utils/libav.h to /workspace/stage248B-final/prefix/include/libplacebo/utils
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/utils/libav_internal.h to /workspace/stage248B-final/prefix/include/libplacebo/utils
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/utils/upload.h to /workspace/stage248B-final/prefix/include/libplacebo/utils
+Installing /workspace/stage248B-final/src/libplacebo/src/include/libplacebo/vulkan.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/build/libplacebo/src/./include/libplacebo/config.h to /workspace/stage248B-final/prefix/include/libplacebo
+Installing /workspace/stage248B-final/build/libplacebo/meson-private/libplacebo.pc to /workspace/stage248B-final/prefix/lib/pkgconfig

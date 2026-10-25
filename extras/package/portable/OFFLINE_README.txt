@@ -1,4 +1,4 @@
-VLC Timeline Preview - Stage 2.4.8D private offline prototype
+VLC Timeline Preview - Stage 2.4.8E private offline prototype
 
 Extract the entire ZIP into a new writable folder. Double-click
 Start VLC Timeline Preview.exe, then open a local MP4 or MKV in VLC.
@@ -22,3 +22,12 @@ Close before moving/unplugging the folder. Application data is private to this
 folder where practical; USB launch may stage verified workers in local TEMP.
 Media on removable/network drives remains outside current thumbnail support.
 No universal frame-accuracy or frozen-playback fix is claimed.
+
+OPTIONAL WINDOWS INTEGRATION
+Double-click Register as Video Player.cmd to register VLC media player for your
+Windows user. Defaults do not change automatically: select it in Open with or
+Windows Settings > Apps > Default apps. Remove Registration.cmd removes only
+this folder registration. Remove it before moving/deleting the folder.
+Explorer file requests open separate portable sessions; launching without a
+file focuses the most recently launched VLC from this folder when available.
+Official VLC is never targeted by the portable launcher.

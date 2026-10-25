@@ -8,21 +8,31 @@
 #endif
 #include <windows.h>
 #include <wchar.h>
+#include <wincrypt.h>
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR args, int show)
 {
     wchar_t root[32768], system[32768], command[32768];
     STARTUPINFOW startup = {0};
     PROCESS_INFORMATION child = {0};
-    (void)instance; (void)previous; (void)args; (void)show;
+    (void)instance; (void)previous; (void)show;
+    wchar_t encoded[24576];
+    DWORD encodedCount = sizeof(encoded) / sizeof(encoded[0]);
+    size_t argumentBytes = wcslen(args) * sizeof(wchar_t);
+    encoded[0] = 0;
+    if (!argumentBytes) encodedCount = 1;
+    if (argumentBytes > 16000 || (argumentBytes && !CryptBinaryToStringW((const BYTE *)args,
+            (DWORD)argumentBytes, CRYPT_STRING_BASE64 | CRYPT_STRING_NOCRLF,
+            encoded, &encodedCount))) goto error;
     DWORD count = GetModuleFileNameW(NULL, root, 32768);
     if (!count || count >= 32768) goto error;
     wchar_t *slash = wcsrchr(root, L'\\');
     if (!slash) goto error;
     *slash = 0;
     if (!GetSystemDirectoryW(system, 32768)) goto error;
-    if (wcslen(root) + wcslen(system) + 160 >= 32768) goto error;
+    if (wcslen(root) + wcslen(system) + encodedCount + 200 >= 32768) goto error;
     /* Paths come from Windows; double quotes cannot occur in file names.
-       Never interpret arguments or execute through cmd.exe/PATH. */
+       Transport the original UTF-16 command line as base64, never PowerShell code.
+       Never execute through cmd.exe/PATH. */
     wcscpy(command, root); wcscat(command, L"\\portable\\Start-Portable.ps1");
     DWORD attributes = GetFileAttributesW(command);
     if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY)) goto error;
@@ -30,6 +40,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR args, int show
     wcscpy(command, L"\""); wcscat(command, system);
     wcscat(command, L"\" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"");
     wcscat(command, root); wcscat(command, L"\\portable\\Start-Portable.ps1\"");
+    if (argumentBytes) {
+        wcscat(command, L" -ExplorerArgumentsBase64 ");
+        wcscat(command, encoded);
+    }
     startup.cb = sizeof(startup);
     startup.dwFlags = STARTF_USESHOWWINDOW;
     startup.wShowWindow = SW_HIDE;

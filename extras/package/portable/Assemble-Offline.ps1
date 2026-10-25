@@ -2,7 +2,8 @@
 # Private local assembly only. No network, installers, original writes or cleanup.
 param([Parameter(Mandatory=$true)][string]$BaseApplication,
       [Parameter(Mandatory=$true)][string]$RuntimeDll,
-      [Parameter(Mandatory=$true)][string]$Destination)
+      [Parameter(Mandatory=$true)][string]$Destination,
+      [Parameter(Mandatory=$true)][string]$LauncherExecutable)
 $ErrorActionPreference='Stop'
 Import-Module Microsoft.PowerShell.Utility -ErrorAction Stop
 Add-Type -AssemblyName System.IO.Compression
@@ -45,7 +46,7 @@ function Assert-Pe64([string]$Path) {
         if($reader.ReadUInt16() -ne 0x20b){throw 'Expected PE32+ format'}
     }finally{$stream.Dispose()}
 }
-function Invoke-OfflineAssembly([string]$BaseApplication,[string]$RuntimeDll,[string]$Destination,[string]$OverlayDirectory) {
+function Invoke-OfflineAssembly([string]$BaseApplication,[string]$RuntimeDll,[string]$Destination,[string]$OverlayDirectory,[string]$LauncherExecutable) {
     $base=[IO.Path]::GetFullPath($BaseApplication).TrimEnd([IO.Path]::DirectorySeparatorChar)
     $dll=[IO.Path]::GetFullPath($RuntimeDll)
     $dest=[IO.Path]::GetFullPath($Destination).TrimEnd([IO.Path]::DirectorySeparatorChar)
@@ -59,6 +60,9 @@ function Invoke-OfflineAssembly([string]$BaseApplication,[string]$RuntimeDll,[st
     if($dest.Equals($base,[StringComparison]::OrdinalIgnoreCase) -or $dest.StartsWith($base+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase)){throw 'Destination must be outside the Stage F installation'}
     $repository=[IO.Path]::GetFullPath((Join-Path $OverlayDirectory '../../..')).TrimEnd([IO.Path]::DirectorySeparatorChar)
     if((Test-Path -LiteralPath (Join-Path $repository '.git')) -and ($dest.Equals($repository,[StringComparison]::OrdinalIgnoreCase) -or $dest.StartsWith($repository+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase))){throw 'Private package destination must be outside the public repository checkout'}
+    if(-not [IO.File]::Exists($LauncherExecutable)){throw 'Stage E launcher is missing. Supply the first-party Windows integration tools launcher.'}
+    Assert-NoReparse $LauncherExecutable
+    Assert-Pe64 $LauncherExecutable
     $originalHash=Assert-OriginalRuntime $dll
     $baseManifest=Join-Path $base 'BUILD_MANIFEST.json'
     if(-not [IO.File]::Exists($baseManifest)){throw 'BUILD_MANIFEST.json is missing. Select the extracted Stage F application folder, not an outer download folder.'}
@@ -78,10 +82,10 @@ function Invoke-OfflineAssembly([string]$BaseApplication,[string]$RuntimeDll,[st
     foreach($name in $required | Where-Object {$_ -like '*.exe' -or $_ -like '*.dll'}){Assert-Pe64 (Get-PackagePath $base $name)}
     $dependency=[IO.File]::ReadAllText((Join-Path $base 'thumbnail-mpv/dependencies.json')) | ConvertFrom-Json
     if($dependency.dll_sha256 -ne $originalHash){throw 'Base runtime pin does not match the original DLL'}
-    foreach($name in @('Start-Portable.ps1','OFFLINE_README.txt','DEPENDENCIES.md')){if(-not [IO.File]::Exists((Join-Path $OverlayDirectory $name))){throw "Assembly support file missing: $name"}}
+    foreach($name in @('Start-Portable.ps1','OFFLINE_README.txt','DEPENDENCIES.md','Windows-Integration.ps1','Register-Player.ps1','Register as Video Player.cmd','Remove Registration.cmd')){if(-not [IO.File]::Exists((Join-Path $OverlayDirectory $name))){throw "Assembly support file missing: $name"}}
     # All inputs verified before output creation. Never copy used caches/profiles.
     New-Item -ItemType Directory -Path $dest -ErrorAction Stop | Out-Null
-    $omit=@('CI_1_README.txt','README.txt','portable/Start-Portable.ps1','portable/DEPENDENCIES.md','thumbnail-mpv/Get-Runtime.ps1','thumbnail-mpv/Setup-Runtime.ps1','thumbnail-mpv/Start-Preview.ps1')
+    $omit=@('Start VLC Timeline Preview.exe','CI_1_README.txt','README.txt','portable/Start-Portable.ps1','portable/DEPENDENCIES.md','thumbnail-mpv/Get-Runtime.ps1','thumbnail-mpv/Setup-Runtime.ps1','thumbnail-mpv/Start-Preview.ps1')
     foreach($entry in $metadata.files_sha256.PSObject.Properties){
         if($entry.Name -in $omit){continue}
         $target=Get-PackagePath $dest $entry.Name
@@ -94,6 +98,9 @@ function Invoke-OfflineAssembly([string]$BaseApplication,[string]$RuntimeDll,[st
     [IO.File]::Copy((Join-Path $OverlayDirectory 'Start-Portable.ps1'),(Join-Path $dest 'portable/Start-Portable.ps1'),$false)
     [IO.File]::Copy((Join-Path $OverlayDirectory 'DEPENDENCIES.md'),(Join-Path $dest 'portable/DEPENDENCIES.md'),$false)
     [IO.File]::Copy((Join-Path $OverlayDirectory 'OFFLINE_README.txt'),(Join-Path $dest 'README.txt'),$false)
+    [IO.File]::Copy($LauncherExecutable,(Join-Path $dest 'Start VLC Timeline Preview.exe'),$false)
+    foreach($name in @('Windows-Integration.ps1','Register-Player.ps1')){[IO.File]::Copy((Join-Path $OverlayDirectory $name),(Join-Path $dest ('portable/'+$name)),$false)}
+    foreach($name in @('Register as Video Player.cmd','Remove Registration.cmd')){[IO.File]::Copy((Join-Path $OverlayDirectory $name),(Join-Path $dest $name),$false)}
     [IO.File]::Copy($dll,(Join-Path $dest 'thumbnail-mpv/libmpv-2.dll'),$false)
     if((Assert-OriginalRuntime (Join-Path $dest 'thumbnail-mpv/libmpv-2.dll')) -ne $originalHash){throw 'Copied runtime verification failed'}
     $files=[ordered]@{}
@@ -101,7 +108,7 @@ function Invoke-OfflineAssembly([string]$BaseApplication,[string]$RuntimeDll,[st
         $relative=$path.FullName.Substring($dest.Length+1).Replace('\','/')
         $files[$relative]=Get-LocalHash $path.FullName
     }
-    $manifest=[ordered]@{prototype='2.4.8D';private_local_prototype=$true;public_redistribution_cleared=$false;runtime_downloads=$false;dll_sha256=$originalHash;baseline_source=$metadata.source_commit;baseline_manifest_sha256=(Get-LocalHash $baseManifest);files_sha256=$files}
+    $manifest=[ordered]@{prototype='2.4.8E';private_local_prototype=$true;public_redistribution_cleared=$false;runtime_downloads=$false;dll_sha256=$originalHash;baseline_source=$metadata.source_commit;baseline_manifest_sha256=(Get-LocalHash $baseManifest);files_sha256=$files}
     $manifestPath=Join-Path $dest 'OFFLINE_PROTOTYPE_MANIFEST.json'
     [IO.File]::WriteAllText($manifestPath,($manifest | ConvertTo-Json -Depth 8),(New-Object Text.UTF8Encoding($false)))
     $files['OFFLINE_PROTOTYPE_MANIFEST.json']=Get-LocalHash $manifestPath
@@ -141,4 +148,4 @@ function Invoke-OfflineAssembly([string]$BaseApplication,[string]$RuntimeDll,[st
     Write-Output "Private local prototype: $zip"
     Write-Output "SHA-256: $zipHash"
 }
-Invoke-OfflineAssembly $BaseApplication $RuntimeDll $Destination $PSScriptRoot
+Invoke-OfflineAssembly $BaseApplication $RuntimeDll $Destination $PSScriptRoot $LauncherExecutable

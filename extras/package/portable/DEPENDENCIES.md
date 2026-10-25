@@ -33,3 +33,12 @@ is not a redistribution prohibition, but this private prototype does not declare
 those distribution obligations fulfilled. Do not upload/publish the assembled ZIP
 or populated folder. Public packaging guards remain unchanged. No replacement
 runtime or new source/licensing investigation is part of Stage D.
+
+## Stage E integration
+
+Stage E replaces only the first-party launcher and support scripts during local
+assembly. Supply the new launcher with `-LauncherExecutable`; it forwards local
+media paths losslessly. No runtime download, new DLL, decoder, installer or
+admin requirement is added. Optional association scripts use HKCU only and do
+not change Windows UserChoice or default applications. Public original-runtime
+redistribution remains unresolved; do not upload private assembled packages.

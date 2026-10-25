@@ -23,6 +23,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR args, int show
     if (wcslen(root) + wcslen(system) + 160 >= 32768) goto error;
     /* Paths come from Windows; double quotes cannot occur in file names.
        Never interpret arguments or execute through cmd.exe/PATH. */
+    wcscpy(command, root); wcscat(command, L"\\portable\\Start-Portable.ps1");
+    DWORD attributes = GetFileAttributesW(command);
+    if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_DIRECTORY)) goto error;
     wcscat(system, L"\\WindowsPowerShell\\v1.0\\powershell.exe");
     wcscpy(command, L"\""); wcscat(command, system);
     wcscat(command, L"\" -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"");

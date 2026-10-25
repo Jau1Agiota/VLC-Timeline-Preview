@@ -2,51 +2,71 @@
   {
     "original": "harfbuzz.log",
     "committed": "harfbuzz.txt",
-    "sha256": "3aa16c7d2aa0310125f5c994b1ef4d26838b297f4022e02f45a5d80aa1156de1"
+    "original_sha256": "3aa16c7d2aa0310125f5c994b1ef4d26838b297f4022e02f45a5d80aa1156de1",
+    "sha256": "e699b54606e2815c833771fb52af79686a889b3c2c134e65f87e819299c46173",
+    "normalization": "trailing whitespace removed for Git review; original log preserved in source companion"
   },
   {
     "original": "lua.log",
     "committed": "lua.txt",
-    "sha256": "c829ce2a3a06514af0b1a019a8309b9bd583d5555caaaf0291111c3a9758eda9"
+    "original_sha256": "c829ce2a3a06514af0b1a019a8309b9bd583d5555caaaf0291111c3a9758eda9",
+    "sha256": "c829ce2a3a06514af0b1a019a8309b9bd583d5555caaaf0291111c3a9758eda9",
+    "normalization": "trailing whitespace removed for Git review; original log preserved in source companion"
   },
   {
     "original": "ffmpeg.log",
     "committed": "ffmpeg.txt",
-    "sha256": "418da40895211371822edb6a9efbfaa6b2b8c2a292bb76340a4f4b25bac86368"
+    "original_sha256": "418da40895211371822edb6a9efbfaa6b2b8c2a292bb76340a4f4b25bac86368",
+    "sha256": "418da40895211371822edb6a9efbfaa6b2b8c2a292bb76340a4f4b25bac86368",
+    "normalization": "trailing whitespace removed for Git review; original log preserved in source companion"
   },
   {
     "original": "libplacebo.log",
     "committed": "libplacebo.txt",
-    "sha256": "98a15094c1fea770af7e3be3d65f05a58ee842f347d913be4c0a0db8da224475"
+    "original_sha256": "98a15094c1fea770af7e3be3d65f05a58ee842f347d913be4c0a0db8da224475",
+    "sha256": "295a07a4823046a21406af0776742635d8937efa8bb78a8ca0d0b96210ddc8e4",
+    "normalization": "trailing whitespace removed for Git review; original log preserved in source companion"
   },
   {
     "original": "freetype.log",
     "committed": "freetype.txt",
-    "sha256": "98375db13e2a4abd9518c6660e66aa12f7144bd55bb3a83c36a64d73fe5fb865"
+    "original_sha256": "98375db13e2a4abd9518c6660e66aa12f7144bd55bb3a83c36a64d73fe5fb865",
+    "sha256": "b974b3e12c83de56ceec4d3ecc367b615b630f50e10f49754c734c2663a61394",
+    "normalization": "trailing whitespace removed for Git review; original log preserved in source companion"
   },
   {
     "original": "python-tools.log",
     "committed": "python-tools.txt",
-    "sha256": "6990071fe65d7e06e877ab84ce323cad2f6638cdb5a25f8a96e9dc863fced9ac"
+    "original_sha256": "6990071fe65d7e06e877ab84ce323cad2f6638cdb5a25f8a96e9dc863fced9ac",
+    "sha256": "6990071fe65d7e06e877ab84ce323cad2f6638cdb5a25f8a96e9dc863fced9ac",
+    "normalization": "trailing whitespace removed for Git review; original log preserved in source companion"
   },
   {
     "original": "fribidi.log",
     "committed": "fribidi.txt",
-    "sha256": "856488c60c56e7187a08416bd049caa5e5e1ba916ea19c82eb96bbd3b07e7a34"
+    "original_sha256": "856488c60c56e7187a08416bd049caa5e5e1ba916ea19c82eb96bbd3b07e7a34",
+    "sha256": "e061902c054c074e8ff89bd441775272046cbcf89721dac26a1676ba07994a44",
+    "normalization": "trailing whitespace removed for Git review; original log preserved in source companion"
   },
   {
     "original": "libass.log",
     "committed": "libass.txt",
-    "sha256": "89e5b7504dc22950cd287dab6a68a1303d41db8e7ae041b510a1f1324a675ae4"
+    "original_sha256": "89e5b7504dc22950cd287dab6a68a1303d41db8e7ae041b510a1f1324a675ae4",
+    "sha256": "2a91e975e5c893ee5cde817f9db8e40b529510d17260628e191a291dd2fc7b12",
+    "normalization": "trailing whitespace removed for Git review; original log preserved in source companion"
   },
   {
     "original": "mpv.log",
     "committed": "mpv.txt",
-    "sha256": "4017e6db5eafd70720a5797dab1af18dd538d7e0e33c7b094193d42a229e52e9"
+    "original_sha256": "4017e6db5eafd70720a5797dab1af18dd538d7e0e33c7b094193d42a229e52e9",
+    "sha256": "943770a1c3d383c3aa1b0764dd0c903f9346eae76a50be886acfb006eed2c816",
+    "normalization": "trailing whitespace removed for Git review; original log preserved in source companion"
   },
   {
     "original": "pkgconf.log",
     "committed": "pkgconf.txt",
-    "sha256": "621eb159e25d66dcd59d5c17d385405d2ed2a9d682d3bffe240f8c26d7f53b22"
+    "original_sha256": "621eb159e25d66dcd59d5c17d385405d2ed2a9d682d3bffe240f8c26d7f53b22",
+    "sha256": "3cbb8df5f647b8ef7b63466af6f6b48f81eee7434d47ce67fae3e99c92e08c1d",
+    "normalization": "trailing whitespace removed for Git review; original log preserved in source companion"
   }
 ]

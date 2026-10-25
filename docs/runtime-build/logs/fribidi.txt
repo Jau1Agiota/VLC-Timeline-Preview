@@ -15,20 +15,20 @@ Host machine cpu family: x86_64
 Host machine cpu: x86_64
 Target machine cpu family: x86_64
 Target machine cpu: x86_64
-Checking for function "memmove" : YES 
-Checking for function "memset" : YES 
-Checking for function "strdup" : YES 
-Has header "stdlib.h" : YES 
-Has header "string.h" : YES 
-Has header "memory.h" : YES 
-Has header "strings.h" : YES 
-Has header "sys/times.h" : NO 
+Checking for function "memmove" : YES
+Checking for function "memset" : YES
+Checking for function "strdup" : YES
+Has header "stdlib.h" : YES
+Has header "string.h" : YES
+Has header "memory.h" : YES
+Has header "strings.h" : YES
+Has header "sys/times.h" : NO
 Has header "strings.h" : YES (cached)
 Configuring config.h using configuration
 Has header "stdlib.h" : YES (cached)
 Has header "string.h" : YES (cached)
 Has header "strings.h" : YES (cached)
-Checking for size of "int" : 4 
+Checking for size of "int" : 4
 Configuring fribidi-config.h using configuration
 Found pkg-config: YES (/workspace/stage248B-final/tools/native/bin/pkgconf) 2.3.0
 Build targets in project: 15

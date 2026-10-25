@@ -16,9 +16,9 @@ Host machine cpu: x86_64
 Target machine cpu family: x86_64
 Target machine cpu: x86_64
 Program python3 found: YES (/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3)
-Has header "unistd.h" : YES 
-Has header "fcntl.h" : YES 
-Has header "sys/mman.h" : NO 
+Has header "unistd.h" : YES
+Has header "fcntl.h" : YES
+Has header "sys/mman.h" : NO
 Windows resource compiler: llvm-windres, compatible with GNU windres
 Found pkg-config: YES (/workspace/stage248B-final/tools/native/bin/pkgconf) 2.3.0
 Found CMake: NO

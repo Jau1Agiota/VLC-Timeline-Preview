@@ -19,13 +19,13 @@ Host machine cpu family: x86_64
 Host machine cpu: x86_64
 Target machine cpu family: x86_64
 Target machine cpu: x86_64
-Fetching value of define "_MSC_FULL_VER" : (undefined) 
-Compiler for C++ supports link arguments -Bsymbolic-functions: YES 
-Compiler for C++ supports arguments -fno-exceptions: YES 
-Compiler for C++ supports arguments -fno-rtti: YES 
-Compiler for C++ supports arguments -fno-threadsafe-statics: YES 
-Compiler for C++ supports arguments -fvisibility-inlines-hidden: YES 
-Compiler for C++ supports arguments -Wa,-mbig-obj: YES 
+Fetching value of define "_MSC_FULL_VER" : (undefined)
+Compiler for C++ supports link arguments -Bsymbolic-functions: YES
+Compiler for C++ supports arguments -fno-exceptions: YES
+Compiler for C++ supports arguments -fno-rtti: YES
+Compiler for C++ supports arguments -fno-threadsafe-statics: YES
+Compiler for C++ supports arguments -fvisibility-inlines-hidden: YES
+Compiler for C++ supports arguments -Wa,-mbig-obj: YES
 Library m found: YES
 src/harfbuzz/meson.build:113: WARNING: Project targets '>= 0.55.0' but uses feature introduced in '0.56.0': allow_fallback arg in dependency.
 Found pkg-config: YES (/workspace/stage248B-final/tools/native/bin/pkgconf) 2.3.0
@@ -37,23 +37,23 @@ Dependency graphite2 skipped: feature graphite disabled
 Library iwasm skipped: feature wasm disabled
 Dependency icu-uc skipped: feature icu disabled
 Dependency chafa skipped: feature chafa disabled
-Has header "unistd.h" : YES 
-Has header "sys/mman.h" : NO 
-Has header "stdbool.h" : YES 
-Has header "xlocale.h" : NO 
-Checking for function "atexit" : YES 
-Checking for function "mprotect" : NO 
-Checking for function "sysconf" : NO 
-Checking for function "getpagesize" : NO 
-Checking for function "mmap" : NO 
-Checking for function "isatty" : YES 
-Checking for function "uselocale" : NO 
-Checking for function "newlocale" : NO 
-Checking for function "sincosf" : YES 
-Checking for function "FT_Get_Var_Blend_Coordinates" with dependency freetype2: YES 
-Checking for function "FT_Set_Var_Blend_Coordinates" with dependency freetype2: YES 
-Checking for function "FT_Done_MM_Var" with dependency freetype2: YES 
-Checking for function "FT_Get_Transform" with dependency freetype2: YES 
+Has header "unistd.h" : YES
+Has header "sys/mman.h" : NO
+Has header "stdbool.h" : YES
+Has header "xlocale.h" : NO
+Checking for function "atexit" : YES
+Checking for function "mprotect" : NO
+Checking for function "sysconf" : NO
+Checking for function "getpagesize" : NO
+Checking for function "mmap" : NO
+Checking for function "isatty" : YES
+Checking for function "uselocale" : NO
+Checking for function "newlocale" : NO
+Checking for function "sincosf" : YES
+Checking for function "FT_Get_Var_Blend_Coordinates" with dependency freetype2: YES
+Checking for function "FT_Set_Var_Blend_Coordinates" with dependency freetype2: YES
+Checking for function "FT_Done_MM_Var" with dependency freetype2: YES
+Checking for function "FT_Get_Transform" with dependency freetype2: YES
 Program gen-hb-version.py found: YES (/workspace/stage248B-final/src/harfbuzz/src/gen-hb-version.py)
 Configuring hb-version.h with command
 Program ragel found: NO

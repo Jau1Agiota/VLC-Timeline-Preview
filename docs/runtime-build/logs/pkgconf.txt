@@ -9,22 +9,22 @@ C compiler for the host machine: cc (gcc 14.2.0 "cc (Debian 14.2.0-19) 14.2.0")
 C linker for the host machine: cc ld.bfd 2.44
 Host machine cpu family: x86_64
 Host machine cpu: x86_64
-Compiler for C supports arguments -Wimplicit-function-declaration: YES 
-Compiler for C supports arguments -Wmisleading-indentation: YES 
-Checking for function "strlcat" : YES 
-Header "string.h" has symbol "strlcat" : YES 
-Checking for function "strlcpy" : YES 
-Header "string.h" has symbol "strlcpy" : YES 
-Checking for function "strndup" : YES 
-Header "string.h" has symbol "strndup" : YES 
-Checking for function "strdup" : YES 
-Header "string.h" has symbol "strdup" : YES 
-Checking for function "strncasecmp" : YES 
-Header "strings.h" has symbol "strncasecmp" : YES 
-Checking for function "strcasecmp" : YES 
-Header "strings.h" has symbol "strcasecmp" : YES 
-Checking for function "reallocarray" : YES 
-Header "stdlib.h" has symbol "reallocarray" : YES 
+Compiler for C supports arguments -Wimplicit-function-declaration: YES
+Compiler for C supports arguments -Wmisleading-indentation: YES
+Checking for function "strlcat" : YES
+Header "string.h" has symbol "strlcat" : YES
+Checking for function "strlcpy" : YES
+Header "string.h" has symbol "strlcpy" : YES
+Checking for function "strndup" : YES
+Header "string.h" has symbol "strndup" : YES
+Checking for function "strdup" : YES
+Header "string.h" has symbol "strdup" : YES
+Checking for function "strncasecmp" : YES
+Header "strings.h" has symbol "strncasecmp" : YES
+Checking for function "strcasecmp" : YES
+Header "strings.h" has symbol "strcasecmp" : YES
+Checking for function "reallocarray" : YES
+Header "stdlib.h" has symbol "reallocarray" : YES
 Configuring config.h using configuration
 Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
 Program kyua found: NO

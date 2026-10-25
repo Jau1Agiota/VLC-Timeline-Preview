@@ -19,29 +19,29 @@ Host machine cpu family: x86_64
 Host machine cpu: x86_64
 Target machine cpu family: x86_64
 Target machine cpu: x86_64
-Compiler for C supports arguments -Wincompatible-pointer-types: YES 
-Compiler for C supports arguments -Wc23-extensions: YES 
-Compiler for C supports link arguments -Wl,--exclude-libs=ALL: NO 
+Compiler for C supports arguments -Wincompatible-pointer-types: YES
+Compiler for C supports arguments -Wc23-extensions: YES
+Compiler for C supports link arguments -Wl,--exclude-libs=ALL: NO
 Configuring libplacebo.rc using configuration
 Configuring demos.rc using configuration
 Library m found: YES
 Program python3 found: YES (/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3)
 Dependency libunwind skipped: feature unwind disabled
 Library execinfo found: NO
-Checking for function "backtrace_symbols" with dependency -lexecinfo: NO 
-Check usable header "dbghelp.h" : YES 
+Checking for function "backtrace_symbols" with dependency -lexecinfo: NO
+Check usable header "dbghelp.h" : YES
 Library shlwapi found: YES
-Fetching value of define "__MINGW32__" : 1 
+Fetching value of define "__MINGW32__" : 1
 Program llvm-dlltool found: YES (/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/llvm-dlltool)
 Dependency shaderc skipped: feature shaderc disabled
-Check usable header "d3d11.h" : YES 
+Check usable header "d3d11.h" : YES
 Check usable header "d3d11_4.h" skipped: feature d3d11 disabled
 Check usable header "dxgi1_6.h" skipped: feature d3d11 disabled
 Dependency spirv-cross-c-shared skipped: feature d3d11 disabled
 Library version skipped: feature d3d11 disabled
 Found pkg-config: YES (/workspace/stage248B-final/tools/native/bin/pkgconf) 2.3.0
 Run-time dependency vulkan found: NO (tried pkgconfig and system)
-Header "vulkan/vulkan_core.h" has symbol "VK_VERSION_1_4" with dependency vulkan: YES 
+Header "vulkan/vulkan_core.h" has symbol "VK_VERSION_1_4" with dependency vulkan: YES
 Dependency lcms2 skipped: feature lcms disabled
 src/libplacebo/src/meson.build:171: WARNING: Building without any graphics API. libplacebo built this way still has some limited use (e.g. generating GLSL shaders), but most of its functionality will be missing or impaired!
 Dependency dovi skipped: feature libdovi disabled

@@ -1,0 +1,1778 @@
+{
+  "schema_version": 1,
+  "provider": "shinchiro/mpv-winbuild-cmake",
+  "recipe_commit": "1f8d2e76255abc48f0456d9be99b4cab9c6566e6",
+  "scope": "all packages/*.cmake; includes build tools and optional recipes, not a static link manifest",
+  "packages": [
+    {
+      "recipe": "amf-headers.cmake",
+      "recipe_sha256": "bb0628f31bfd4e6db57ef3c5381f10e8bf8fb666acb62394558e71e34b339dca",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/GPUOpen-LibrariesAndSDKs/AMF.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "angle-headers.cmake",
+      "recipe_sha256": "7e4f4c7d2914f3129ed285d85b9de4a2b040bfb5233983611704fe107f2bd4de",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/google/angle.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "aom.cmake",
+      "recipe_sha256": "73c4f6335a5be0a8fb8639cea1936faa61c861f4cdb5c129e5384e3f04441eee",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://aomedia.googlesource.com/aom"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "avisynth-headers.cmake",
+      "recipe_sha256": "4cd756ff326b00256d03d03e4f86e1554a8b1a57f7d014368b99057149ca6685",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/AviSynth/AviSynthPlus.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "brotli.cmake",
+      "recipe_sha256": "b8554a6c7028bd3b0f1dd9361c0b7c6c6312e87d3793f3ce3dbf7f89d9fb9bc1",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/google/brotli.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "bzip2.cmake",
+      "recipe_sha256": "22c06023a62280f46de2b3dd73daac92eff15e6c6ad48be32c5a101bf911d0ec",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://gitlab.com/bzip2/bzip2.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "c-ares.cmake",
+      "recipe_sha256": "ff158ffb4add510160a78eef6473625d965ebf4bd57b0fc1e23275fcb48c6013",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/c-ares/c-ares.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "cryptopp.cmake",
+      "recipe_sha256": "1300146606723f8e70e18df43ac606c708d4dbab9e6affa764a7abae3d3a5db6",
+      "source_declarations": [
+        [
+          "URL",
+          "https://github.com/weidai11/cryptopp/archive/CRYPTOPP_8_2_0.tar.gz"
+        ],
+        [
+          "URL_HASH",
+          "SHA256=e3bcd48a62739ad179ad8064b523346abb53767bcbefc01fe37303412292343e"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "curl.cmake",
+      "recipe_sha256": "6d62968ba70a837e3dd760d2cdbee3706e88aec47a685e25b989b63fc13d001a",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/curl/curl.git"
+        ]
+      ],
+      "patch_files": [
+        {
+          "filename": "curl-0001-libssh-include-scp-declarations.patch",
+          "sha256": "0a764d47e6bc5bc2baf88a1d1949405710eabee2f71dbfc1ebbbde25257ff881"
+        }
+      ],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "dav1d.cmake",
+      "recipe_sha256": "c64418c6e46a296d414a4345eb8e7f61f68ae63490c573f6bcb7988e8b3782dc",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://code.videolan.org/videolan/dav1d.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "davs2.cmake",
+      "recipe_sha256": "0a8183fbcb5eb2c9ed6eec17ffd3e47d33663c484f5834b5a32e235ae3d772a2",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/saindriches/davs2.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "expat.cmake",
+      "recipe_sha256": "368e92a92117d8b96989c2050301ecf8f93947581eee899dd7d696284985450f",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/libexpat/libexpat.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "fast_float.cmake",
+      "recipe_sha256": "3781c52eb992b862eed0df9ea3b03884e9d7330b39cbe5be24858b732b85c2aa",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/fastfloat/fast_float.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "ffmpeg.cmake",
+      "recipe_sha256": "359c9c7da360f57d3a438e6fe117af6169cbd9aa3672751fd2bfc31e02be8fff",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/FFmpeg/FFmpeg.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "flac.cmake",
+      "recipe_sha256": "8fb507bfeff07f53d273591823abe6cd6ee78eeb66631f7b960c93c256292af9",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/xiph/flac.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "fontconfig.cmake",
+      "recipe_sha256": "c20c10d75476bf1f99818e5dda7644c94ae157372b9fd396c09f1b2122b006aa",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://gitlab.freedesktop.org/fontconfig/fontconfig.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [
+        {
+          "filename": "fontconfig-0001-Custom-changes-for-mpv-builds.patch",
+          "sha256": "98e4360a49f56e21520b3d5d73f8645526ade38d0ffb5f52654948eac59303c5"
+        },
+        {
+          "filename": "fontconfig-0002-Do-not-use-dirent.h.patch",
+          "sha256": "23c647fb41d361bbae1e2eccc03ad6947b5c30b08bcceb2c2a34b6610cb53b26"
+        }
+      ],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "freetype2.cmake",
+      "recipe_sha256": "eed687f636ec335af2e341537e089857f75a659e69d02da5176715628bf3b035",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/freetype/freetype.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "fribidi.cmake",
+      "recipe_sha256": "9a220a21c07099ebc6391d828a677697c4f147a781fcb54f86e038dbbf620321",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/fribidi/fribidi.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "game-music-emu.cmake",
+      "recipe_sha256": "c023ad08da8c0c7e6ad9bf0511e0acd5dabf53591cd15492e9385d677a5b3dbc",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://bitbucket.org/mpyne/game-music-emu.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "glad.cmake",
+      "recipe_sha256": "ee80b01e4fce4561f1d9dfa9f51474cc4b48ef7ef739227db6099aed36016468",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/Dav1dde/glad.git"
+        ],
+        [
+          "GIT_TAG",
+          "glad2"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "glslang.cmake",
+      "recipe_sha256": "164f4cef085f0224eb9b98eb7b4093880e5ad2ea4dba60bb00131f33f94a5d13",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/KhronosGroup/glslang.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "gmp.cmake",
+      "recipe_sha256": "52b11e76175215ed4973f9da8a12b463a254c8e97b1fc0c2a76bca338339c40b",
+      "source_declarations": [
+        [
+          "URL",
+          "https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"
+        ],
+        [
+          "URL_HASH",
+          "SHA256=a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "graphengine.cmake",
+      "recipe_sha256": "acfd98328265bee49b86a7ce64d6dd3e8c9201952385f3911625840a9a01869b",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/sekrit-twc/graphengine.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "harfbuzz.cmake",
+      "recipe_sha256": "9b8a2f9f2b7dfb440ff7f6c925489ae1cee64b3119f5556f6c103c786f653f4b",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/harfbuzz/harfbuzz.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "highway.cmake",
+      "recipe_sha256": "26b46bc1f08f35d7fda6f2bab349224e39a3972942ccad7aca3b8b768954fa87",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/google/highway.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "lame.cmake",
+      "recipe_sha256": "2fc016fa58c3d768c9f872ca715309c7b94cf815a4c3352d325f4d25650c2fa3",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://gitlab.com/shinchiro/lame.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "lcms2.cmake",
+      "recipe_sha256": "78ac60adc47be993cf59f7f1d318d78558a2850755a8b4b5181f68434245edbe",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/mm2/Little-CMS.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libarchive.cmake",
+      "recipe_sha256": "4f5dd14180a11f34159bb652ab536ffb3118f867fe76b2a7d312d0624491ed61",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/libarchive/libarchive.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libaribcaption.cmake",
+      "recipe_sha256": "5a51204655ceaba4341b39d043c00c39bd5884bf4a6f0a70358df1f0a05e128b",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/xqq/libaribcaption.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libass.cmake",
+      "recipe_sha256": "41ec0c08160e4d0a31b2d9dc214985056ad9b61d77530c526ee77b0acc9c84b6",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/libass/libass.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libbluray.cmake",
+      "recipe_sha256": "0a5d301070c3239a673a1b7f360d6a14cf4f3c9b366c8a29a09bb463208ca71b",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://code.videolan.org/videolan/libbluray.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libbs2b.cmake",
+      "recipe_sha256": "95c5f9d08215685a2cc367e302d6f248cfb66040d2d27f972f2e17f612a10ac9",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/alexmarsev/libbs2b.git"
+        ]
+      ],
+      "patch_files": [
+        {
+          "filename": "libbs2b-0001-build-library-only.patch",
+          "sha256": "1320ab6ba0daf3c3714c7a8c6a033eef6ed53f370c00479d1d6723e8480eb00e"
+        }
+      ],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libdvdcss.cmake",
+      "recipe_sha256": "d04294b88d2ff8444ac8ce40227b34970903d72c855d4561db902d2b304825eb",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://code.videolan.org/videolan/libdvdcss.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libdvdnav.cmake",
+      "recipe_sha256": "e1295fb2df314fca53d7a92247ee11b6592c62b49cd28dd4a79224225a1e9619",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://code.videolan.org/videolan/libdvdnav.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libdvdread.cmake",
+      "recipe_sha256": "bc494f70ffccbc75e021def2c2f21d913161bdf2912a33d9efccd99516041676",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://code.videolan.org/videolan/libdvdread.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libiconv.cmake",
+      "recipe_sha256": "4ef38914020072ff0a3ea21415809cbfae6c095ad9b7ff03e82c04df3da4a20a",
+      "source_declarations": [
+        [
+          "URL",
+          "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.18.tar.gz"
+        ],
+        [
+          "URL_HASH",
+          "SHA256=3B08F5F4F9B4EB82F151A7040BFD6FE6C6FB922EFE4B1659C66EA933276965E8"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libjpeg.cmake",
+      "recipe_sha256": "8ab2b1835ec12a5db8152146b8a814b7944b69f0b8ec0d477d79cd731a7c5019",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/libjpeg-turbo/libjpeg-turbo.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libjxl.cmake",
+      "recipe_sha256": "ac5b42e265fd2949fb2ed9429ca8ce96a1784fe2e4bf908cdfdec1e7fb9e4bd7",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/libjxl/libjxl.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libmfx.cmake",
+      "recipe_sha256": "6ff23485271151dcd1d321d4e9d0050c3a5162199f1741d01a180499a0636bf7",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/lu-zero/mfx_dispatch.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libmodplug.cmake",
+      "recipe_sha256": "5c41503e29f825753f204d0e98bc2560e5d67ffbb14f4a194d8d4a0a593cf0b0",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/Konstanty/libmodplug.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libmysofa.cmake",
+      "recipe_sha256": "f36dca3dece42a06f1d201d2fec621dcb37e978ef7617231787a223cb2eeb532",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/hoene/libmysofa.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libopenmpt.cmake",
+      "recipe_sha256": "0d5c354daa9e076768405bb2fc2aae75e8ad49800a305dfd2a2709eac61c400d",
+      "source_declarations": [
+        [
+          "URL",
+          "https://lib.openmpt.org/files/libopenmpt/src/libopenmpt-0.7.12+release.autotools.tar.gz"
+        ],
+        [
+          "URL_HASH",
+          "SHA256=79AB3CE3672601E525B5CC944F026C80C03032F37D39CAA84C8CA3FDD75E0C98"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libopusenc.cmake",
+      "recipe_sha256": "e70974b3415938988a9e3f3ca7a2d96e47f087a6ef8a23b52cdbb92e342a0d7f",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/xiph/libopusenc.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libplacebo.cmake",
+      "recipe_sha256": "64c407a343a43bfe8b372b12d5dac4621d1362f094239cfb2c215e6ce213332f",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/haasn/libplacebo.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libpng.cmake",
+      "recipe_sha256": "b6d7aa5b712c87b0d023e1506fefe0190eeab6849c3e63eeba9f329d65657720",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/glennrp/libpng.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libpsl.cmake",
+      "recipe_sha256": "de81de4a2791976cc1d52c114f3861ceae2154f825b3dcb0e609e09163d8b56f",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/rockdaboot/libpsl.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libressl.cmake",
+      "recipe_sha256": "08acd52f5b8527d1423bf1bd1540187e42f9f5b13f8aeacd00d28926b97c919e",
+      "source_declarations": [
+        [
+          "URL",
+          "https://cdn.openbsd.org/pub/OpenBSD/LibreSSL/libressl-3.1.5.tar.gz"
+        ],
+        [
+          "URL_HASH",
+          "SHA256=2c13ddcec5081c0e7ba7f93d8370a91911173090f1922007e1d90de274500494"
+        ]
+      ],
+      "patch_files": [
+        {
+          "filename": "libressl-0001-remove-postfix-in-libs-name.patch",
+          "sha256": "1c61b877840a2681295251ae4ffe6f1b28e2818d5b1fcc92b4eef9f84b4bd812"
+        }
+      ],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libsamplerate.cmake",
+      "recipe_sha256": "aec154ae791c215ef7669c30718bbc0dec7f6b727ea90145892b2ed664875b65",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/libsndfile/libsamplerate.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libsdl2.cmake",
+      "recipe_sha256": "e323098f27a92e23b406698ff1de547ca64c2d53c026fadd56a3e8d1e8732473",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/libsdl-org/SDL.git"
+        ],
+        [
+          "GIT_TAG",
+          "SDL2"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libsixel.cmake",
+      "recipe_sha256": "999c757d24a44da84b37b00cc7227750f86fb10302f0179af87a59f880b1ee77",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/saitoha/libsixel.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libsodium.cmake",
+      "recipe_sha256": "b191cc2d6e647864d6f1efb1c658102371e6e14b773e52df883e7b0021dd9a40",
+      "source_declarations": [
+        [
+          "URL",
+          "https://github.com/jedisct1/libsodium/archive/1.0.18.tar.gz"
+        ],
+        [
+          "URL_HASH",
+          "SHA256=d59323c6b712a1519a5daf710b68f5e7fde57040845ffec53850911f10a5d4f4"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libsoxr.cmake",
+      "recipe_sha256": "cec59d2ed74e2de1d3984eee656d475df047a2331d4b68219677d3a363bde38e",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://gitlab.com/shinchiro/soxr.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libsrt.cmake",
+      "recipe_sha256": "ab11608addcf34fac0f738a5abe3c35ead91e9bf1802373b2e5a94c6312b22b7",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/Haivision/srt.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libssh.cmake",
+      "recipe_sha256": "31a497f6b79da6d518f3422456fdbaca58d354455a3ebf8832bc0f0bd2f568d6",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://gitlab.com/libssh/libssh-mirror.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libudfread.cmake",
+      "recipe_sha256": "0607b8034ca0feaebb4caff99cfca1ed1be8108c8c35b29b85a58ec0d872112a",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://code.videolan.org/videolan/libudfread.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libunibreak.cmake",
+      "recipe_sha256": "049156f79446ae26709c711abc0321c38ed723f5e45815de7cd5d2a11a74c00a",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/adah1972/libunibreak.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libuv.cmake",
+      "recipe_sha256": "b642900b8d211433b8db448c8c0ac8222dd8c50e82f70bdcd4fdf7562d4f9fa2",
+      "source_declarations": [
+        [
+          "URL",
+          "https://github.com/libuv/libuv/archive/v1.40.0.tar.gz"
+        ],
+        [
+          "URL_HASH",
+          "SHA256=70fe1c9ba4f2c509e8166c0ca2351000237da573bb6c82092339207a9715ba6b"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libva.cmake",
+      "recipe_sha256": "93ec04ce9d24844d548c69d20cc077c7c1a187901886d3956e021ed1b9aeb718",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/intel/libva.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libvpl.cmake",
+      "recipe_sha256": "f590f3290564e30bb17237ba2ea77e1e434a0e30dea524fbecd8bdbea8031527",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/intel/libvpl.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [
+        {
+          "filename": "libvpl-0001-fix-mingw-secure-string-macros.patch",
+          "sha256": "b6fcecf3ad3e7aaf1d12b9486fff45e3a2c54288ef0877ae4467819db40bb304"
+        }
+      ],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libvpx.cmake",
+      "recipe_sha256": "728c41fd3b6613fb0df4025b65c2ea8bb66781441cba23569c94cb36e9342164",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://chromium.googlesource.com/webm/libvpx.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libwebp.cmake",
+      "recipe_sha256": "390d3b131e2dfa8a4fa093b7d05b2d3e6967962240057f0c183d4201f045aa45",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://chromium.googlesource.com/webm/libwebp.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libxml2.cmake",
+      "recipe_sha256": "49de5caa0199c4291564408254f830539073721286aa3c715650d2fb791706fd",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/GNOME/libxml2.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libzimg.cmake",
+      "recipe_sha256": "918aac808ae4d526a9148c16735a615c6e7467ccda623afca07d34aee4b87c06",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/sekrit-twc/zimg.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "libzvbi.cmake",
+      "recipe_sha256": "a647dbfaf97d65e6cc60a0ed0c19cca2a5316f1d3ec9fadd45e368d4f66bb2e9",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/zapping-vbi/zvbi.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "luajit.cmake",
+      "recipe_sha256": "75ffc396d502c453d4606238430fc70171aebfa3e26410a4f5b65405c7c49022",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/openresty/luajit2.git"
+        ],
+        [
+          "GIT_TAG",
+          "v2.1-agentzh"
+        ]
+      ],
+      "patch_files": [
+        {
+          "filename": "luajit-0001-add-win32-utf-8-filesystem-functions.patch",
+          "sha256": "d25b1d72af66804a73de13d4f4b8dc29ba7bc3c6185311d3ffd6c2205970b089"
+        }
+      ],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "lzo.cmake",
+      "recipe_sha256": "dbdb89326b8a02674195a34fff54a2d98f640f178fe62211fb7e2a6675cf3aa4",
+      "source_declarations": [
+        [
+          "URL",
+          "https://www.oberhumer.com/opensource/lzo/download/lzo-2.10.tar.gz"
+        ],
+        [
+          "URL_HASH",
+          "SHA1=4924676a9bae5db58ef129dc1cebce3baa3c4b5d"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "mbedtls.cmake",
+      "recipe_sha256": "c43469d77f50652718044e792b10f7db4ee378cb81949cdd3020e78b414083d6",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/Mbed-TLS/mbedtls.git"
+        ],
+        [
+          "GIT_TAG",
+          "master"
+        ]
+      ],
+      "patch_files": [
+        {
+          "filename": "mbedtls-0001-include-cpuid.patch",
+          "sha256": "0df681474f37714fc2874ce206720997ab91248e457a410905a52e80c8b1099e"
+        }
+      ],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "megasdk.cmake",
+      "recipe_sha256": "adb98cc2bedddb6e23826977ff00821a71e4465f4aa5d47a1f570871d950cd51",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/meganz/sdk.git"
+        ]
+      ],
+      "patch_files": [
+        {
+          "filename": "megasdk-0001-megacli-remove-warn-never-print-file-attributes.patch",
+          "sha256": "c33aff8f144ad76c99a5aadb994da966813da7934ff60b00def12570403a025d"
+        },
+        {
+          "filename": "megasdk-0002-fix-compile.patch",
+          "sha256": "a51634763ae44a4f9b5df2c5b3091689fa4c5ea1cc8fa7960393b2c900c0f8d8"
+        }
+      ],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "mpv-packaging.cmake",
+      "recipe_sha256": "301bedf93ba5c4533d01b76139e9fc89e73085ab5050c2c3b493df93b7b8538a",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/shinchiro/mpv-packaging.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "mpv-release.cmake",
+      "recipe_sha256": "b9d03ca2a8dcf744cc2840817b69a5eee8230bf6d87b314b90b55d71116d8415",
+      "source_declarations": [
+        [
+          "URL",
+          "${LINK}"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "mpv.cmake",
+      "recipe_sha256": "cfb9b0fbaaf6013069fe3eeda7e9e9644546f09cd772dbd549f8eb7fa21c7122",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/mpv-player/mpv.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "mujs.cmake",
+      "recipe_sha256": "226d428b98e53dd5a1dea6609f0a273293a56951f53012408e4ee57b3a28fce4",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://codeberg.org/ccxvii/mujs.git"
+        ]
+      ],
+      "patch_files": [
+        {
+          "filename": "mujs-0001-add-exe-to-binary-name.patch",
+          "sha256": "7bbd08072c3e3d3d1177d1e3ac4ba25eca250036062c8c8db582899c97b27714"
+        }
+      ],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "nettle.cmake",
+      "recipe_sha256": "5884be4c21aa8da4c8b3ccad754f06641bd02efe3f803e3bca0fa88c573ea280",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://gitlab.com/shinchiro/nettle.git"
+        ]
+      ],
+      "patch_files": [
+        {
+          "filename": "nettle-0001-skip-compiling-testsuite-and-examples.patch",
+          "sha256": "ec425715b474d2eadeadf46211cf589bf33567fe2b2450d841a18e83f2b9c584"
+        }
+      ],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "nghttp2.cmake",
+      "recipe_sha256": "d0d670835d662475e66d5083e745469f252458c0596b99c7cd34a2ba667ee872",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/nghttp2/nghttp2.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "nghttp3.cmake",
+      "recipe_sha256": "190be5c09681097f68656ccac9b40b6de639ef861ce1c304601abd62a2ec1f54",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/ngtcp2/nghttp3.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "ngtcp2.cmake",
+      "recipe_sha256": "fcf6d10a3544073065b35eb8ff9d8e9efc788de979f5dedbbc6c522e87abec54",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/ngtcp2/ngtcp2.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "nvcodec-headers.cmake",
+      "recipe_sha256": "ada268ec2e56867a085e66f491e4bdce80bc2ccf84e591ecef75030ee04cab9f",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/FFmpeg/nv-codec-headers.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "ogg.cmake",
+      "recipe_sha256": "434cc5dd65190191772ffd44c68d10cffdb063eee3ea78f4b562b42be762bc2f",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/xiph/ogg.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "openal-soft.cmake",
+      "recipe_sha256": "7dfbca2848cbba0ff98d87b3fe4b29931ed9dddef59ccc8eb531c22aea00f5ab",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/kcat/openal-soft.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "openssl.cmake",
+      "recipe_sha256": "79cd848d11ebb59ccc55db4fa237e94d600428bbd9ae255c9abeb613ca4be8fc",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/openssl/openssl.git"
+        ]
+      ],
+      "patch_files": [
+        {
+          "filename": "openssl-0001-workaround-missing-flag-in-mingw.patch",
+          "sha256": "ed45399710118a832e8f7b202a18bdb71cf3da536f41daab736525dac6ac6e33"
+        }
+      ],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "opus-dnn.cmake",
+      "recipe_sha256": "6d0290f20a218b724317b260eace7e69da8529c644a7cbc0e4ae533c0d2adbed",
+      "source_declarations": [
+        [
+          "URL",
+          "https://media.xiph.org/opus/models/opus_data-8a07d57c4fce6fb30f23b3e0d264004e04f1d7b421f5392ef61543d021a439af.tar.gz"
+        ],
+        [
+          "URL_HASH",
+          "SHA256=8a07d57c4fce6fb30f23b3e0d264004e04f1d7b421f5392ef61543d021a439af"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "opus-tools.cmake",
+      "recipe_sha256": "3849737cb327093a40f538d374d79524b8f00eb926f4e69a595022ffb1d5ebde",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/xiph/opus-tools.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "opus.cmake",
+      "recipe_sha256": "2762c05c3e2cabf4f3959fdf60ea88bca522151be5940bd454cc5d3a106aa428",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/xiph/opus.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "opusfile.cmake",
+      "recipe_sha256": "117f365ca468c10feb951dde1f55ca8670341fdf4fee5a58835cb9ee01adbb9d",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/xiph/opusfile.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "readline.cmake",
+      "recipe_sha256": "cedb6e9bb6dbbe268bbc59234df507aeb5eed793a2272662e98f1310e239ae2e",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://git.sailfishos.org/mirror/readline.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "rubberband.cmake",
+      "recipe_sha256": "988619a42e100de14d5c05cd65fd80b49b13334324726eb6634f56b7c4b05da0",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/breakfastquay/rubberband.git"
+        ],
+        [
+          "GIT_TAG",
+          "default"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "shaderc.cmake",
+      "recipe_sha256": "d96198710bb6747e4386c706ceedc9c542d7f6a8c368b8c4623db7ee98233daa",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/google/shaderc.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "speex.cmake",
+      "recipe_sha256": "75a53b5a46f60bb1c09805c712fc8522e9ddeea55c02bdc033f07795d0541038",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/xiph/speex.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "spirv-cross.cmake",
+      "recipe_sha256": "a101e31511fed851006a88ecd8df71acd5fe498d9adc800d7bd455baf1e7a56c",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/KhronosGroup/SPIRV-Cross.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [
+        {
+          "filename": "spirv-cross-0001-static-linking-hacks.patch",
+          "sha256": "bc59cdf1f54b27dc82e181baf9cdd179007b1fbfc92dc95695159201f9f26c79"
+        }
+      ],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "spirv-headers.cmake",
+      "recipe_sha256": "55f35846e4bac576a88351eba0d4e141b6786e0988004a3b1fdff111ac0ca173",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/KhronosGroup/SPIRV-Headers.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "spirv-tools.cmake",
+      "recipe_sha256": "3feb4110baa93cabded6564caba08bdce883fba93797fa40860bd3713271bfc8",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/KhronosGroup/SPIRV-Tools.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "sqlite.cmake",
+      "recipe_sha256": "bd267cad291cb594cebc6235ce0d36f0d3645b2b1dc03845c54d73dcdf041631",
+      "source_declarations": [
+        [
+          "URL",
+          "https://www.sqlite.org/2020/sqlite-autoconf-3330000.tar.gz"
+        ],
+        [
+          "URL_HASH",
+          "SHA3_256=6e94e9453cedf8f2023e3923f856741d1e28a2271e9f93d24d95fa48870edaad"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "subrandr.cmake",
+      "recipe_sha256": "cbf83815bc10a86c38151633826e413d34167410bc9569ee22c045c53a01f477",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/afishhh/subrandr.git"
+        ],
+        [
+          "GIT_TAG",
+          "master"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "svtav1.cmake",
+      "recipe_sha256": "4649b91fa340471263d52ef23fcd5dd0ff520dc60e91df564ce1059c4be27c9e",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://gitlab.com/AOMediaCodec/SVT-AV1.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "termcap.cmake",
+      "recipe_sha256": "8f9509e90ee7e9869f8a92010b43231acd7cbd3ad3d8abfd48cfc38652ce40a3",
+      "source_declarations": [
+        [
+          "URL",
+          "https://ftp.gnu.org/gnu/termcap/termcap-1.3.1.tar.gz"
+        ],
+        [
+          "URL_HASH",
+          "SHA256=91a0e22e5387ca4467b5bcb18edf1c51b930262fd466d5fda396dd9d26719100"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "uavs3d.cmake",
+      "recipe_sha256": "d3d8b5282f9b0a82041cb702415eabdb1e762d1fae36d0203609c08546cc3714",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/uavs3/uavs3d.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "uchardet.cmake",
+      "recipe_sha256": "8f47694c5e80817a39e78d60710b2d16a2e462b237af9a5a662e289060f104f8",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://gitlab.freedesktop.org/uchardet/uchardet.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "vapoursynth.cmake",
+      "recipe_sha256": "af684ecd93f7c8a7b33d65e727c6de42c5dcd8492e558d0d8b6cedcc8fbc0dc6",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/vapoursynth/vapoursynth.git"
+        ],
+        [
+          "GIT_TAG",
+          "master"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "vorbis.cmake",
+      "recipe_sha256": "398d8290d23fbf27eedee4a39d435c061a5fe51b20a1d67cc22e063ace9a057d",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/xiph/vorbis.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "vulkan-header.cmake",
+      "recipe_sha256": "b8a40525e3c781c51663ed3dadd3bf837035b94cfac1c1c2589679b21567fe36",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/KhronosGroup/Vulkan-Headers.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "vulkan.cmake",
+      "recipe_sha256": "d904d9ffb4a86d14849824f34a932fadf0b18c9fe58619c83392a339943a0bef",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/KhronosGroup/Vulkan-Loader.git"
+        ],
+        [
+          "GIT_TAG",
+          "main"
+        ]
+      ],
+      "patch_files": [
+        {
+          "filename": "vulkan-0001-cross-compile-static-linking-hacks.patch",
+          "sha256": "b3151abd6c4c5e6730e2767d500b9f9f02952f0d94f72f382e10212ef2f8181a"
+        }
+      ],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "x264.cmake",
+      "recipe_sha256": "bc49bd473b91620a8a71f9b88bd28b85a3cc8f680cb283a6f8e1808f5f737ec7",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://code.videolan.org/videolan/x264.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "x265.cmake",
+      "recipe_sha256": "1e85d352aeda1b77378f00e691b2dc8cd3c350f8f33968f6b147c062043a142a",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/Multicorewareinc/x265.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "xvidcore.cmake",
+      "recipe_sha256": "48ac0fd5e16a4f93fedd986d1f4c8a90e597585936d92fcf919e79d72ec83ebc",
+      "source_declarations": [
+        [
+          "URL",
+          "\"https://downloads.xvid.com/downloads/xvidcore-1.3.7.tar.bz2\""
+        ],
+        [
+          "URL_HASH",
+          "SHA256=aeeaae952d4db395249839a3bd03841d6844843f5a4f84c271ff88f7aa1acff7"
+        ]
+      ],
+      "patch_files": [
+        {
+          "filename": "xvidcore-2-win64.patch",
+          "sha256": "b737e125383b19f41bfb1b79c727069455911cd1bba543e26d929a04e61d9a39"
+        }
+      ],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "xxhash.cmake",
+      "recipe_sha256": "0e732aa5a163749cc3876e34309f48cea3fb60464f5d6c229b4ce03e5eb647bb",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/Cyan4973/xxHash.git"
+        ],
+        [
+          "GIT_TAG",
+          "dev"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "xz.cmake",
+      "recipe_sha256": "d7c809cfae2f7bb73bd3b216ee412dc8155f9fef481ea367fc87e87da3ce71b7",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/tukaani-project/xz.git"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "zlib.cmake",
+      "recipe_sha256": "1946f0b75dcb229abe0323644e9453c0868fef1264c28a64f2f02fb4b0f0369d",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/zlib-ng/zlib-ng.git"
+        ],
+        [
+          "GIT_TAG",
+          "develop"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    },
+    {
+      "recipe": "zstd.cmake",
+      "recipe_sha256": "84c3e98c148ab52579c99106ac5f1256e842d3dd51369ad222c1d9f71fb716cb",
+      "source_declarations": [
+        [
+          "GIT_REPOSITORY",
+          "https://github.com/facebook/zstd.git"
+        ],
+        [
+          "GIT_TAG",
+          "dev"
+        ]
+      ],
+      "patch_files": [],
+      "resolved_build_revision": null,
+      "actually_linked": "unverified; recipe presence is not binary membership",
+      "license": "unresolved; inspect exact selected source and notices"
+    }
+  ]
+}

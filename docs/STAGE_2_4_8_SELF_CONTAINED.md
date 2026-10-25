@@ -133,3 +133,13 @@ public Release or replacement of Stage F artifacts is part of this stage.
   extraction benchmarks and a full VLC build were not run. No new GitHub-hosted
   CI result is claimed, and no package structure test can certify a nonexistent
   Stage 2.4.8 artifact. Existing packager tests retain their fail-closed DLL guard.
+
+## Stage 2.4.8A follow-up
+
+[Runtime resolution investigation](runtime-audit/RUNTIME_RESOLUTION.md) adds
+measured SDK imports/hashes, provider recipe and retained-artifact evidence,
+machine-readable inventories/notices, a source-delivery plan and a source-pinned
+alternative build design. Redistribution is conditionally possible, not forbidden
+because of GPL. Full static-source and final-package closure remain unresolved;
+no runtime was built/replaced and no offline artifact is cleared. The existing
+packaging guard, launcher and working engine remain unchanged.

@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-25",
+  "mpv_commit": "e471496c56f0f49c133bd88b50aed62b845f1909",
+  "ffmpeg_commit": "9a861e9687d30e657d59521817cad18405995983",
+  "alternative_libplacebo_commit": "cee9b076f2c63104ccfd497fa79c39a867293ec4",
+  "candidate_vulkan_loader_commit": "809941a4ca137df69dc9c6e8eb456bd70309197c",
+  "local_research_response_sha256": {
+    "provider-release": "0cab8345e9f9aa7c9d479cdd9e0b813f45fe0a9b87304eee12027375d043f947",
+    "provider-run": "866b2e2d8bb14fb5a96efd14f7305135ee597f2c6242bfad5d5374372a0164c6",
+    "provider-artifacts": "299ddbff0a4083746d5b32e4b1b187ec2627f9fbe45412ffc349dc2b7fd1eab9",
+    "mpv-options": "d12225f7d84f7bef3c35a4a91f839604934cf48a6d94b34a302b08a1cd53117e",
+    "mpv-build": "26ac765a1f6c685ec8678ccdd313187ad5c1871e74924dad11d6c412dfd88074",
+    "mpv-copyright": "bfe9ee4cceabcb8ecbfadf208d04156f73d801e6a57369a5606bb8341e204a23",
+    "render-sw": "746f788716621bc7b0de3d2e02b015de459f8870404f7c8b87a62d987b99c0fc",
+    "loader-license": "43c0a37e6a0fa7ff3c843b3ec5a4fac84b712558ddac103fbd4c1649662a9ece",
+    "loader-cmake": "ad756d1c039da52a40606b5890197a36c22425c52a3cc42543809a7e810b541d",
+    "placebo-options": "c3e83797d567108e89f4c76c1ca5fc8124da4c4e27a686230570056d0aedeed5",
+    "placebo-build": "55d5c686404f976ffd49c000f76c1ace926a0aa0a5ac0c5dfa4ca4e8067b33d8",
+    "placebo-license": "b3aa400aca6d2ba1f0bd03bd98d03d1fe7489a3bbb26969d72016360af8a5c9d",
+    "ffmpeg-commit": "7406a47bdabd8c60f479ea05d587c574b116ee0b51aa3ea5ea97103e0c53fe03",
+    "loader-tag": "b79a03e314222677594a2b94ce62761fdbece69c6753d36fc4762a0494923b76",
+    "ffmpeg-configure": "abc8f22943eb84d7cb765db7a004b163e06ce97606b3a668157be37c1d5e98ab"
+  },
+  "release_asset_names": [
+    "ffmpeg-aarch64-git-9a861e968.7z",
+    "ffmpeg-i686-git-9a861e968.7z",
+    "ffmpeg-x86_64-git-9a861e968.7z",
+    "ffmpeg-x86_64-v3-git-9a861e968.7z",
+    "mpv-aarch64-20261021-git-e471496c56.7z",
+    "mpv-dev-aarch64-20261021-git-e471496c56.7z",
+    "mpv-dev-i686-20261021-git-e471496c56.7z",
+    "mpv-dev-x86_64-20261021-git-e471496c56.7z",
+    "mpv-dev-x86_64-v3-20261021-git-e471496c56.7z",
+    "mpv-i686-20261021-git-e471496c56.7z",
+    "mpv-x86_64-20261021-git-e471496c56.7z",
+    "mpv-x86_64-v3-20261021-git-e471496c56.7z"
+  ],
+  "retained_workflow_artifact_names": [
+    "mpv-x86_64",
+    "mpv-i686",
+    "mpv-aarch64-debug",
+    "mpv-x86_64_v3",
+    "mpv-x86_64_v3-debug",
+    "mpv-i686-debug",
+    "mpv-x86_64-debug",
+    "mpv-aarch64"
+  ],
+  "full_package_inventory_complete": false,
+  "source_delivery_complete": false,
+  "runtime_built": false,
+  "windows_tested": false,
+  "stage_f_inventory_blocker": {
+    "command": "gh run download 40192202973 --repo Jau1Agiota/VLC-Timeline-Preview --name VLC-Timeline-Preview-Stage-246F-Portable-e29d1dc98c01e64de60de0fe2f299acd2af57aca-40192202973-1 --dir NEW_DIRECTORY",
+    "exit_code": 1,
+    "download_host": "productionresultssa8.blob.core.windows.net",
+    "sanitized_error": "Forbidden",
+    "signed_url_omitted": true
+  }
+}

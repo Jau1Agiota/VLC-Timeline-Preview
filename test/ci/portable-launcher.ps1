@@ -6,8 +6,13 @@ $app=(Resolve-Path -LiteralPath $Application).Path
 $ps=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 $script=Join-Path $app 'portable\Start-Portable.ps1'
 function Run-Setup([string]$Mode){
-    & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $script $Mode
-    if($LASTEXITCODE -ne 0){throw "Portable setup failed: $Mode"}
+    Write-Output "::notice title=Portable setup phase::$Mode"
+    $details=(& $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $script $Mode 2>&1 | Out-String)
+    if($LASTEXITCODE -ne 0){
+        $safe=$details.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+        Write-Output "::error title=Portable setup failure::$safe"
+        throw "Portable setup failed: $Mode"
+    }
 }
 Run-Setup '-SetupOnly'
 $dll=Join-Path $app 'portable-data\runtime\libmpv-2.dll'
@@ -25,6 +30,7 @@ try {
 Run-Setup '-ValidateOnly'
 & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $script -ValidateOnly -StageWorkerLocally
 if($LASTEXITCODE -ne 0){throw 'Fixed-drive staging validation failed'}
+Write-Output '::notice title=Portable setup phase::Native launcher cached startup'
 $expected=Join-Path $app 'vlc.exe'
 $existing=@(Get-Process vlc -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
 Start-Process -FilePath (Join-Path $app 'Start VLC Timeline Preview.exe') | Out-Null

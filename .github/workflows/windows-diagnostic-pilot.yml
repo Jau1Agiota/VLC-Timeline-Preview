@@ -236,7 +236,12 @@ jobs:
           if(-not $p.WaitForExit(45000)){$p.Kill();throw 'VLC process launch/exit timeout'}
           if($p.ExitCode -ne 0){throw "VLC process exit $($p.ExitCode)"}
           if($env:VLC_CI_STAGE -eq '2.4.6F'){
-            & ./test/ci/portable-launcher.ps1 -Application $app
+            try { & ./test/ci/portable-launcher.ps1 -Application $app }
+            catch {
+              $detail=($_ | Out-String).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+              Write-Output "::error title=Stage F launcher check::$detail"
+              throw
+            }
           }
           if($env:VLC_CI_STAGE -in @('2.4.6D','2.4.6E','2.4.6F')){
             $smokeOutput=Join-Path (Resolve-Path results).Path "qt-stability-smoke"

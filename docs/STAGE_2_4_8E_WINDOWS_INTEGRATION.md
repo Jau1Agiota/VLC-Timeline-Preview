@@ -10,10 +10,18 @@ requires fresh physical Windows acceptance.
 
 Run the manual **Windows diagnostic pilot (CI-1)** GitHub Actions workflow
 on `feature/stage-2.4.8E-windows-integration` with **offline_prototype_only=true**.
-Leave other switches false. This skips every application/dependency build job. Its Windows x64 tools ZIP contains the
+Leave other switches false. This skips every application/dependency build job.
+Its Windows x64 tools ZIP contains the
 new launcher, assembly scripts, source, instructions and checksum. It contains
 **no VLC application, libmpv DLL or assembled offline application**. The workflow
 has `contents: read` and cannot publish a release. Artifacts expire after 14 days.
+
+The verified tools pilot passed in [run 40239015824](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/40239015824).
+Download the [tools artifact](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/40239015824/artifacts/12615990861)
+(GitHub sign-in required; expires 8 November 2026). It is not the application ZIP.
+The GitHub artifact wrapper SHA-256 is
+`c4f6115bead9041763239856af0771d8153c73e908d5780ff12b5101bcea6306`;
+the enclosed versioned tools ZIP has its own separate `.sha256` sidecar.
 
 Extract these tools into a new folder. Verify the downloaded ZIP against its
 `.sha256` file with `Get-FileHash -Algorithm SHA256` before using it.
@@ -95,7 +103,7 @@ paths, UNC/device paths and launcher command-line options are rejected. Raw
 Explorer arguments are bounded to 8,000 UTF-16 code units. Advanced diagnostics
 still use the script's existing explicit switches, rather than the native EXE.
 
-A no-file launch focuses the most recently started live VLC **from this folder**,
+A no-file launch focuses the last tracked VLC **from this folder**, if it is still alive,
 validated by PID, process start time and executable path. If none is found it
 starts normally. A file-open request intentionally starts a separate, initialized
 portable session. Multiple file arguments in one request share that session.
@@ -139,3 +147,23 @@ prevent the authorized private local prototype. Public redistribution remains
 Tests and CI results are recorded in `docs/evidence/stage_2_4_8E_tests.json`.
 Automated Windows runner tests do not establish physical device acceptance or
 perceived thumbnail performance.
+
+## Recorded verification
+
+The Windows 2022 / inbox PowerShell 5.1 run passed native C compilation, native
+EXE-to-PS5 Unicode/path forwarding, CRT quoting, registry registration/removal,
+unchanged default/UserChoice values, owner-conflict rejection, missing/moved
+folder cleanup, per-folder live/stale process tests, offline assembly and Vulkan
+mock/native probes. The launcher is linked with `/MT` and its direct imports are
+checked against a Windows-system DLL allowlist. This requires no separate Visual
+C++ runtime installation. The native fixture window was not VLC playback.
+
+Local pinned GCC 6.4.0 cross-compilation passed with `-Wall -Wextra -Werror`.
+The public guard/packaging suite passed 47 tests with 1 skip; Bash syntax,
+ShellCheck and actionlint passed. Linux PowerShell fixture tests and genuine-DLL
+copy/hash/ZIP checks passed with synthetic VLC files; no complete real application
+was assembled in the cloud. The first CI test assertion confused an absent
+extension parent with an empty newly created key; it was corrected to compare
+actual default values. No production default-association behavior was changed.
+
+No physical Windows playback or default-app chooser acceptance is claimed.

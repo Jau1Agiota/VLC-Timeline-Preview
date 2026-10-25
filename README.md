@@ -8,7 +8,7 @@ VLC; this project is independently maintained and is not endorsed by VideoLAN.
 
 > **Download status:** A fully offline, self-contained public package is not yet
 > available. Stage 2.4.8 is blocked on runtime redistribution and dependency
-> completeness. No Stage 2.4.8 ZIP or GitHub Release has been produced.
+> completeness. No public Stage 2.4.8 ZIP or GitHub Release has been produced.
 
 ## Private offline prototype and Windows integration
 
@@ -131,11 +131,11 @@ of an assembled Windows package. See the [licensing report](docs/STAGE_2_4_8_SEL
 [Stage 2.4.8C original-runtime review](docs/original-runtime/REVIEW.md) preserves
 the physically tested DLL and adds prerequisite diagnostics. The replacement
 runtime from PR24 is not adopted. Original-runtime redistribution remains gated;
-no new offline ZIP is available.
+no public offline ZIP is available.
 
 ## Release preparation
 
 No public offline binary is approved yet. The [release checklist](docs/RELEASE_CHECKLIST.md)
 records source, notices, checksum and Windows acceptance gates. The manual
-Windows integration tools workflow distributes only this project's launcher,
+Windows diagnostic pilot's tools-only mode distributes only this project's launcher,
 source and scripts, never VLC or the original third-party runtime.

@@ -1,7 +1,11 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
  * Thin Unicode bootstrap only. No playback, decoding or configuration logic. */
+#ifndef UNICODE
 #define UNICODE
+#endif
+#ifndef _UNICODE
 #define _UNICODE
+#endif
 #include <windows.h>
 #include <wchar.h>
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR args, int show)

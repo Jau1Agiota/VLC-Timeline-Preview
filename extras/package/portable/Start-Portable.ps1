@@ -79,6 +79,7 @@ public static class PortableLibrary {
     $info.EnvironmentVariables['LOCALAPPDATA']=Join-Path $data 'cache'
     $info.EnvironmentVariables['TEMP']=$data
     $info.EnvironmentVariables['TMP']=$data
+    foreach($folder in @('config','cache')){[IO.Directory]::CreateDirectory((Join-Path $data $folder)) | Out-Null}
     $info.Arguments='--no-one-instance --no-qt-privacy-ask --no-qt-updates-notif --verbose=0'
     if($Diagnostics -or $PlaybackDiagnostics){$info.Arguments+=' --verbose=2 --file-logging --logfile="'+(Join-Path $data ('diagnostic-'+[guid]::NewGuid().ToString('N')+'.log'))+'"'}
     [Diagnostics.Process]::Start($info) | Out-Null

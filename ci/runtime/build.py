@@ -139,8 +139,21 @@ def main():
                        '--enable-filter=null,anull,format,scale,aformat,aresample', '--enable-gpl', '--enable-version3'], ffbuild)
         run('ffmpeg', ['make', f'-j{args.jobs}'], ffbuild)
         run('ffmpeg', ['make', 'install'], ffbuild)
+        lua = root / 'src/lua/src'
+        run('lua', ['make', '-C', lua, 'liblua.a',
+                    f'CC={tc}/bin/x86_64-w64-mingw32-clang',
+                    f'AR={tc}/bin/llvm-ar rcu', f'RANLIB={tc}/bin/llvm-ranlib', f'-j{args.jobs}'])
+        inc = prefix / 'include/lua5.1'
+        inc.mkdir()
+        for header in ['lua.h', 'luaconf.h', 'lualib.h', 'lauxlib.h']:
+            shutil.copyfile(lua / header, inc / header)
+        shutil.copyfile(lua / 'liblua.a', prefix / 'lib/liblua.a')
+        (prefix / 'lib/pkgconfig/lua51.pc').write_text(
+            f'prefix={prefix}\nlibdir=${{prefix}}/lib\nincludedir=${{prefix}}/include/lua5.1\n'
+            'Name: Lua\nDescription: Lua interpreter library\nVersion: 5.1.5\n'
+            'Libs: -L${libdir} -llua -lm\nCflags: -I${includedir}\n')
         build('mpv', ['--auto-features', 'disabled', '--prefer-static', '-Dlibmpv=true', '-Dcplayer=false',
-                      '-Dgpl=true', '-Dbuild-date=false', '-Dvulkan=disabled', '-Dgl=disabled',
+                      '-Dgpl=true', '-Dlua=lua51', '-Dbuild-date=false', '-Dvulkan=disabled', '-Dgl=disabled',
                       '-Dplain-gl=disabled', '-Dd3d11=disabled', '-Dwin32-threads=enabled',
                       "-Dc_link_args=['-static', '-lc++']", '-Dcpp_link_args=-static'], shared=True)
         dll = prefix / 'bin/libmpv-2.dll'

@@ -103,5 +103,7 @@ remain unresolved. This repository's license files alone do not clear redistribu
 of an assembled Windows package. See the [licensing report](docs/STAGE_2_4_8_SELF_CONTAINED.md).
 
 Runtime follow-up: [Stage 2.4.8A findings](docs/runtime-audit/RUNTIME_RESOLUTION.md)
-record verified SDK imports and the remaining source/dependency gates. A
-software-only replacement runtime is a proposal, not an available offline build.
+record verified SDK imports and the remaining source/dependency gates. The
+[Stage 2.4.8B experiment](docs/runtime-build/STAGE_2_4_8B_RESULTS.md) compiled a
+software-only candidate and tested unchanged workers under Wine. It is not an
+approved replacement or an offline application package.

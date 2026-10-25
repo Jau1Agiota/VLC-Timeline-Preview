@@ -1,0 +1,472 @@
+[
+  {
+    "name": "python-tools",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "pip",
+      "install",
+      "--no-index",
+      "--no-deps",
+      "--target",
+      "/workspace/stage248B-final/tools/python",
+      "/workspace/stage248B-final/downloads/meson-1.8.3-py3-none-any.whl",
+      "/workspace/stage248B-final/downloads/ninja-1.11.1.4-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.whl",
+      "/workspace/stage248B-final/downloads/cmake-3.31.6-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "/workspace/stage248B-final/downloads/jinja2-3.1.6-py3-none-any.whl",
+      "/workspace/stage248B-final/downloads/markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "pkgconf",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "setup",
+      "/workspace/stage248B-final/build/pkgconf",
+      "/workspace/stage248B-final/src/pkgconf",
+      "--prefix",
+      "/workspace/stage248B-final/tools/native",
+      "--buildtype",
+      "release",
+      "--default-library",
+      "static",
+      "--wrap-mode",
+      "nofallback"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "pkgconf",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "compile",
+      "-C",
+      "/workspace/stage248B-final/build/pkgconf",
+      "-j",
+      "4"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "pkgconf",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "install",
+      "-C",
+      "/workspace/stage248B-final/build/pkgconf"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "freetype",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "setup",
+      "/workspace/stage248B-final/build/freetype",
+      "/workspace/stage248B-final/src/freetype",
+      "--cross-file",
+      "/workspace/stage248B-final/cross.ini",
+      "--prefix",
+      "/workspace/stage248B-final/prefix",
+      "--libdir",
+      "lib",
+      "--buildtype",
+      "release",
+      "--default-library",
+      "static",
+      "--wrap-mode",
+      "nofallback",
+      "--auto-features",
+      "disabled",
+      "-Dzlib=disabled"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "freetype",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "compile",
+      "-C",
+      "/workspace/stage248B-final/build/freetype",
+      "-j",
+      "4"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "freetype",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "install",
+      "-C",
+      "/workspace/stage248B-final/build/freetype"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "fribidi",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "setup",
+      "/workspace/stage248B-final/build/fribidi",
+      "/workspace/stage248B-final/src/fribidi",
+      "--cross-file",
+      "/workspace/stage248B-final/cross.ini",
+      "--prefix",
+      "/workspace/stage248B-final/prefix",
+      "--libdir",
+      "lib",
+      "--buildtype",
+      "release",
+      "--default-library",
+      "static",
+      "--wrap-mode",
+      "nofallback",
+      "-Ddocs=false",
+      "-Dbin=false",
+      "-Dtests=false"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "fribidi",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "compile",
+      "-C",
+      "/workspace/stage248B-final/build/fribidi",
+      "-j",
+      "4"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "fribidi",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "install",
+      "-C",
+      "/workspace/stage248B-final/build/fribidi"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "harfbuzz",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "setup",
+      "/workspace/stage248B-final/build/harfbuzz",
+      "/workspace/stage248B-final/src/harfbuzz",
+      "--cross-file",
+      "/workspace/stage248B-final/cross.ini",
+      "--prefix",
+      "/workspace/stage248B-final/prefix",
+      "--libdir",
+      "lib",
+      "--buildtype",
+      "release",
+      "--default-library",
+      "static",
+      "--wrap-mode",
+      "nofallback",
+      "--auto-features",
+      "disabled",
+      "-Dfreetype=enabled",
+      "-Dtests=disabled",
+      "-Dutilities=disabled"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "harfbuzz",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "compile",
+      "-C",
+      "/workspace/stage248B-final/build/harfbuzz",
+      "-j",
+      "4"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "harfbuzz",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "install",
+      "-C",
+      "/workspace/stage248B-final/build/harfbuzz"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "libass",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "setup",
+      "/workspace/stage248B-final/build/libass",
+      "/workspace/stage248B-final/src/libass",
+      "--cross-file",
+      "/workspace/stage248B-final/cross.ini",
+      "--prefix",
+      "/workspace/stage248B-final/prefix",
+      "--libdir",
+      "lib",
+      "--buildtype",
+      "release",
+      "--default-library",
+      "static",
+      "--wrap-mode",
+      "nofallback",
+      "--auto-features",
+      "disabled",
+      "-Ddirectwrite=enabled"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "libass",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "compile",
+      "-C",
+      "/workspace/stage248B-final/build/libass",
+      "-j",
+      "4"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "libass",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "install",
+      "-C",
+      "/workspace/stage248B-final/build/libass"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "libplacebo",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "setup",
+      "/workspace/stage248B-final/build/libplacebo",
+      "/workspace/stage248B-final/src/libplacebo",
+      "--cross-file",
+      "/workspace/stage248B-final/cross.ini",
+      "--prefix",
+      "/workspace/stage248B-final/prefix",
+      "--libdir",
+      "lib",
+      "--buildtype",
+      "release",
+      "--default-library",
+      "static",
+      "--wrap-mode",
+      "nofallback",
+      "--auto-features",
+      "disabled",
+      "-Dvulkan=disabled",
+      "-Dvk-proc-addr=disabled",
+      "-Dopengl=disabled",
+      "-Dgl-proc-addr=disabled",
+      "-Dd3d11=disabled",
+      "-Dshaderc=disabled",
+      "-Dglslang=disabled",
+      "-Ddemos=false",
+      "-Dtests=false"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "libplacebo",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "compile",
+      "-C",
+      "/workspace/stage248B-final/build/libplacebo",
+      "-j",
+      "4"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "libplacebo",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "install",
+      "-C",
+      "/workspace/stage248B-final/build/libplacebo"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "ffmpeg",
+    "command": [
+      "/workspace/stage248B-final/src/ffmpeg/configure",
+      "--prefix=/workspace/stage248B-final/prefix",
+      "--pkg-config=/workspace/stage248B-final/tools/native/bin/pkgconf",
+      "--pkg-config-flags=--static",
+      "--cross-prefix=/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-",
+      "--cc=/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang",
+      "--cxx=/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang++",
+      "--ar=/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/llvm-ar",
+      "--ranlib=/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/llvm-ranlib",
+      "--enable-cross-compile",
+      "--target-os=mingw32",
+      "--arch=x86_64",
+      "--disable-autodetect",
+      "--disable-programs",
+      "--disable-doc",
+      "--disable-network",
+      "--disable-vulkan",
+      "--disable-hwaccels",
+      "--disable-x86asm",
+      "--disable-everything",
+      "--enable-static",
+      "--disable-shared",
+      "--enable-decoder=h264,hevc,mpeg4,mjpeg,rawvideo",
+      "--enable-parser=h264,hevc,mpeg4video",
+      "--enable-demuxer=mov,matroska",
+      "--enable-protocol=file",
+      "--enable-filter=null,anull,format,scale,aformat,aresample",
+      "--enable-gpl",
+      "--enable-version3"
+    ],
+    "cwd": "/workspace/stage248B-final/build/ffmpeg"
+  },
+  {
+    "name": "ffmpeg",
+    "command": [
+      "make",
+      "-j4"
+    ],
+    "cwd": "/workspace/stage248B-final/build/ffmpeg"
+  },
+  {
+    "name": "ffmpeg",
+    "command": [
+      "make",
+      "install"
+    ],
+    "cwd": "/workspace/stage248B-final/build/ffmpeg"
+  },
+  {
+    "name": "lua",
+    "command": [
+      "make",
+      "-C",
+      "/workspace/stage248B-final/src/lua/src",
+      "liblua.a",
+      "CC=/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/x86_64-w64-mingw32-clang",
+      "AR=/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/llvm-ar rcu",
+      "RANLIB=/workspace/stage248B-final/tools/llvm-mingw-20251021-ucrt-ubuntu-22.04-x86_64/bin/llvm-ranlib",
+      "-j4"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "mpv",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "setup",
+      "/workspace/stage248B-final/build/mpv",
+      "/workspace/stage248B-final/src/mpv",
+      "--cross-file",
+      "/workspace/stage248B-final/cross.ini",
+      "--prefix",
+      "/workspace/stage248B-final/prefix",
+      "--libdir",
+      "lib",
+      "--buildtype",
+      "release",
+      "--default-library",
+      "shared",
+      "--wrap-mode",
+      "nofallback",
+      "--auto-features",
+      "disabled",
+      "--prefer-static",
+      "-Dlibmpv=true",
+      "-Dcplayer=false",
+      "-Dgpl=true",
+      "-Dlua=lua51",
+      "-Dbuild-date=false",
+      "-Dvulkan=disabled",
+      "-Dgl=disabled",
+      "-Dplain-gl=disabled",
+      "-Dd3d11=disabled",
+      "-Dwin32-threads=enabled",
+      "-Dc_link_args=['-static', '-lc++']",
+      "-Dcpp_link_args=-static"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "mpv",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "compile",
+      "-C",
+      "/workspace/stage248B-final/build/mpv",
+      "-j",
+      "4"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  },
+  {
+    "name": "mpv",
+    "command": [
+      "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",
+      "-m",
+      "mesonbuild.mesonmain",
+      "install",
+      "-C",
+      "/workspace/stage248B-final/build/mpv"
+    ],
+    "cwd": "/workspace/stage248B-final"
+  }
+]

@@ -1,0 +1,33 @@
+{
+  "wine_packages": [
+    {
+      "Package": "libwine",
+      "Version": "10.0~repack-6",
+      "Filename": "pool/main/w/wine/libwine_10.0~repack-6_amd64.deb",
+      "SHA256": "702c99d2fbaef2a4966667e0cdabd477ed1754c1b3b5d4476606eaf5fd6e1444",
+      "Source": "wine"
+    },
+    {
+      "Package": "wine64",
+      "Version": "10.0~repack-6",
+      "Filename": "pool/main/w/wine/wine64_10.0~repack-6_amd64.deb",
+      "SHA256": "4cdf8319d873c13210815c1aac18859a56ea21b0b2d35a3388dab881464ed488",
+      "Source": "wine"
+    },
+    {
+      "Package": "libz-mingw-w64",
+      "Version": "1.3.1+dfsg-2",
+      "Filename": "pool/main/libz/libz-mingw-w64/libz-mingw-w64_1.3.1+dfsg-2_all.deb",
+      "SHA256": "c4e6d6bfabe8b6d12c797736a3d762d83513b49f488d1aaf61d4526387a2dd3e",
+      "Source": null
+    }
+  ],
+  "platform": "Linux Debian 13; isolated extracted Wine 10.0~repack-6",
+  "native_windows": false,
+  "worker_bridge": "Win32 anonymous pipes, Job Object cleanup; no application/worker source edits",
+  "bootstrap_notes": [
+    "Relocated wineserver wrapper/data path repaired in test directory only",
+    "Native zlib1.dll provided in Wine prefix from official libz-mingw-w64 package; needed by Wine user32, not a new target DLL import",
+    "Unix stdin PeekNamedPipe incompatibility required test-only Windows pipe bridge"
+  ]
+}

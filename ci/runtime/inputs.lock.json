@@ -163,6 +163,16 @@
       "url": "https://files.pythonhosted.org/packages/3c/2e/8d0c2ab90a8c1d9a24f0399058ab8519a3279d1bd4289511d74e909f060e/markupsafe-3.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
       "sha256": "d6dd0be5b5b189d31db7cda48b91d7e0a9795f31430b7f271219ab30f1d3ac9d",
       "license_review": "BSD-3-Clause"
+    },
+    "lua": {
+      "kind": "source",
+      "filename": "lua.tar.gz",
+      "url": "https://www.lua.org/ftp/lua-5.1.5.tar.gz",
+      "sha256": "2640fc56a795f29d28ef15e13c34a47e223960b0240e8cb0a82d9b0738695333",
+      "sha512": "0142fefcbd13afcd9b201403592aa60620011cc8e8559d4d2db2f92739d18186860989f48caa45830ff4f99bfc7483287fd3ff3a16d4dec928e2767ce4d542a9",
+      "version": "5.1.5",
+      "revision": "official release archive; SHA512 verified against VLC 3.0.24 contrib/src/lua/SHA512SUMS",
+      "license_review": "MIT; retain COPYRIGHT and source notices"
     }
   },
   "observed_host_tools": {

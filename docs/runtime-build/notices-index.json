@@ -1,0 +1,180 @@
+{
+  "scope": "matching-name notice files in exact extracted source trees; individual source-header grants also retained in complete archives",
+  "review_complete": false,
+  "components": {
+    "mpv": [
+      {
+        "path": "Copyright",
+        "sha256": "bfe9ee4cceabcb8ecbfadf208d04156f73d801e6a57369a5606bb8341e204a23"
+      },
+      {
+        "path": "LICENSE.GPL",
+        "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6"
+      },
+      {
+        "path": "LICENSE.LGPL",
+        "sha256": "72b672113d642cbb8ef5dcc76938db801983c56e50b1400ab930f1a64d6dc8d9"
+      }
+    ],
+    "ffmpeg": [
+      {
+        "path": "COPYING.GPLv2",
+        "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+      },
+      {
+        "path": "COPYING.GPLv3",
+        "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+      },
+      {
+        "path": "COPYING.LGPLv2.1",
+        "sha256": "246041b6ecf9bc32d718a62c57877c78b5eb397b6467e74ed7ae2626ab189c30"
+      },
+      {
+        "path": "COPYING.LGPLv3",
+        "sha256": "da7eabb7bafdf7d3ae5e9f223aa5bdc1eece45ac569dc21b3b037520b4464768"
+      },
+      {
+        "path": "LICENSE.md",
+        "sha256": "e6dc72d5665a1ebd6dcc841de59278dad4ca77ecc47b03f1064a55c3e9ea8bb8"
+      },
+      {
+        "path": "tests/checkasm/ext/LICENSE",
+        "sha256": "a2dc8194271e5989c0622531c645a7b41af5da92eeb2531e4f2a3ec31023bc52"
+      },
+      {
+        "path": "tests/checkasm/ext/src/html_data/LICENSE",
+        "sha256": "0fd2c601fb2ead2add56807b7e32664da8d973b9835a422464f210bfea997a52"
+      }
+    ],
+    "libplacebo": [
+      {
+        "path": "3rdparty/fast_float/AUTHORS",
+        "sha256": "ed249424bce4e318fa190dd6d8becf60cfc37287132ad3f89e16e0f28d878dcf"
+      },
+      {
+        "path": "3rdparty/fast_float/LICENSE-APACHE",
+        "sha256": "097a889aa954d04e088b790b10a4014d6189561d0a6013935a73ce3d4ddaaf06"
+      },
+      {
+        "path": "3rdparty/fast_float/LICENSE-BOOST",
+        "sha256": "8d8291caf1cee26d23acf3eb67c9f9a2d58f1c681b16a4fbe8cbfb9e3c0b5a9b"
+      },
+      {
+        "path": "3rdparty/fast_float/LICENSE-MIT",
+        "sha256": "e562f3f974ced7e69dd1db77b820b36bcf8f30377f1aa105723fba449c53c4e6"
+      },
+      {
+        "path": "3rdparty/glad/LICENSE",
+        "sha256": "cbb325cd4ac5bd06717ffa34a322b984f9d285e4c67c8ca1b7380d6ef08c2a77"
+      },
+      {
+        "path": "LICENSE",
+        "sha256": "b3aa400aca6d2ba1f0bd03bd98d03d1fe7489a3bbb26969d72016360af8a5c9d"
+      },
+      {
+        "path": "demos/LICENSE",
+        "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+      }
+    ],
+    "libass": [
+      {
+        "path": "COPYING",
+        "sha256": "f7e30699d02798351e7f839e3d3bfeb29ce65e44efa7735c225464c4fd7dfe9c"
+      }
+    ],
+    "freetype": [
+      {
+        "path": "LICENSE.TXT",
+        "sha256": "2e3bbb7d7c5c396368dd0853a790ec29ce5b8647163dde42a0493fb0d6556b2b"
+      }
+    ],
+    "fribidi": [
+      {
+        "path": "AUTHORS",
+        "sha256": "cb173f55c9514c8f38f4647ac3fedd5f8611358d331e65ab955da931e826861c"
+      },
+      {
+        "path": "COPYING",
+        "sha256": "32434afcc8666ba060e111d715bfdb6c2d5dd8a35fa4d3ab8ad67d8f850d2f2b"
+      }
+    ],
+    "harfbuzz": [
+      {
+        "path": "AUTHORS",
+        "sha256": "19bfe8f5ed100636cd24ab0c90a3f71c21d8b02d9ba00719447a0faab364d49f"
+      },
+      {
+        "path": "COPYING",
+        "sha256": "ba8f810f2455c2f08e2d56bb49b72f37fcf68f1f4fade38977cfd7372050ad64"
+      },
+      {
+        "path": "src/ms-use/COPYING",
+        "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+      },
+      {
+        "path": "test/COPYING",
+        "sha256": "9b35b8485f69cd298fccbb3c40a827dc06cf1185553bef827903497d2944a8d7"
+      },
+      {
+        "path": "test/shape/data/aots/COPYING",
+        "sha256": "f55f74bf740db07bb032a90aa74af4307adea3d489c1ccba12453cf0c0a764cb"
+      },
+      {
+        "path": "test/shape/data/text-rendering-tests/COPYING",
+        "sha256": "d24039e4d22c9bc72096f6174374539d92a3d6e1163938546ec59179fe095e6f"
+      }
+    ],
+    "lua": [
+      {
+        "path": "COPYRIGHT",
+        "sha256": "ee5e3e82af1e1b543c4f216e399d7c8cfee797711913f349e385101c4ae60a79"
+      }
+    ],
+    "fast_float": [
+      {
+        "path": "AUTHORS",
+        "sha256": "ed249424bce4e318fa190dd6d8becf60cfc37287132ad3f89e16e0f28d878dcf"
+      },
+      {
+        "path": "LICENSE-APACHE",
+        "sha256": "097a889aa954d04e088b790b10a4014d6189561d0a6013935a73ce3d4ddaaf06"
+      },
+      {
+        "path": "LICENSE-BOOST",
+        "sha256": "8d8291caf1cee26d23acf3eb67c9f9a2d58f1c681b16a4fbe8cbfb9e3c0b5a9b"
+      },
+      {
+        "path": "LICENSE-MIT",
+        "sha256": "e562f3f974ced7e69dd1db77b820b36bcf8f30377f1aa105723fba449c53c4e6"
+      }
+    ],
+    "glad": [
+      {
+        "path": "LICENSE",
+        "sha256": "cbb325cd4ac5bd06717ffa34a322b984f9d285e4c67c8ca1b7380d6ef08c2a77"
+      }
+    ],
+    "vulkan-headers": [
+      {
+        "path": "LICENSE.md",
+        "sha256": "ac24e5ea920e4318e4d02c4086ae51f53cfb03feed06c18df1019e7ada1ec7bc"
+      }
+    ],
+    "pkgconf": [
+      {
+        "path": "AUTHORS",
+        "sha256": "1579e0bd23bd6e3e24aab6bc6bf7efa3bca6c25f83bb2a1f56c5bdbdbfb1d40f"
+      },
+      {
+        "path": "COPYING",
+        "sha256": "07ee94b50a41ee3fc4e13a9b9c60b26fc28488494c465639f7e5f07a3952ec04"
+      }
+    ],
+    "llvm-mingw-source": [
+      {
+        "path": "LICENSE.txt",
+        "sha256": "8e5db0129069005be2a07be3297e198888fd72fad62a13a611504660c6b7e3c7"
+      }
+    ]
+  }
+}

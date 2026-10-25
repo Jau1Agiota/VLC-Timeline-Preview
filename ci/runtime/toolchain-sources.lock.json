@@ -1,0 +1,20 @@
+{
+  "llvm-project": {
+    "repository": "https://github.com/llvm/llvm-project",
+    "revision": "222fc11f2b8f25f6a0f4976272ef1bb7bf49521d",
+    "url": "https://codeload.github.com/llvm/llvm-project/tar.gz/222fc11f2b8f25f6a0f4976272ef1bb7bf49521d",
+    "filename": "llvm-project-source.tar.gz",
+    "sha256": "f87cacb5b024915b9cc8046b807774cd52b9cfbca6e027d478891c0c49349767",
+    "size_bytes": 242906830,
+    "role": "corresponding sources for prebuilt toolchain runtime components; recipe/default correspondence, not a rebuilt-toolchain attestation"
+  },
+  "mingw-w64": {
+    "repository": "https://github.com/mingw-w64/mingw-w64",
+    "revision": "0efdc4049f8872efd1b6258db972fc8688625e05",
+    "url": "https://codeload.github.com/mingw-w64/mingw-w64/tar.gz/0efdc4049f8872efd1b6258db972fc8688625e05",
+    "filename": "mingw-w64-source.tar.gz",
+    "sha256": "7967000e669bd7c3bc0d37cd2225d0f05ca01fc733b62dd43535e87044dbde17",
+    "size_bytes": 15565215,
+    "role": "corresponding sources for prebuilt toolchain runtime components; recipe/default correspondence, not a rebuilt-toolchain attestation"
+  }
+}

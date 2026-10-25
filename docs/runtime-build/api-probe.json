@@ -1,0 +1,14 @@
+[
+  {
+    "runtime": "baseline",
+    "exit_code": 0,
+    "stdout": "{\"client_api_version\":131078}\r\n",
+    "stderr": ""
+  },
+  {
+    "runtime": "candidate",
+    "exit_code": 0,
+    "stdout": "{\"client_api_version\":131078}\r\n",
+    "stderr": ""
+  }
+]

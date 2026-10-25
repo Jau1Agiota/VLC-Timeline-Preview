@@ -108,3 +108,78 @@ confirms default GPLv2-or-later and that linked FFmpeg can affect final licensin
 Thus this is not an LGPL-only runtime. Source recipe availability alone does not
 prove a complete, matching corresponding-source bundle for all linked revisions.
 The Stage F choice remains private publisher download, not DLL redistribution.
+
+## Short Windows acceptance procedure
+
+1. Download the **ready-to-extract Stage F Portable** artifact below, extract once
+   into a new writable folder with spaces, and open its versioned application
+   folder. Keep earlier installations separate.
+2. Double-click **Start VLC Timeline Preview.exe** with internet available. Accept
+   the first-launch setup information dialog and wait for VLC. No console commands
+   or administrator setup should be needed. If setup fails, retain the newest
+   `portable-data/startup-error-*.log` and report its message; do not replace DLLs.
+3. Open an internal-drive MP4/MKV through VLC's normal menu. Check the orange glow,
+   retained-image timestamp, rapid reversals, dragging, media changes, fullscreen,
+   window edges and ordinary audio/video against Stage E. This is user acceptance,
+   not a new frame-accuracy or playback-freeze investigation.
+4. Close this VLC, disconnect internet, and double-click again. The verified cache
+   should be reused. Keep an existing installed VLC running independently if desired
+   to check instance/profile isolation.
+5. With Stage F closed, move the entire folder to writable USB storage and launch
+   again, opening an internal-drive movie. Its helper is staged in local TEMP.
+   The unchanged engine still excludes videos stored on removable/UNC paths from
+   previews. Close before unplugging; physical USB and other-device testing is pending.
+
+For developers, the reproducible clean build is the existing **Windows diagnostic
+pilot (CI-1)** Actions workflow: select this branch, `stage=2.4.6F`,
+`benchmark_only=false`, `native_only=false`. Source and driver pins are independent;
+see the final evidence below and [WINDOWS_CI.md](WINDOWS_CI.md) for the unchanged
+image/contrib/toolchain, resource limits and source-verification gates. Temporary
+artifacts expire after 14 days; no Release or tag is published by this stage.
+
+## Final build and delivery record
+
+- Application/portable bootstrap source: `e29d1dc98c01e64de60de0fe2f299acd2af57aca`.
+- CI driver: `630528dcc8e3c3a327503ceeadc6450610d76947`.
+- [Final clean run 40192202973](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/40192202973).
+- [Recommended one-extraction portable ZIP](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/40192202973/artifacts/12599395616).
+  Artifact name: `VLC-Timeline-Preview-Stage-246F-Portable-e29d1dc98c01e64de60de0fe2f299acd2af57aca-40192202973-1`.
+  GitHub-reported artifact ZIP SHA-256:
+  `5989fb3de476dabc75d1d43128fccb17ec5a8f108a1dfa0dd90011aa652bccd7`
+  (521,719,362 bytes). This is the ZIP to extract once and double-click its launcher.
+- [Developer canonical ZIP/checksum/manifests](https://github.com/Jau1Agiota/VLC-Timeline-Preview/actions/runs/40192202973/artifacts/12599270689).
+  Inner ZIP: `VLC-3.0.24-stage246F-ci1-win64-e29d1dc98c01-40192202973-1.zip`;
+  SHA-256 `6b91dbc53e9e6f7d60ec22462589c41145f32ba186c6f1d1633b1435aa1d4f1c`
+  (512,581,595 bytes). The CI producer and independent artifact readback verify this
+  canonical ZIP, every member hash/CRC, provenance and external SHA256SUMS.
+  The ready ZIP is a direct extraction of those verified contents, re-archived by
+  GitHub Actions; its container hash differs. It does not contain a nested ZIP.
+- Earlier Stage F artifact from run 40188859730 is superseded: it failed native
+  startup. Earlier Stage E and all previous builds remain untouched.
+
+Final native validation passes the **shipped** bootstrap: inbox Windows PowerShell
+and tar runtime setup, cache reuse with unchanged DLL write time, rejection and
+restoration of a deliberately corrupted cached worker, forced fixed-drive helper
+staging/cleanup, and native process startup from a folder containing spaces.
+Existing fast/exact/LibVLC regressions report no failures. Existing Qt/dummy-output
+smoke exits zero both ways: diagnostics off has 0 heartbeats/0 statistics samples;
+on has 30 heartbeats/30 samples and positive decoded-video counters. This is not
+physical Windows GUI, audio output, thumbnail appearance, USB or offline testing.
+First native consent-dialog interaction remains part of manual acceptance; CI
+performs setup through the noninteractive test switch before cached native launch.
+
+Local checks: strict pinned GCC 6.4.0 launcher build, PE GUI/x64/system-import
+inspection, Bash syntax, ShellCheck 0.10.0, actionlint 1.7.7, host Qt regressions;
+48 guard/package tests (47 pass, 1 skipped), plus Stage E control (45 pass, 3
+skipped). No protected production/worker source differs from Stage E.
+Machine-readable API/check evidence: [stage_2_4_6F_ci.json](evidence/stage_2_4_6F_ci.json).
+Artifact checksums/digests above distinguish independently verified canonical ZIP
+from GitHub's reported ready-artifact digest; no cloud re-download is claimed.
+Physical acceptance remains pending; [PR #20](https://github.com/Jau1Agiota/VLC-Timeline-Preview/pull/20)
+remains a draft. No tag, Release, merge or previous-build replacement occurred.
+
+The inherited image-analysis job completed without scorer failures; this is not a
+universal accuracy gate. Its known positive-origin fixture still shows roughly
+5-second errors, fast mode remains keyframe-coarse, and actual image PTS/human
+review remain unverified. Stage F neither changes nor claims to resolve those
+existing limitations. Final run, native job and image-analysis job all succeeded.

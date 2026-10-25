@@ -28,7 +28,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR args, int show
     wchar_t *slash = wcsrchr(root, L'\\');
     if (!slash) goto error;
     *slash = 0;
-    if (!GetSystemDirectoryW(system, 32768)) goto error;
+    count = GetSystemDirectoryW(system, 32768);
+    if (!count || count >= 32768) goto error;
     if (wcslen(root) + wcslen(system) + encodedCount + 200 >= 32768) goto error;
     /* Paths come from Windows; double quotes cannot occur in file names.
        Transport the original UTF-16 command line as base64, never PowerShell code.

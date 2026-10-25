@@ -16,9 +16,15 @@ Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 public static class PortableLibrary {
- [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
- public static extern IntPtr LoadLibraryEx(string path, IntPtr file, uint flags);
- public static int LastError() { return Marshal.GetLastWin32Error(); }
+ [DllImport("kernel32.dll", EntryPoint="LoadLibraryExW", CharSet=CharSet.Unicode, SetLastError=true)]
+ private static extern IntPtr NativeLoadLibraryEx(string path, IntPtr file, uint flags);
+ [ThreadStatic] private static int loadError;
+ public static IntPtr LoadLibraryEx(string path, IntPtr file, uint flags) {
+   IntPtr result = NativeLoadLibraryEx(path, file, flags);
+   loadError = Marshal.GetLastWin32Error();
+   return result;
+ }
+ public static int LastError() { return loadError; }
  [DllImport("kernel32.dll")] public static extern bool FreeLibrary(IntPtr module);
  [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern uint GetDriveType(string root);
 }
@@ -90,7 +96,7 @@ try {
     # Probe only after cached runtime and worker integrity checks.
     Assert-PortableVulkanLoader $runtime
     $module=[PortableLibrary]::LoadLibraryEx($dll,[IntPtr]::Zero,0x00001100)
-    if($module -eq [IntPtr]::Zero){throw "Cannot load verified libmpv (Windows error $([Runtime.InteropServices.Marshal]::GetLastWin32Error())). The Vulkan prerequisite check passed, but libmpv or another runtime dependency failed to load. Use a complete, checksum-verified package and report this error; do not download loose DLLs."}
+    if($module -eq [IntPtr]::Zero){throw "Cannot load verified libmpv (Windows error $([PortableLibrary]::LastError())). The Vulkan prerequisite check passed, but libmpv or another runtime dependency failed to load. Use a complete, checksum-verified package and report this error; do not download loose DLLs."}
     [PortableLibrary]::FreeLibrary($module) | Out-Null
     $workerRoot=$runtime
     if($StageWorkerLocally -or [PortableLibrary]::GetDriveType([IO.Path]::GetPathRoot($runtime)) -ne 3){

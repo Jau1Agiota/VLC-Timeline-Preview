@@ -26,6 +26,11 @@ if($NativeProbe){
         catch {if($_.Exception.Message -notmatch 'vulkan-1.dll' -or $_.Exception.Message -notmatch 'Windows error'){throw}}
         Write-Output "PASS: real Windows loader unavailable (error $code); actionable prerequisite diagnostic received."
     }
+    # Real native bad-image probe: invalid private fixture, never a system DLL.
+    [IO.File]::WriteAllText((Join-Path $nativeRoot 'vulkan-1.dll'),'not a native DLL')
+    try {Assert-PortableVulkanLoader $nativeRoot;throw 'Invalid loader accepted'}
+    catch {if($_.Exception.Message -notmatch 'Windows error 193'){throw}}
+    Write-Output 'PASS: native invalid-image probe preserved Windows error 193.'
     } finally {Remove-Item -LiteralPath $nativeRoot -Recurse -Force}
     exit 0
 }

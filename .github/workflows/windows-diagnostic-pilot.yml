@@ -34,7 +34,7 @@ jobs:
     env:
       VLC_CI_STAGE: ${{ inputs.stage || '2.4.3' }}
       VLC_CI_BENCHMARK_ONLY: ${{ inputs.benchmark_only && 'true' || 'false' }}
-      SOURCE_SHA: ${{ inputs.stage == '2.4.6F' && 'b4406e83c614463c9bc39560faf6a9026960e948' || inputs.stage == '2.4.6E' && 'e577355ed22aea9d2703aad794f79a68f0a1ce42' || inputs.stage == '2.4.6D' && '12b25af9272193ddfd0c298e1e9f48c5ff5b66e4' || inputs.stage == '2.4.6C' && 'febfd332f4ffbc94981f0b1cac298dc941de057b' || inputs.stage == '2.4.6B' && '5cfebdb9718b3477e17c5ffcb6d14a2876974350' || inputs.stage == '2.4.5' && 'd10df7f0a54326f122f54b2a2961a3e1b0ee1f66' || inputs.stage == '2.4.4' && 'e879ce656c218eddec13926f03b5f0615d14dc61' || '2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc' }}
+      SOURCE_SHA: ${{ inputs.stage == '2.4.6F' && 'ab3cd4518db560208e737a591ee7164ad6da4370' || inputs.stage == '2.4.6E' && 'e577355ed22aea9d2703aad794f79a68f0a1ce42' || inputs.stage == '2.4.6D' && '12b25af9272193ddfd0c298e1e9f48c5ff5b66e4' || inputs.stage == '2.4.6C' && 'febfd332f4ffbc94981f0b1cac298dc941de057b' || inputs.stage == '2.4.6B' && '5cfebdb9718b3477e17c5ffcb6d14a2876974350' || inputs.stage == '2.4.5' && 'd10df7f0a54326f122f54b2a2961a3e1b0ee1f66' || inputs.stage == '2.4.4' && 'e879ce656c218eddec13926f03b5f0615d14dc61' || '2f7cb820e893c8dc53e40cddbab9c57a2fe1a0fc' }}
     steps:
       - name: Set run-specific output directory
         shell: bash
@@ -88,6 +88,28 @@ jobs:
         run: >-
           python3 ci-driver/ci/windows/package-diagnostic.py verify
           "$CI_WORK/readback" --expected-manifest "$CI_WORK/delivery/PACKAGE_MANIFEST.json"
+      - name: Prepare single-extraction portable download
+        if: ${{ inputs.stage == '2.4.6F' && !inputs.benchmark_only }}
+        shell: bash
+        run: |
+          python3 - "$CI_WORK" <<'PYTHON'
+          import json, pathlib, sys, zipfile
+          work = pathlib.Path(sys.argv[1])
+          manifest = json.loads((work / 'delivery/PACKAGE_MANIFEST.json').read_text())
+          # The preceding verifier checks every member, path, CRC and hash.
+          with zipfile.ZipFile(work / 'delivery' / manifest['zip']) as archive:
+              archive.extractall(work / 'portable-ready')
+          PYTHON
+      - name: Upload ready-to-extract portable edition
+        if: ${{ inputs.stage == '2.4.6F' && !inputs.benchmark_only }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: VLC-Timeline-Preview-Stage-246F-Portable-${{ env.SOURCE_SHA }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.CI_WORK }}/portable-ready/
+          if-no-files-found: error
+          compression-level: 6
+          retention-days: 14
+          overwrite: false
       - name: Final resource and container measurements
         if: always()
         timeout-minutes: 2
@@ -158,7 +180,7 @@ jobs:
     needs: build
     env:
       VLC_CI_STAGE: ${{ inputs.stage }}
-      EXPECTED_SOURCE: ${{ inputs.stage == '2.4.6F' && 'b4406e83c614463c9bc39560faf6a9026960e948' || inputs.stage == '2.4.6E' && 'e577355ed22aea9d2703aad794f79a68f0a1ce42' || inputs.stage == '2.4.6D' && '12b25af9272193ddfd0c298e1e9f48c5ff5b66e4' || inputs.stage == '2.4.6C' && 'febfd332f4ffbc94981f0b1cac298dc941de057b' || '5cfebdb9718b3477e17c5ffcb6d14a2876974350' }}
+      EXPECTED_SOURCE: ${{ inputs.stage == '2.4.6F' && 'ab3cd4518db560208e737a591ee7164ad6da4370' || inputs.stage == '2.4.6E' && 'e577355ed22aea9d2703aad794f79a68f0a1ce42' || inputs.stage == '2.4.6D' && '12b25af9272193ddfd0c298e1e9f48c5ff5b66e4' || inputs.stage == '2.4.6C' && 'febfd332f4ffbc94981f0b1cac298dc941de057b' || '5cfebdb9718b3477e17c5ffcb6d14a2876974350' }}
     runs-on: windows-2025
     timeout-minutes: 15
     steps:

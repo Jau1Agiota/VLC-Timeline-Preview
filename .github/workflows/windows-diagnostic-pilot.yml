@@ -416,8 +416,14 @@ jobs:
         shell: pwsh
         run: |
           $ps=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
-          & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/offline-prototype.ps1
-          if($LASTEXITCODE -ne 0){throw 'Private offline assembly tests failed'}
+          $PSNativeCommandUseErrorActionPreference=$false
+          $details=(& $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/offline-prototype.ps1 2>&1 | Out-String)
+          Write-Output $details
+          if($LASTEXITCODE -ne 0){
+            $safe=$details.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Offline assembly regression::$safe"
+            throw 'Private offline assembly tests failed'
+          }
           & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/portable-vulkan.ps1
           if($LASTEXITCODE -ne 0){throw 'Vulkan regression tests failed'}
           & $ps -NoProfile -NonInteractive -ExecutionPolicy Bypass -File test/ci/portable-vulkan.ps1 -NativeProbe

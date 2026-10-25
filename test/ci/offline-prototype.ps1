@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Synthetic layout tests, never a playable VLC package or third-party DLL upload.
-param([string]$Repository=(Join-Path $PSScriptRoot '..\..'))
+param([string]$Repository=(Join-Path $PSScriptRoot '..\..'), [string]$OriginalDll)
 $ErrorActionPreference='Stop'
 $repo=(Resolve-Path $Repository).Path
 $assembly=Join-Path $repo 'extras/package/portable/Assemble-Offline.ps1'
@@ -23,20 +23,25 @@ function Reject([scriptblock]$Action,[string]$Expected){
 }
 try {
     $base=Join-Path $root 'Original Stage F with spaces';[IO.Directory]::CreateDirectory($base) | Out-Null
-    $dll=Join-Path $root 'local original fixture.dll';[IO.File]::WriteAllText($dll,'synthetic fixture, not libmpv')
+    $badDll=Join-Path $root 'bad local fixture.dll';[IO.File]::WriteAllText($badDll,'synthetic fixture, not libmpv')
+    $dll=if($OriginalDll){[IO.Path]::GetFullPath($OriginalDll)}else{$badDll}
     $output=Join-Path $root 'VLC stage248D private with spaces'
     Reject {Assert-OriginalRuntime (Join-Path $root 'missing.dll')} 'missing'
-    Reject {Assert-OriginalRuntime $dll} 'SHA-256 mismatch'
+    Reject {Assert-OriginalRuntime $badDll} 'SHA-256 mismatch'
+    if($OriginalDll){Assert-OriginalRuntime $dll | Out-Null}
     foreach($bad in @('../outside','a/../outside','/absolute','C:/file','a\b','a//b','CON','a.')){Reject {Get-PackagePath $base $bad} 'Unsafe'}
-    Reject {Invoke-OfflineAssembly $base $dll $output (Split-Path $assembly)} 'SHA-256 mismatch'
+    Reject {Invoke-OfflineAssembly $base $badDll $output (Split-Path $assembly)} 'SHA-256 mismatch'
     if(Test-Path $output){throw 'Invalid runtime created output'}
     # Positive assembly path is exercised with a scoped validator fixture only.
     # There is NO production parameter or environment switch to bypass the DLL pin.
+    if(-not $OriginalDll){
     function Assert-OriginalRuntime([string]$Path){
         if(-not [IO.File]::Exists($Path)){throw 'fixture missing'}
         if([IO.File]::ReadAllText($Path) -ne 'synthetic fixture, not libmpv'){throw 'unexpected fixture'}
         return Get-LocalHash $Path
     }
+    }
+    Reject {Invoke-OfflineAssembly $base $dll $output (Split-Path $assembly)} 'BUILD_MANIFEST.json is missing'
     $files=[ordered]@{}
     $names=@('vlc.exe','libvlc.dll','libvlccore.dll','Start VLC Timeline Preview.exe','plugins/gui/libqt_plugin.dll','thumbnail-preview/thumbnail-helper.exe','thumbnail-preview/libvlc.dll','thumbnail-preview/libvlccore.dll','thumbnail-mpv/mpv-thumbnail-worker.exe','thumbnail-mpv/mpv-thumbnail-accurate-worker.exe','thumbnail-mpv/dependencies.json','COPYING.txt','AUTHORS.txt','THANKS.txt','thumbnail-preview/COPYING.txt','portable/Start-Portable.ps1','CI_1_README.txt','thumbnail-mpv/Get-Runtime.ps1','thumbnail-mpv/Setup-Runtime.ps1','thumbnail-mpv/Start-Preview.ps1')
     foreach($name in $names){
